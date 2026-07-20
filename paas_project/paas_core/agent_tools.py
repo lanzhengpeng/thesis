@@ -18,16 +18,38 @@ from typing import Dict, List, Optional
 from .sdk import is_component
 
 
+# 插件沙箱根目录，AI 只能在该目录下操作文件
 PLUGINS_DIR = Path(__file__).resolve().parent.parent / "plugins"
 
 
 class AgentSandboxError(Exception):
-    """智能体沙箱违规异常。"""
+    """
+    智能体沙箱违规异常。
+
+    当 AI 尝试访问 plugins/ 目录之外的文件、写入非 .py 文件或触发禁止操作时抛出。
+    """
     pass
 
 
 def _validate_path(path: str, must_exist: bool = False) -> Path:
-    """确保路径位于 plugins 目录内部。"""
+    """
+    确保路径位于 plugins 目录内部，防止目录遍历攻击。
+
+    实现：
+    - 将 path 解析为相对于 PLUGINS_DIR 的绝对路径。
+    - 检查解析后的路径是否以 PLUGINS_DIR 的绝对路径开头。
+    - 可选检查目标是否存在。
+
+    参数：
+        path: 相对于 plugins 目录的路径。
+        must_exist: 是否要求目标必须存在。
+
+    返回：
+        验证后的 Path 对象。
+
+    异常：
+        AgentSandboxError: 路径越界或目标不存在时抛出。
+    """
     target = (PLUGINS_DIR / path).resolve()
     if not str(target).startswith(str(PLUGINS_DIR.resolve())):
         raise AgentSandboxError(f"路径 '{path}' 逃离了 plugins 沙箱")
@@ -42,7 +64,12 @@ def _validate_path(path: str, must_exist: bool = False) -> Path:
 
 
 def list_plugins() -> List[str]:
-    """列出所有插件模块目录。"""
+    """
+    列出所有插件模块目录。
+
+    返回：
+        plugins/ 下所有非下划线开头的目录名排序列表。
+    """
     if not PLUGINS_DIR.exists():
         return []
     return sorted(
@@ -51,13 +78,30 @@ def list_plugins() -> List[str]:
 
 
 def list_plugin_files(plugin_name: str) -> List[str]:
-    """列出某个插件模块内的 Python 文件。"""
+    """
+    列出某个插件模块内的 Python 文件。
+
+    参数：
+        plugin_name: 插件目录名。
+
+    返回：
+        该插件目录下所有 .py 文件名排序列表。
+    """
     plugin_path = _validate_path(plugin_name, must_exist=True)
     return sorted(p.name for p in plugin_path.iterdir() if p.suffix == ".py")
 
 
 def read_plugin_file(plugin_name: str, file_name: str) -> str:
-    """读取插件文件内容。"""
+    """
+    读取插件文件内容。
+
+    参数：
+        plugin_name: 插件目录名。
+        file_name: 文件名。
+
+    返回：
+        文件 UTF-8 文本内容。
+    """
     file_path = _validate_path(f"{plugin_name}/{file_name}", must_exist=True)
     if not file_path.is_file():
         raise AgentSandboxError(f"'{file_name}' 不是文件")
@@ -75,8 +119,16 @@ def write_plugin_file(plugin_name: str, file_name: str, content: str) -> Dict[st
     创建或覆盖一个插件文件。
 
     基础安全检查：
-    - 文件必须以 .py 结尾
-    - 禁止目录遍历
+    - 文件必须以 .py 结尾。
+    - 路径不能逃离 plugins 沙箱。
+
+    参数：
+        plugin_name: 插件目录名。
+        file_name: 文件名，必须以 .py 结尾。
+        content: 文件内容。
+
+    返回：
+        {"status": "ok", "plugin": ..., "file": ...}
     """
     if not file_name.endswith(".py"):
         raise AgentSandboxError("只允许写入 .py 文件")
@@ -96,7 +148,15 @@ def write_plugin_file(plugin_name: str, file_name: str, content: str) -> Dict[st
 
 
 def create_plugin(plugin_name: str) -> Dict[str, str]:
-    """创建一个空的插件模块目录。"""
+    """
+    创建一个空的插件模块目录。
+
+    参数：
+        plugin_name: 插件目录名，必须是合法 Python 标识符。
+
+    返回：
+        {"status": "ok", "plugin": plugin_name}
+    """
     if not plugin_name or not plugin_name.isidentifier():
         raise AgentSandboxError("插件名必须是合法的 Python 标识符")
     plugin_path = _validate_path(plugin_name)
@@ -105,7 +165,15 @@ def create_plugin(plugin_name: str) -> Dict[str, str]:
 
 
 def delete_plugin(plugin_name: str) -> Dict[str, str]:
-    """删除整个插件模块目录。"""
+    """
+    删除整个插件模块目录。
+
+    参数：
+        plugin_name: 插件目录名。
+
+    返回：
+        {"status": "ok", "plugin": plugin_name, "message": "已删除"}
+    """
     plugin_path = _validate_path(plugin_name, must_exist=True)
     shutil.rmtree(plugin_path)
     return {"status": "ok", "plugin": plugin_name, "message": "已删除"}
@@ -120,7 +188,17 @@ def static_check(plugin_name: str, file_name: str) -> Dict[str, any]:
     """
     对 AI 生成的文件进行轻量级静态检查。
 
-    返回包含 ok、errors 键的字典。
+    检查项：
+    - 是否为合法 Python 语法。
+    - 是否导入了禁止的模块（os、sys、subprocess、socket）。
+    - 是否调用了 eval / exec / __import__。
+
+    参数：
+        plugin_name: 插件目录名。
+        file_name: 待检查文件名。
+
+    返回：
+        {"ok": bool, "errors": [...]}
     """
     import ast
 

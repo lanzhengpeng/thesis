@@ -29,6 +29,10 @@ dist-ssr/
 *.swo
 *~
 
+# Claude Code 配置（仅保留示例）
+.claude/settings.json
+.claude/settings.local.json
+
 # 环境变量与密钥
 .env
 .env.*

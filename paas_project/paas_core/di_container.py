@@ -23,7 +23,14 @@ from .sdk import ClassMeta, ComponentType, get_meta, is_component
 
 @dataclass
 class InstanceRecord:
-    """实例化成功的记录。"""
+    """
+    实例化成功的记录。
+
+    字段说明：
+        instance: 组装后的实例对象。
+        module_name: 该实例所属的插件模块名。
+        component_type: 实例的组件类型（Mapper/Service/Controller）。
+    """
 
     instance: Any
     module_name: str
@@ -32,7 +39,12 @@ class InstanceRecord:
 
 @dataclass
 class AssemblyReport:
-    """组装报告。"""
+    """
+    组装报告。
+
+    记录 DI 容器组装阶段的成功实例、失败信息以及调用图，
+    供作弊纸生成、模块健康检查和前端可视化使用。
+    """
 
     success: List[InstanceRecord] = field(default_factory=list)
     failed: List[tuple] = field(default_factory=list)
@@ -40,34 +52,60 @@ class AssemblyReport:
     call_graph: Dict[str, Dict[str, List[str]]] = field(default_factory=dict)
 
     def is_alive(self, module_name: str) -> bool:
-        """判断某个模块是否至少有一个组件存活。"""
+        """
+        判断某个模块是否至少有一个组件存活。
+
+        参数：
+            module_name: 插件模块名。
+
+        返回：
+            True 如果该模块下存在成功实例化的组件。
+        """
         return any(r.module_name == module_name for r in self.success)
 
     def get_controllers(self) -> List[InstanceRecord]:
-        """获取所有控制器实例。"""
+        """
+        获取所有控制器实例。
+
+        返回：
+            InstanceRecord 列表，用于后续挂载到 FastAPI。
+        """
         return [r for r in self.success if r.component_type == ComponentType.CONTROLLER]
 
     def get_services(self) -> List[InstanceRecord]:
-        """获取所有服务实例。"""
+        """
+        获取所有服务实例。
+
+        返回：
+            InstanceRecord 列表。
+        """
         return [r for r in self.success if r.component_type == ComponentType.SERVICE]
 
     def get_mappers(self) -> List[InstanceRecord]:
-        """获取所有数据访问实例。"""
+        """
+        获取所有数据访问实例。
+
+        返回：
+            InstanceRecord 列表。
+        """
         return [r for r in self.success if r.component_type == ComponentType.MAPPER]
 
 
 class DIContainer:
     """
-    保存已发现类的注册表和已组装实例。
+    依赖注入容器。
+
+    保存已发现类的注册表和已组装实例，负责按依赖顺序完成实例化。
     """
 
     def __init__(self):
-        # 键：类对象
+        # 键：类对象；值：该类的 ClassMeta 元数据
         self._classes: Dict[Type, ClassMeta] = {}
-        # 键：类对象 -> 组装后的实例
+        # 键：类对象；值：组装后的实例（失败时存 None）
         self._instances: Dict[Type, Any] = {}
-        # 键：类名 -> 类对象（用于简单查找）
+        # 键：类名；值：类对象（用于前向引用查找）
         self._by_name: Dict[str, Type] = {}
+        # 最近一次组装生成的报告
         self.report: Optional[AssemblyReport] = None
 
     # ------------------------------------------------------------------
@@ -75,7 +113,14 @@ class DIContainer:
     # ------------------------------------------------------------------
 
     def register_class(self, cls: Type) -> None:
-        """注册一个带装饰器的类。"""
+        """
+        注册一个带装饰器的类到容器。
+
+        只有被 @Mapper、@Service 或 @Controller 标记的类才会被注册。
+
+        参数：
+            cls: 待注册的类。
+        """
         if not is_component(cls):
             return
         meta = get_meta(cls)
@@ -83,7 +128,17 @@ class DIContainer:
         self._by_name[cls.__name__] = cls
 
     def discover_module_classes(self, module: Any) -> List[Type]:
-        """在已加载的模块对象中注册所有带装饰器的类。"""
+        """
+        在已加载的模块对象中注册所有带装饰器的类。
+
+        微内核在导入插件文件后调用本方法，完成发现阶段。
+
+        参数：
+            module: Python 模块对象，通常来自 sys.modules。
+
+        返回：
+            本次发现的带装饰器类列表。
+        """
         discovered = []
         for attr_name in dir(module):
             attr = getattr(module, attr_name)
@@ -93,7 +148,12 @@ class DIContainer:
         return discovered
 
     def all_classes(self) -> Dict[Type, ClassMeta]:
-        """返回所有已注册的类。"""
+        """
+        返回所有已注册的类。
+
+        返回：
+            类 -> ClassMeta 的字典。
+        """
         return self._classes
 
     # ------------------------------------------------------------------
@@ -101,7 +161,18 @@ class DIContainer:
     # ------------------------------------------------------------------
 
     def assemble(self) -> AssemblyReport:
-        """按依赖顺序实例化所有已注册的类。"""
+        """
+        按依赖顺序实例化所有已注册的类。
+
+        流程：
+        1. 通过拓扑排序确定实例化顺序（Mapper -> Service -> Controller）。
+        2. 依次实例化每个类，注入已创建的依赖。
+        3. 失败的类标记为 None，其依赖者也会因拿不到实例而失败。
+        4. 生成并返回 AssemblyReport。
+
+        返回：
+            包含成功实例、失败信息和调用图的组装报告。
+        """
         self.report = AssemblyReport()
         order = self._topological_order()
 
@@ -128,8 +199,15 @@ class DIContainer:
 
     def _topological_order(self) -> List[Type]:
         """
-        使用 Kahn 算法进行拓扑排序，按组件类型优先级：
-        mapper < service < controller。
+        使用 Kahn 算法计算实例化顺序。
+
+        排序规则：
+        - 按组件类型优先级：Mapper(0) < Service(1) < Controller(2)。
+        - 同优先级按类名字母顺序，保证输出稳定可预测。
+        - 若存在循环依赖，抛出 RuntimeError。
+
+        返回：
+            按依赖顺序排列的类列表。
         """
         type_rank = {
             ComponentType.MAPPER: 0,
@@ -175,7 +253,20 @@ class DIContainer:
         return order
 
     def _resolve_dependency(self, annotation: Any) -> Optional[Type]:
-        """将类型注解映射为已注册的类。"""
+        """
+        将类型注解映射为已注册的类。
+
+        支持：
+        - 普通类类型（如 UserMapper）
+        - 字符串前向引用（如 "UserMapper"）
+        - typing.ForwardRef 对象
+
+        参数：
+            annotation: 类型注解。
+
+        返回：
+            对应的类；如果无法解析则返回 None。
+        """
         if isinstance(annotation, type):
             return annotation
         if isinstance(annotation, str):
@@ -186,7 +277,22 @@ class DIContainer:
         return None
 
     def _instantiate(self, cls: Type, meta: ClassMeta) -> Any:
-        """实例化一个类，注入依赖。"""
+        """
+        实例化一个类，并注入构造参数与字段依赖。
+
+        流程：
+        1. 根据 ClassMeta.dependencies 准备 kwargs。
+        2. 从 _instances 中查找依赖实例；若依赖失败（为 None）则抛出异常。
+        3. 调用 cls(**kwargs) 创建实例。
+        4. 对 inject_fields 中的字段进行字段注入。
+
+        参数：
+            cls: 待实例化的类。
+            meta: 该类的 ClassMeta 元数据。
+
+        返回：
+            实例化后的对象。
+        """
         kwargs = {}
         for dep_name, dep_annotation in meta.dependencies:
             dep_cls = self._resolve_dependency(dep_annotation)
@@ -211,7 +317,14 @@ class DIContainer:
         return instance
 
     def _add_to_call_graph(self, meta: ClassMeta) -> None:
-        """将当前组件及其依赖记录到调用图。"""
+        """
+        将当前组件及其直接依赖记录到调用图。
+
+        调用图用于生成作弊纸（cheat-sheet）和前端架构可视化。
+
+        参数：
+            meta: 已实例化组件的 ClassMeta 元数据。
+        """
         mod = meta.module_name
         ctype = meta.component_type.value
         self.report.call_graph.setdefault(mod, {}).setdefault(ctype, [])
@@ -229,11 +342,27 @@ class DIContainer:
     # ------------------------------------------------------------------
 
     def get_instance(self, cls: Type) -> Any:
-        """根据类获取实例。"""
+        """
+        根据类获取已组装的实例。
+
+        参数：
+            cls: 已注册的类。
+
+        返回：
+            实例对象；若未组装或组装失败则返回 None。
+        """
         return self._instances.get(cls)
 
     def get_instances_by_module(self, module_name: str) -> List[Any]:
-        """获取某个模块下的所有实例。"""
+        """
+        获取某个模块下的所有成功实例。
+
+        参数：
+            module_name: 插件模块名。
+
+        返回：
+            该模块下所有成功实例的列表。
+        """
         return [
             r.instance
             for r in (self.report.success if self.report else [])
@@ -241,7 +370,11 @@ class DIContainer:
         ]
 
     def reset(self) -> None:
-        """清空容器状态。"""
+        """
+        清空容器状态。
+
+        用于测试或完全重新加载插件前重置发现与组装结果。
+        """
         self._classes.clear()
         self._instances.clear()
         self._by_name.clear()

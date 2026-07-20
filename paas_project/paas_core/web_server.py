@@ -19,14 +19,36 @@ from .system_server import create_system_app
 
 
 def create_web_app(kernel: MicroKernel) -> FastAPI:
-    """兼容旧入口：同时挂载管理接口与业务路由。"""
+    """
+    兼容旧入口：同时挂载管理接口与业务路由。
+
+    将 system_server（管理接口 + CORS）与所有 Controller 路由合并到单个 FastAPI 应用，
+    用于 `uvicorn paas_core.web_server:create_app` 等单端口调试场景。
+
+    参数：
+        kernel: 已启动的微内核实例。
+
+    返回：
+        同时包含管理接口与业务路由的 FastAPI 应用。
+    """
     app = create_system_app(kernel)
     mount_controllers(app, kernel)
     return app
 
 
 def create_app() -> FastAPI:
-    """Uvicorn 工厂入口：单端口聚合模式。"""
+    """
+    Uvicorn 工厂入口：单端口聚合模式。
+
+    使用方式：
+        uvicorn paas_core.web_server:create_app --reload --port 8000
+
+    该函数会自行启动一个 MicroKernel 并完成 boot，然后返回组合后的 FastAPI 应用。
+    主要用于开发调试；生产环境请使用 main.py 启动双进程。
+
+    返回：
+        组合后的 FastAPI 应用。
+    """
     kernel = MicroKernel()
     kernel.boot()
     return create_web_app(kernel)

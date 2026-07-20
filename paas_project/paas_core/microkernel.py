@@ -27,7 +27,16 @@ PLUGINS_DIR = Path(__file__).resolve().parent.parent / "plugins"
 
 @dataclass
 class ModuleLoadReport:
-    """模块加载报告。"""
+    """
+    单个插件模块的加载报告。
+
+    字段说明：
+        module_name: 插件目录名。
+        status: "ok" 或 "failed"。
+        message: 失败时的错误信息。
+        trace: 失败时的完整堆栈。
+        discovered_classes: 该模块下发现并注册的组件列表。
+    """
 
     module_name: str
     status: str  # "ok" 或 "failed"
@@ -37,7 +46,24 @@ class ModuleLoadReport:
 
 
 class MicroKernel:
+    """
+    微内核。
+
+    职责：
+    - 扫描 plugins/ 目录，按插件隔离导入 Python 文件。
+    - 将发现的类交给 DIContainer 注册。
+    - 捕获单个插件的异常，避免影响全局系统。
+    - 支持插件热重载与卸载。
+    - 生成作弊纸（cheat-sheet）供前端与 AI 参考。
+    """
+
     def __init__(self, plugins_dir: Optional[Path] = None):
+        """
+        初始化微内核。
+
+        参数：
+            plugins_dir: 插件目录；默认使用项目根目录下的 plugins/。
+        """
         self.plugins_dir = Path(plugins_dir or PLUGINS_DIR)
         self.container = DIContainer()
         self.module_reports: List[ModuleLoadReport] = []
@@ -48,12 +74,21 @@ class MicroKernel:
     # ------------------------------------------------------------------
 
     def boot(self) -> AssemblyReport:
-        """完整启动：扫描插件、导入模块、组装实例。"""
+        """
+        完整启动：扫描插件、导入模块、组装实例。
+
+        返回：
+            DI 容器生成的 AssemblyReport。
+        """
         self._scan_plugins()
         return self.container.assemble()
 
     def _scan_plugins(self) -> None:
-        """遍历 plugins/ 目录下的所有插件模块。"""
+        """
+        遍历 plugins/ 目录下的所有插件模块。
+
+        跳过非目录项与以下划线开头的目录。
+        """
         if not self.plugins_dir.exists():
             return
 
@@ -65,7 +100,18 @@ class MicroKernel:
             self._load_plugin(plugin_dir)
 
     def _load_plugin(self, plugin_dir: Path) -> None:
-        """加载单个插件目录下的所有 Python 文件。"""
+        """
+        加载单个插件目录下的所有 Python 文件。
+
+        流程：
+        1. 遍历插件目录中的 .py 文件。
+        2. 导入每个文件并注册其中带装饰器的类。
+        3. 收集该插件下发现的所有组件名称用于报告。
+        4. 若过程中抛出异常，将该插件标记为失败，不影响其他插件。
+
+        参数：
+            plugin_dir: 插件目录的 Path 对象。
+        """
         module_name = plugin_dir.name
         report = ModuleLoadReport(module_name=module_name, status="ok")
 
@@ -93,7 +139,18 @@ class MicroKernel:
         self.module_reports.append(report)
 
     def _import_file(self, plugin_name: str, py_file: Path, force: bool = False) -> None:
-        """导入插件目录下的一个 Python 文件。"""
+        """
+        导入插件目录下的一个 Python 文件。
+
+        参数：
+            plugin_name: 插件目录名。
+            py_file: Python 文件的 Path 对象。
+            force: 是否强制重新导入；热重载时传 True。
+
+        注意：
+            初次启动时，如果某个模块已经通过插件内的相对导入被加载过，
+            则不要重复执行。重复执行会产生重复的类对象，破坏依赖解析。
+        """
         module_path = f"plugins.{plugin_name}.{py_file.stem}"
 
         # 初次启动时，如果某个模块已经通过插件内的相对导入被加载过，
@@ -119,7 +176,20 @@ class MicroKernel:
     # ------------------------------------------------------------------
 
     def reload_plugin(self, plugin_name: str) -> AssemblyReport:
-        """重新加载单个插件并重新组装整个系统。"""
+        """
+        重新加载单个插件并重新组装整个系统。
+
+        流程：
+        1. 从容器注册表中移除该插件的所有类与实例。
+        2. 从 sys.modules 中移除该插件的所有模块。
+        3. 重新导入并重新组装。
+
+        参数：
+            plugin_name: 插件目录名。
+
+        返回：
+            重新组装后的 AssemblyReport。
+        """
         plugin_dir = self.plugins_dir / plugin_name
         if not plugin_dir.exists():
             raise FileNotFoundError(f"找不到插件 {plugin_name}")
@@ -148,7 +218,15 @@ class MicroKernel:
         return self.container.assemble()
 
     def unload_plugin(self, plugin_name: str) -> AssemblyReport:
-        """卸载一个插件并重新组装系统。"""
+        """
+        卸载一个插件并重新组装系统。
+
+        参数：
+            plugin_name: 插件目录名。
+
+        返回：
+            卸载后的 AssemblyReport。
+        """
         stale_classes = [
             cls
             for cls, meta in self.container.all_classes().items()
@@ -172,6 +250,16 @@ class MicroKernel:
     def generate_cheat_sheet(self) -> Dict[str, Any]:
         """
         生成全局调用图 / API 映射，供下一次 AI 唤醒时参考。
+
+        返回字典包含：
+            status: 状态字符串。
+            modules: 已加载与失败模块列表。
+            counts: Controller / Service / Mapper 数量。
+            call_graph: 模块级调用关系图。
+            api_map: 所有 Controller 方法对应的 HTTP 接口列表。
+
+        返回：
+            作弊纸数据字典。
         """
         report = self.container.report
         if report is None:
@@ -219,11 +307,21 @@ class MicroKernel:
     # ------------------------------------------------------------------
 
     def get_loaded_modules(self) -> List[str]:
-        """获取所有成功加载的模块名。"""
+        """
+        获取所有成功加载的模块名。
+
+        返回：
+            模块名字符串列表。
+        """
         return [r.module_name for r in self.module_reports if r.status == "ok"]
 
     def get_failed_modules(self) -> List[dict]:
-        """获取所有加载失败的模块信息。"""
+        """
+        获取所有加载失败的模块信息。
+
+        返回：
+            包含 module 与 error 字段的字典列表。
+        """
         return [
             {"module": r.module_name, "error": r.message}
             for r in self.module_reports
