@@ -175,6 +175,53 @@ class MicroKernel:
     # 动态操作
     # ------------------------------------------------------------------
 
+    def load_plugin(self, plugin_name: str) -> AssemblyReport:
+        """
+        首次加载一个新插件目录。
+
+        与 reload_plugin 不同，本方法不会清理已有插件的状态，
+        适用于监听线程发现全新插件目录的场景。
+
+        参数：
+            plugin_name: 插件目录名。
+
+        返回：
+            重新组装后的 AssemblyReport。
+        """
+        plugin_dir = self.plugins_dir / plugin_name
+        if not plugin_dir.exists():
+            raise FileNotFoundError(f"找不到插件 {plugin_name}")
+
+        self._load_plugin(plugin_dir)
+        return self.container.assemble()
+
+    def reboot(self) -> AssemblyReport:
+        """
+        完全重启微内核。
+
+        流程：
+        1. 清空 DI 容器注册表与实例。
+        2. 从 sys.modules 中移除所有 plugins.* 模块。
+        3. 重新扫描 plugins/ 目录并重新组装。
+
+        适用于 8001 服务口的动态热更新：监听线程在后台创建新内核或
+        重置当前内核后，无需重启进程即可生效。
+
+        返回：
+            重新组装后的 AssemblyReport。
+        """
+        self.container.reset()
+        self.module_reports.clear()
+        self._loaded_module_specs.clear()
+
+        # 清理所有插件模块缓存，确保重新执行最新代码
+        for key in list(sys.modules.keys()):
+            if key.startswith("plugins."):
+                del sys.modules[key]
+
+        self._scan_plugins()
+        return self.container.assemble()
+
     def reload_plugin(self, plugin_name: str) -> AssemblyReport:
         """
         重新加载单个插件并重新组装整个系统。

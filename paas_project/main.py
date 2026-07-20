@@ -31,6 +31,7 @@ ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT))
 
 from paas_core.microkernel import MicroKernel
+from paas_core.plugin_watcher import PluginWatcher
 from paas_core.service_server import SERVICE_PORT, create_service_app
 from paas_core.system_server import SYSTEM_PORT, create_system_app
 
@@ -77,13 +78,45 @@ def run_system_server() -> None:
 
 
 def run_service_server() -> None:
-    """在独立进程中运行服务口（8001）。"""
+    """在独立进程中运行服务口（8001），并监听插件变更实现热更新。"""
     kernel = boot()
-    app = create_service_app(kernel)
+    app, dispatcher = create_service_app(kernel)
+
+    # 文件监听器：当 plugins/ 下任何 .py 文件变更时，重建内核并原子替换分发器
+    def _on_plugin_changed(plugin_name: str, event_type: str) -> None:
+        print(f"\n[服务口] 检测到插件变更: {plugin_name} ({event_type})，正在热更新...")
+        try:
+            # 优先尝试按插件重载；若插件是全新创建的，则回退到完整重启
+            plugin_dir = kernel.plugins_dir / plugin_name
+            if plugin_dir.exists() and plugin_name in kernel.get_loaded_modules():
+                report = kernel.reload_plugin(plugin_name)
+            else:
+                report = kernel.reboot()
+
+            if report.failed:
+                failed_names = [name for name, _, _ in report.failed]
+                print(f"[服务口] 热更新完成，但以下组件失败: {failed_names}")
+            else:
+                print(f"[服务口] 热更新成功: {len(report.success)} 个组件已加载")
+
+            # 原子替换 dispatcher 持有的内核引用，后续请求立即使用新内核
+            dispatcher.set_kernel(kernel)
+        except Exception as exc:
+            print(f"[服务口] 热更新失败，保留旧内核: {exc}")
+
+    watcher = PluginWatcher(
+        plugins_dir=kernel.plugins_dir,
+        callback=_on_plugin_changed,
+    )
+    watcher.start()
+
     import uvicorn
 
     print(f"\n[服务口] 监听 0.0.0.0:{SERVICE_PORT}")
-    uvicorn.run(app, host="0.0.0.0", port=SERVICE_PORT)
+    try:
+        uvicorn.run(app, host="0.0.0.0", port=SERVICE_PORT)
+    finally:
+        watcher.stop()
 
 
 def _start_processes() -> None:
