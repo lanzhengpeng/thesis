@@ -12,7 +12,9 @@ from __future__ import annotations
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .microkernel import MicroKernel
+from paas_core.agent.agent_api import create_agent_router
+from paas_core.kernel.microkernel import MicroKernel
+
 from .route_bridge import summarize_report
 
 
@@ -47,6 +49,9 @@ def create_system_app(kernel: MicroKernel) -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    # 注册 LangGraph agent 管理接口
+    app.include_router(create_agent_router(kernel), prefix="/admin/agent")
 
     @app.get("/admin/kernel/cheat-sheet")
     def cheat_sheet():

@@ -2,7 +2,7 @@
 用户模块数据访问层。
 """
 
-from paas_core import Mapper
+from paas_core import Mapper, sql_operation
 
 
 @Mapper
@@ -12,6 +12,10 @@ class UserMapper:
         self._users = {}
         self._next_id = 1
 
+    @sql_operation(
+        sql="INSERT INTO users (username, email) VALUES (%s, %s)",
+        params=["username", "email"],
+    )
     def create(self, username: str, email: str) -> dict:
         """创建用户。"""
         user_id = self._next_id
@@ -20,10 +24,15 @@ class UserMapper:
         self._users[user_id] = user
         return user
 
+    @sql_operation(
+        sql="SELECT * FROM users WHERE id = %s",
+        params=["user_id"],
+    )
     def get(self, user_id: int) -> dict | None:
         """根据 ID 查询用户。"""
         return self._users.get(user_id)
 
+    @sql_operation(sql="SELECT * FROM users")
     def list_all(self) -> list:
         """查询所有用户。"""
         return list(self._users.values())

@@ -11,12 +11,12 @@ class UserController:
     def __init__(self, user_service: UserService):
         self.user_service = user_service
 
-    @GET("/")
+    @GET("/", calls=["UserService.list_users"])
     def list_users(self):
         """GET /api/users/"""
         return self.user_service.list_users()
 
-    @GET("/{user_id}")
+    @GET("/{user_id}", calls=["UserService.get_user"])
     def get_user(self, user_id: str):
         """GET /api/users/{user_id}"""
         user = self.user_service.get_user(int(user_id))
@@ -24,7 +24,7 @@ class UserController:
             return {"error": "not found"}
         return user
 
-    @POST("/")
+    @POST("/", calls=["UserService.register"])
     def create_user(self, payload: dict):
         """POST /api/users/"""
         return self.user_service.register(

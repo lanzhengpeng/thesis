@@ -32,10 +32,31 @@ export interface CheatSheetApiItem {
   handler: string;
 }
 
+export interface CheatSheetMethodItem {
+  http_method?: string;
+  path?: string;
+  name: string;
+  params: string[];
+  calls: string[];
+  sql?: string;
+}
+
+export interface CheatSheetComponentItem {
+  name: string;
+  type: "controller" | "service" | "mapper";
+  module: string;
+  base_path: string;
+  assembled: boolean;
+  constructor_params: { name: string; type: string }[];
+  inject_fields: { name: string; type: string }[];
+  methods: CheatSheetMethodItem[];
+}
+
 export interface CheatSheetResponse {
   status: string;
   modules: CheatSheetModuleStatus;
   counts: CheatSheetCounts;
   call_graph: CheatSheetCallGraph;
   api_map: CheatSheetApiItem[];
+  components: CheatSheetComponentItem[];
 }

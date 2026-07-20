@@ -15,9 +15,9 @@ from typing import Any, Callable, Dict, List, Optional
 
 from fastapi import Body, FastAPI, Request
 
-from .di_container import DIContainer
-from .microkernel import MicroKernel
-from .sdk import MethodMeta, get_meta
+from paas_core.kernel.di_container import DIContainer
+from paas_core.kernel.microkernel import MicroKernel
+from paas_core.sdk import MethodMeta, get_meta
 
 
 # 用于提取路由路径模板中的路径参数，例如 "/{user_id}" -> ["user_id"]

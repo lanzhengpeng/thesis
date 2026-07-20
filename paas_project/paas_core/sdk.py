@@ -33,17 +33,23 @@ class ComponentType(str, Enum):
 @dataclass
 class MethodMeta:
     """
-    通过 @GET/@POST 等装饰器附加到控制器方法上的元数据。
+    通过装饰器附加到组件方法上的元数据。
 
     字段说明：
-        http_method: HTTP 方法字符串，例如 "GET"、"POST"。
-        path: 该方法对应的路由路径模板，例如 "/{user_id}"。
-        name: 原始方法名，用于生成 OpenAPI 文档摘要。
+        http_method: HTTP 方法字符串，例如 "GET"、"POST"；Service/Mapper 方法为空。
+        path: 该方法对应的路由路径模板，例如 "/{user_id}"；Service/Mapper 方法为空。
+        name: 原始方法名。
+        params: 方法入参名称列表，用于前端展示方法签名。
+        calls: 当前方法直接调用的下游方法或组件标识列表，用于绘制方法级调用连线。
+        sql: Mapper 方法执行的 SQL 模板；非 Mapper 方法为空。
     """
 
-    http_method: str   # HTTP 方法，如 GET/POST
-    path: str          # 路由路径
-    name: str          # 方法名
+    http_method: Optional[str] = None   # HTTP 方法，如 GET/POST
+    path: Optional[str] = None          # 路由路径
+    name: str = ""                      # 方法名
+    params: List[str] = field(default_factory=list)  # 方法入参列表
+    calls: List[str] = field(default_factory=list)   # 下游调用目标列表
+    sql: Optional[str] = None           # Mapper SQL 模板
 
 
 @dataclass
@@ -57,7 +63,8 @@ class ClassMeta:
         path: Controller 的基础路径前缀，例如 "/api/users"。
         dependencies: __init__ 参数注入与字段注入声明的依赖列表。
         inject_fields: 通过 @Inject 声明的需要字段注入的属性名。
-        methods: Controller 类中所有 HTTP 端点方法的元数据。
+        methods: 类中所有被方法装饰器标记的方法元数据（Controller 的 HTTP 方法、
+                Service 的业务方法、Mapper 的 SQL 操作方法）。
     """
 
     component_type: ComponentType       # 组件类型
@@ -90,6 +97,7 @@ def Mapper(cls: Type) -> Type:
     cls.__paas_meta__ = ClassMeta(component_type=ComponentType.MAPPER)
     cls.__paas_meta__.module_name = _guess_module_name(cls)
     _collect_dependencies(cls)
+    _collect_methods(cls)
     return cls
 
 
@@ -109,6 +117,7 @@ def Service(cls: Type) -> Type:
     cls.__paas_meta__ = ClassMeta(component_type=ComponentType.SERVICE)
     cls.__paas_meta__.module_name = _guess_module_name(cls)
     _collect_dependencies(cls)
+    _collect_methods(cls)
     return cls
 
 
@@ -175,69 +184,150 @@ def Inject(target: Any) -> Any:
 # ---------------------------------------------------------------------------
 
 
-def GET(path: str):
+def GET(path: str, calls: Optional[List[str]] = None):
     """
     标记一个 GET 接口。
 
     参数：
         path: 路由路径模板，例如 "/" 或 "/{user_id}"。
+        calls: 该接口内部调用的下游方法或组件标识列表，用于方法级调用图。
 
     返回：
         装饰器函数，用于修饰 Controller 中的方法。
     """
-    return _http_method("GET", path)
+    return _http_method("GET", path, calls=calls)
 
 
-def POST(path: str):
+def POST(path: str, calls: Optional[List[str]] = None):
     """
     标记一个 POST 接口。
 
     参数：
         path: 路由路径模板。
+        calls: 该接口内部调用的下游方法或组件标识列表，用于方法级调用图。
 
     返回：
         装饰器函数。
     """
-    return _http_method("POST", path)
+    return _http_method("POST", path, calls=calls)
 
 
-def PUT(path: str):
+def PUT(path: str, calls: Optional[List[str]] = None):
     """
     标记一个 PUT 接口。
 
     参数：
         path: 路由路径模板。
+        calls: 该接口内部调用的下游方法或组件标识列表，用于方法级调用图。
 
     返回：
         装饰器函数。
     """
-    return _http_method("PUT", path)
+    return _http_method("PUT", path, calls=calls)
 
 
-def DELETE(path: str):
+def DELETE(path: str, calls: Optional[List[str]] = None):
     """
     标记一个 DELETE 接口。
 
     参数：
         path: 路由路径模板。
+        calls: 该接口内部调用的下游方法或组件标识列表，用于方法级调用图。
 
     返回：
         装饰器函数。
     """
-    return _http_method("DELETE", path)
+    return _http_method("DELETE", path, calls=calls)
 
 
-def PATCH(path: str):
+def PATCH(path: str, calls: Optional[List[str]] = None):
     """
     标记一个 PATCH 接口。
 
     参数：
         path: 路由路径模板。
+        calls: 该接口内部调用的下游方法或组件标识列表，用于方法级调用图。
 
     返回：
         装饰器函数。
     """
-    return _http_method("PATCH", path)
+    return _http_method("PATCH", path, calls=calls)
+
+
+# ---------------------------------------------------------------------------
+# Service / Mapper 方法装饰器
+# ---------------------------------------------------------------------------
+
+
+def service_method(params: Optional[List[str]] = None, calls: Optional[List[str]] = None):
+    """
+    标记 Service 内部方法，记录其入参与下游调用。
+
+    参数：
+        params: 方法入参名称列表，用于前端展示方法签名。
+        calls: 该方法调用的下游方法或组件标识列表，用于绘制方法级调用连线。
+
+    返回：
+        装饰器函数，用于修饰 Service 中的业务方法。
+
+    示例：
+        @Service
+        class OrderService:
+            @service_method(params=["data"], calls=["OrderMapper.insert_order"])
+            def create_order(self, data):
+                return self.order_mapper.insert_order(data['id'], data['amount'])
+    """
+
+    def decorator(func: Callable) -> Callable:
+        if not hasattr(func, "__paas_methods__"):
+            func.__paas_methods__ = []
+        func.__paas_methods__.append(
+            MethodMeta(
+                name=func.__name__,
+                params=params or [],
+                calls=calls or [],
+            )
+        )
+        return func
+
+    return decorator
+
+
+def sql_operation(sql: str, params: Optional[List[str]] = None):
+    """
+    标记 Mapper 的数据库操作方法，绑定 SQL 模板。
+
+    参数：
+        sql: 该方法执行的 SQL 模板字符串。
+        params: SQL 模板中的参数名称列表，用于前端展示与校验。
+
+    返回：
+        装饰器函数，用于修饰 Mapper 中的数据库操作方法。
+
+    示例：
+        @Mapper
+        class OrderMapper:
+            @sql_operation(
+                sql="INSERT INTO orders (id, amount) VALUES (%s, %s)",
+                params=["order_id", "amount"]
+            )
+            def insert_order(self, order_id, amount):
+                pass
+    """
+
+    def decorator(func: Callable) -> Callable:
+        if not hasattr(func, "__paas_methods__"):
+            func.__paas_methods__ = []
+        func.__paas_methods__.append(
+            MethodMeta(
+                name=func.__name__,
+                params=params or [],
+                sql=sql,
+            )
+        )
+        return func
+
+    return decorator
 
 
 # ---------------------------------------------------------------------------
@@ -264,7 +354,7 @@ class _InjectMarker:
         self.field_name = field_name
 
 
-def _http_method(method: str, path: str):
+def _http_method(method: str, path: str, calls: Optional[List[str]] = None):
     """
     内部：为函数附加 HTTP 方法元数据。
 
@@ -273,6 +363,7 @@ def _http_method(method: str, path: str):
     参数：
         method: HTTP 方法字符串，例如 "GET"。
         path: 路由路径模板。
+        calls: 该方法内部调用的下游方法或组件标识列表，用于方法级调用图。
 
     返回：
         装饰器函数，负责把 MethodMeta 写入被装饰函数的 __paas_methods__。
@@ -281,7 +372,14 @@ def _http_method(method: str, path: str):
     def decorator(func: Callable) -> Callable:
         if not hasattr(func, "__paas_methods__"):
             func.__paas_methods__ = []
-        func.__paas_methods__.append(MethodMeta(http_method=method, path=path, name=func.__name__))
+        func.__paas_methods__.append(
+            MethodMeta(
+                http_method=method,
+                path=path,
+                name=func.__name__,
+                calls=calls or [],
+            )
+        )
         return func
 
     return decorator
@@ -330,13 +428,13 @@ def _collect_dependencies(cls: Type) -> None:
 
 def _collect_methods(cls: Type) -> None:
     """
-    从控制器类中收集所有 HTTP 方法元数据。
+    从组件类中收集所有方法级元数据。
 
     遍历类的公开成员（非下划线开头），查找带有 __paas_methods__ 标记的方法，
     将其追加到 ClassMeta.methods 列表中。
 
     参数：
-        cls: 已被 @Controller 标记的类。
+        cls: 已被 @Mapper / @Service / @Controller 标记的类。
     """
     meta: ClassMeta = cls.__paas_meta__
     for name in dir(cls):

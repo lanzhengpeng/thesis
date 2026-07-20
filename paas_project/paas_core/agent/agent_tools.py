@@ -15,7 +15,7 @@ import shutil
 from pathlib import Path
 from typing import Dict, List, Optional
 
-from .sdk import is_component
+from paas_core.sdk import is_component
 
 
 # 插件沙箱根目录，AI 只能在该目录下操作文件

@@ -2,7 +2,7 @@
 订单模块数据访问层。
 """
 
-from paas_core import Mapper
+from paas_core import Mapper, sql_operation
 
 
 @Mapper
@@ -12,6 +12,10 @@ class OrderMapper:
         self._orders = {}
         self._next_id = 1
 
+    @sql_operation(
+        sql="INSERT INTO orders (user_id, total) VALUES (%s, %s)",
+        params=["user_id", "total"],
+    )
     def create(self, user_id: int, total: float) -> dict:
         """创建订单。"""
         order_id = self._next_id
@@ -20,10 +24,15 @@ class OrderMapper:
         self._orders[order_id] = order
         return order
 
+    @sql_operation(
+        sql="SELECT * FROM orders WHERE id = %s",
+        params=["order_id"],
+    )
     def get(self, order_id: int) -> dict | None:
         """根据 ID 查询订单。"""
         return self._orders.get(order_id)
 
+    @sql_operation(sql="SELECT * FROM orders")
     def list_all(self) -> list:
         """查询所有订单。"""
         return list(self._orders.values())

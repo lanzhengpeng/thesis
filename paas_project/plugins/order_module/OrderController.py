@@ -11,12 +11,12 @@ class OrderController:
     def __init__(self, order_service: OrderService):
         self.order_service = order_service
 
-    @GET("/")
+    @GET("/", calls=["OrderService.list_orders"])
     def list_orders(self):
         """GET /api/orders/"""
         return self.order_service.list_orders()
 
-    @GET("/{order_id}")
+    @GET("/{order_id}", calls=["OrderService.get_order"])
     def get_order(self, order_id: str):
         """GET /api/orders/{order_id}"""
         order = self.order_service.get_order(int(order_id))
@@ -24,7 +24,7 @@ class OrderController:
             return {"error": "not found"}
         return order
 
-    @POST("/")
+    @POST("/", calls=["OrderService.create_order"])
     def create_order(self, payload: dict):
         """POST /api/orders/"""
         return self.order_service.create_order(

@@ -50,6 +50,7 @@
 - ✅ **自动依赖注入**：通过装饰器声明依赖，容器自动装配。
 - ✅ **动态 API 暴露**：写完 Controller 即刻自动生成 HTTP 接口。
 - ✅ **实时调用图（作弊纸）**：自动扫描内存依赖，生成全局 API 字典。
+- ✅ **方法级元数据**：支持为 Controller / Service / Mapper 方法标注入参、下游调用与 SQL，供前端生成精确调用连线。
 - ✅ **AI 沙箱工具链**：限制 AI 只能操作 `plugins/` 目录，防止越权。
 - ✅ **两层扫描装配**：先发现、再组装，避免过早执行有问题的业务代码。
 - ✅ **双端口隔离**：系统管理口（8000）与对外开放服务口（8001）物理分离。
@@ -84,7 +85,8 @@
            │  ├─ System Server : 8000 管理接口                │
            │  ├─ Service Server: 8001 业务路由                │
            │  ├─ SDK           : @Controller / @Service ...   │
-           │  └─ Agent Tools   : AI 文件操作沙箱               │
+           │  ├─ Agent Tools   : AI 文件操作沙箱               │
+           │  └─ LangGraph Agent: 自然语言生成插件工作流        │
            └───────────────────┬───────────────────────────────┘
                                ↓  严格隔离
            ┌───────────────────────────────────────────────┐
@@ -132,10 +134,14 @@ report = kernel.boot()
 
 #### 3.2.1 标准化契约
 
-提供四个核心装饰器：
+提供一组标准化装饰器：
 
 ```python
-from paas_core import Controller, Service, Mapper, Inject
+from paas_core import (
+    Controller, Service, Mapper, Inject,
+    GET, POST, PUT, DELETE, PATCH,
+    service_method, sql_operation,
+)
 ```
 
 | 装饰器 | 用途 |
@@ -144,6 +150,9 @@ from paas_core import Controller, Service, Mapper, Inject
 | `@Service` | 标记业务逻辑类 |
 | `@Mapper` | 标记数据访问类 |
 | `@Inject` | 标记需要注入的字段（参数注入优先推荐） |
+| `@GET(path, calls=...)` / `@POST(...)` 等 | 标记 Controller 的 HTTP 端点，可声明下游调用 |
+| `@service_method(params, calls)` | 标记 Service 业务方法，记录入参与下游调用 |
+| `@sql_operation(sql, params)` | 标记 Mapper 数据库操作，绑定 SQL 模板 |
 
 #### 3.2.2 两遍扫描装配法
 
@@ -208,6 +217,7 @@ GET http://localhost:8000/admin/kernel/cheat-sheet
 - 组件数量统计
 - 调用图（call_graph）
 - API 映射表（api_map）
+- 结构化组件元数据（components），包含每个 Controller / Service / Mapper 的构造参数、字段注入、方法签名、下游调用（calls）及 Mapper SQL
 
 #### 3.4.2 精准上下文投喂
 
@@ -217,6 +227,20 @@ GET http://localhost:8000/admin/kernel/cheat-sheet
 2. 高密度“作弊纸”
 
 避免把整个项目代码塞给 AI，降低 Token 消耗并减少幻觉。
+
+#### 3.4.3 前端架构可视化
+
+`paas_dashboard/` 是一个独立的 React Flow 可视化前端，实时消费 `/admin/kernel/cheat-sheet`：
+
+- 顶部展示“网关 / 鉴权”节点，下方横向并排展示所有业务模块。
+- 模块卡片内部严格按 **Controller → Service → Mapper** 三层垂直堆叠，同一层组件水平并排。
+- 所有 CSM 组件卡片默认完全展开为大尺寸全景卡片，不可折叠：
+  - Controller 行展示 HTTP 方法标签、路由路径和方法签名。
+  - Service 行展示方法签名。
+  - Mapper 行展示方法签名及嵌入式 SQL 代码块。
+- 调用连线精确到方法级：根据 `methods[].calls`，从源方法行右侧连到目标方法行左侧；跨模块 Service 调用使用橙色虚线流动边，内部调用使用灰色实线。
+
+启动方式见 `paas_dashboard/README.md`。
 
 ### 3.5 智能体沙箱与人机协同治理
 
@@ -239,6 +263,21 @@ AI 文件操作工具内置强校验，锁死 `plugins/` 目录，无法通过 `
 
 > 当前骨架已提供基础工具函数，Diff 确认流程建议在前端或管理接口层实现。
 
+#### 3.5.3 LangGraph Agent 工作流
+
+底座新增基于 LangGraph 的 agent 工作流（`paas_core/agent/agent_module.py`），支持通过自然语言任务自动生成并部署插件模块。
+
+典型调用链：
+
+1. `POST /admin/agent/generate` 接收任务，例如 `"创建用户模块"`。
+2. Agent 提取模块名，规划 Mapper / Service / Controller 文件及 API 前缀。
+3. 生成符合 CSM 规范的代码（优先使用 LLM，失败时回退到确定性模板）。
+4. 通过 `agent_tools` 将代码写入 `plugins/<module_name>/`。
+5. 执行 `static_check` 静态安全检查。
+6. 调用 `MicroKernel.reload_plugin()` 刷新系统口容器；8001 服务口通过文件监听自动感知变更。
+
+**LLM 配置**：默认读取环境变量 `OPENAI_API_KEY`、`OPENAI_BASE_URL`、`AGENT_MODEL`；未配置时回退到 `test_api.ipynb` 中记录的本地接口。若 LLM 不可用或返回格式错误，agent 会自动使用内置模板，保证随时可运行。
+
 ---
 
 ## 4. 目录结构
@@ -248,13 +287,26 @@ paas_project/
 ├── paas_core/                 # 系统底座（人类维护，禁止 AI 修改）
 │   ├── __init__.py            # 公共 API 导出
 │   ├── sdk.py                 # 装饰器契约：@Controller, @Service, @Mapper, @Inject
-│   ├── di_container.py        # 依赖注入容器：两遍扫描、拓扑排序、实例化
-│   ├── microkernel.py         # 微内核：模块扫描、异常隔离、热重载
-│   ├── route_bridge.py        # Controller → FastAPI 路由通用桥接
-│   ├── system_server.py       # 8000 系统管理口
-│   ├── service_server.py      # 8001 对外开放服务口
-│   ├── web_server.py          # 单端口兼容层（聚合模式）
-│   └── agent_tools.py         # AI 工具箱：带沙箱校验的文件操作
+│   │
+│   ├── agent/                 # AI 代理模块：大模型交互与工具调用
+│   │   ├── __init__.py
+│   │   ├── agent_api.py       # Agent 管理接口路由
+│   │   ├── agent_module.py    # LangGraph 自然语言生成插件工作流
+│   │   └── agent_tools.py     # AI 工具箱：带沙箱校验的文件操作
+│   │
+│   ├── kernel/                # 内核基座模块：依赖注入与插件生命周期
+│   │   ├── __init__.py
+│   │   ├── microkernel.py     # 微内核：模块扫描、异常隔离、热重载
+│   │   ├── di_container.py    # 依赖注入容器：两遍扫描、拓扑排序、实例化
+│   │   └── plugin_watcher.py  # 热更新监听
+│   │
+│   └── server/                # 网关与路由模块：HTTP 服务、路由桥接与动态分发
+│       ├── __init__.py
+│       ├── web_server.py      # 单端口兼容层（聚合模式）
+│       ├── system_server.py   # 8000 系统管理口
+│       ├── service_server.py  # 8001 对外开放服务口
+│       ├── route_bridge.py    # Controller → FastAPI 路由通用桥接
+│       └── dynamic_dispatcher.py  # 动态路由分发
 │
 ├── plugins/                   # 业务沙箱（AI 生成）
 │   ├── user_module/           # 用户模块
@@ -321,7 +373,7 @@ python main.py --mode service
 如需回到旧的单端口聚合模式（例如开发调试）：
 
 ```bash
-uvicorn paas_core.web_server:create_app --reload --port 8000
+uvicorn paas_core.server.web_server:create_app --reload --port 8000
 ```
 
 ### 5.4 测试接口
@@ -364,6 +416,16 @@ curl http://localhost:8000/admin/kernel/cheat-sheet
 curl http://localhost:8000/admin/kernel/modules
 ```
 
+通过 LangGraph Agent 生成模块（自然语言 → 插件）：
+
+```bash
+curl -X POST http://localhost:8000/admin/agent/generate \
+  -H "Content-Type: application/json" \
+  -d '{"task": "创建用户模块"}'
+```
+
+Agent 会根据任务自动创建 `plugins/<module_name>/` 目录、生成 CSM 代码、执行静态检查并重载内核。成功后可在 8001 服务口调用对应的业务接口。
+
 ---
 
 ## 6. AI 开发规范
@@ -385,7 +447,7 @@ AI **只能**操作 `plugins/` 目录下的文件，**严禁**触碰 `paas_core/
 #### 6.3.1 Mapper 示例
 
 ```python
-from paas_core import Mapper
+from paas_core import Mapper, sql_operation
 
 
 @Mapper
@@ -394,6 +456,10 @@ class UserMapper:
         self._users = {}
         self._next_id = 1
 
+    @sql_operation(
+        sql="INSERT INTO users (username, email) VALUES (%s, %s)",
+        params=["username", "email"],
+    )
     def create(self, username: str, email: str) -> dict:
         user_id = self._next_id
         self._next_id += 1
@@ -401,9 +467,14 @@ class UserMapper:
         self._users[user_id] = user
         return user
 
+    @sql_operation(
+        sql="SELECT * FROM users WHERE id = %s",
+        params=["user_id"],
+    )
     def get(self, user_id: int) -> dict | None:
         return self._users.get(user_id)
 
+    @sql_operation(sql="SELECT * FROM users")
     def list_all(self) -> list:
         return list(self._users.values())
 ```
@@ -411,7 +482,7 @@ class UserMapper:
 #### 6.3.2 Service 示例
 
 ```python
-from paas_core import Service
+from paas_core import Service, service_method
 from .UserMapper import UserMapper
 
 
@@ -420,11 +491,17 @@ class UserService:
     def __init__(self, user_mapper: UserMapper):
         self.user_mapper = user_mapper
 
+    @service_method(params=["username", "email"], calls=["UserMapper.create"])
     def register(self, username: str, email: str) -> dict:
         return self.user_mapper.create(username, email)
 
+    @service_method(params=["user_id"], calls=["UserMapper.get"])
     def get_user(self, user_id: int) -> dict | None:
         return self.user_mapper.get(user_id)
+
+    @service_method(calls=["UserMapper.list_all"])
+    def list_users(self) -> list:
+        return self.user_mapper.list_all()
 ```
 
 #### 6.3.3 Controller 示例
@@ -439,18 +516,18 @@ class UserController:
     def __init__(self, user_service: UserService):
         self.user_service = user_service
 
-    @GET("/")
+    @GET("/", calls=["UserService.list_users"])
     def list_users(self):
         return self.user_service.list_users()
 
-    @GET("/{user_id}")
+    @GET("/{user_id}", calls=["UserService.get_user"])
     def get_user(self, user_id: str):
         user = self.user_service.get_user(int(user_id))
         if user is None:
             return {"error": "not found"}
         return user
 
-    @POST("/")
+    @POST("/", calls=["UserService.register"])
     def create_user(self, payload: dict):
         return self.user_service.register(
             payload.get("username", ""),
@@ -460,13 +537,67 @@ class UserController:
 
 ### 6.4 HTTP 方法装饰器
 
-支持的方法：
+Controller 方法使用标准 HTTP 方法装饰器，所有装饰器都可选地支持 `calls` 参数，用于声明该方法内部调用的下游 Service / Mapper 方法，供前端绘制方法级调用连线。
 
 ```python
 from paas_core import GET, POST, PUT, DELETE, PATCH
 ```
 
-### 6.5 跨模块调用
+示例：
+
+```python
+@Controller("/api/orders")
+class OrderController:
+    @Inject
+    def __init__(self, order_service: OrderService):
+        self.order_service = order_service
+
+    @POST("/", calls=["OrderService.create_order"])
+    def create_order(self, request_data):
+        return self.order_service.create_order(request_data)
+```
+
+### 6.5 Service 与 Mapper 方法装饰器
+
+为了把调用图精确到方法级别，Service 和 Mapper 的方法也可以使用专用装饰器声明元数据。
+
+#### `@service_method(params, calls)`
+
+用于 Service 业务方法，记录入参和下游调用：
+
+```python
+from paas_core import Service, service_method
+from .OrderMapper import OrderMapper
+
+@Service
+class OrderService:
+    @Inject
+    def __init__(self, order_mapper: OrderMapper):
+        self.order_mapper = order_mapper
+
+    @service_method(params=["data"], calls=["OrderMapper.insert_order"])
+    def create_order(self, data):
+        return self.order_mapper.insert_order(data['id'], data['amount'])
+```
+
+#### `@sql_operation(sql, params)`
+
+用于 Mapper 数据库操作方法，绑定 SQL 模板和参数：
+
+```python
+from paas_core import Mapper, sql_operation
+
+@Mapper
+class OrderMapper:
+    @sql_operation(
+        sql="INSERT INTO orders (id, amount) VALUES (%s, %s)",
+        params=["order_id", "amount"]
+    )
+    def insert_order(self, order_id, amount):
+        pass
+```
+
+### 6.6 跨模块调用
 
 Service 可以依赖其他模块的 Service：
 
@@ -481,7 +612,7 @@ class OrderService:
         self.user_service = user_service
 ```
 
-### 6.6 禁止事项
+### 6.7 禁止事项
 
 - ❌ 导入 `os`、`sys`、`subprocess`、`socket` 等危险模块
 - ❌ 使用 `eval`、`exec`、`__import__`
@@ -498,12 +629,103 @@ class OrderService:
 |------|------|------|
 | `/health` | GET | 健康检查 |
 | `/admin/kernel/modules` | GET | 列出已加载/失败的模块 |
-| `/admin/kernel/cheat-sheet` | GET | 获取全局调用图和 API 映射 |
+| `/admin/kernel/cheat-sheet` | GET | 获取全局调用图、API 映射与结构化组件元数据 |
 | `/admin/kernel/reload/{plugin_name}` | POST | 重新加载指定插件（刷新系统口容器；8001 服务口通过文件监听自动热更新） |
+| `/admin/agent/generate` | POST | LangGraph Agent：自然语言生成并部署插件模块 |
 
 > **注意**：
 > 1. `/admin/kernel/reload` 主动刷新 **8000 系统口** 的内存容器，用于前端画布实时展示。
 > 2. **8001 服务口** 内部通过 `watchdog` 监听 `plugins/` 目录，任何 `.py` 文件变更都会自动触发内核重建并热更新路由，无需重启进程。
+
+### 7.1 作弊纸响应示例
+
+`GET /admin/kernel/cheat-sheet` 返回的 JSON 示例：
+
+```json
+{
+  "status": "ok",
+  "modules": {
+    "loaded": ["user_module", "order_module"],
+    "failed": [{"module": "faulty_module", "error": "..."}]
+  },
+  "counts": {
+    "controllers": 2,
+    "services": 2,
+    "mappers": 2
+  },
+  "call_graph": {
+    "order_module": {
+      "mapper": ["OrderMapper(None)"],
+      "service": ["OrderService(OrderMapper, UserService)"],
+      "controller": ["OrderController(OrderService)"]
+    }
+  },
+  "api_map": [
+    {"module": "user_module", "method": "GET", "path": "/api/users/", "handler": "UserController.list_users"}
+  ],
+  "components": [
+    {
+      "name": "UserMapper",
+      "type": "mapper",
+      "module": "user_module",
+      "base_path": "",
+      "assembled": true,
+      "constructor_params": [],
+      "inject_fields": [],
+      "methods": [
+        {
+          "name": "create",
+          "params": ["username", "email"],
+          "calls": [],
+          "sql": "INSERT INTO users (username, email) VALUES (%s, %s)"
+        }
+      ]
+    },
+    {
+      "name": "UserService",
+      "type": "service",
+      "module": "user_module",
+      "base_path": "",
+      "assembled": true,
+      "constructor_params": [{"name": "user_mapper", "type": "UserMapper"}],
+      "inject_fields": [],
+      "methods": [
+        {
+          "name": "register",
+          "params": ["username", "email"],
+          "calls": ["UserMapper.create"],
+          "sql": null
+        }
+      ]
+    },
+    {
+      "name": "UserController",
+      "type": "controller",
+      "module": "user_module",
+      "base_path": "/api/users",
+      "assembled": true,
+      "constructor_params": [{"name": "user_service", "type": "UserService"}],
+      "inject_fields": [],
+      "methods": [
+        {
+          "name": "create_user",
+          "http_method": "POST",
+          "path": "/api/users/",
+          "params": ["payload"],
+          "calls": ["UserService.register"],
+          "sql": null
+        }
+      ]
+    }
+  ]
+}
+```
+
+`components` 数组为每个 CSM 组件提供了结构化元数据，前端可据此：
+
+- 在右侧面板展开每个方法的入参、下游调用和 SQL。
+- 根据 `methods[].calls` 绘制方法到方法的精确调用连线。
+- 根据 `assembled` 状态区分已组装与未组装组件。
 
 ---
 
@@ -542,13 +764,14 @@ class OrderService:
 - [x] 双端口隔离（8000 系统口 + 8001 服务口）
 - [x] AI 沙箱工具链
 - [x] 全局调用图生成
+- [x] 方法级元数据（params / calls / sql）
 - [x] 前端可视化画布（React Flow）展示架构图
 
 ### 9.2 中期
 
 - [ ] 数据库持久化（SQLAlchemy + Alembic migration）
 - [x] 模块热重载时自动刷新 8001 服务口路由（无需重启服务）
-- [ ] AI 对话入口：自然语言 → 生成模块 → 自动部署
+- [x] AI 对话入口：自然语言 → 生成模块 → 自动部署（LangGraph Agent 已接入）
 - [ ] Diff 确认机制：AI 修改先生成 Draft，人工确认后应用
 
 ### 9.3 远期
@@ -565,7 +788,7 @@ class OrderService:
 
 ### Q1: AI 能修改内核代码吗？
 
-**不能。** AI 只能通过 `agent_tools.py` 暴露的工具操作 `plugins/` 目录。`paas_core/` 和 `main.py` 等文件不暴露给 AI。
+**不能。** AI 只能通过 `paas_core/agent/agent_tools.py` 暴露的工具操作 `plugins/` 目录。`paas_core/` 和 `main.py` 等文件不暴露给 AI。
 
 ### Q2: 一个模块崩溃了会怎样？
 

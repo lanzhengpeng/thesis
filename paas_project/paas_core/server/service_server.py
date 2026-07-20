@@ -16,8 +16,9 @@ from typing import Tuple
 
 from fastapi import FastAPI, Request
 
+from paas_core.kernel.microkernel import MicroKernel
+
 from .dynamic_dispatcher import DynamicDispatcher
-from .microkernel import MicroKernel
 
 
 # 对外开放服务口监听端口，仅暴露业务 API

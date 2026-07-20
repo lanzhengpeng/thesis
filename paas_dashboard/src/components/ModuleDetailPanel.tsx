@@ -1,10 +1,20 @@
 import type { ModuleNodeData } from "../lib/graphBuilder";
+import type { CheatSheetComponentItem } from "../types/cheatSheet";
+import { parseComponentEntry } from "../lib/graphBuilder";
 
 interface ModuleDetailPanelProps {
   data: ModuleNodeData | null;
+  components?: CheatSheetComponentItem[];
+  selectedComponentId?: string | null;
+  onSelectComponent?: (componentId: string) => void;
 }
 
-export function ModuleDetailPanel({ data }: ModuleDetailPanelProps) {
+export function ModuleDetailPanel({
+  data,
+  components = [],
+  selectedComponentId,
+  onSelectComponent,
+}: ModuleDetailPanelProps) {
   if (!data) {
     return (
       <div style={panelStyle}>
@@ -16,8 +26,22 @@ export function ModuleDetailPanel({ data }: ModuleDetailPanelProps) {
 
   const isFailed = data.status === "failed";
 
+  const selectedComponent = selectedComponentId
+    ? components.find(
+        (c) =>
+          selectedComponentId === `${c.module}::${c.type}::${c.name}`
+      )
+    : undefined;
+
   return (
     <div style={panelStyle}>
+      {selectedComponent && !isFailed && (
+        <ComponentDetail
+          component={selectedComponent}
+          onBack={() => onSelectComponent?.("")}
+        />
+      )}
+
       <div style={{ marginBottom: 16 }}>
         <h3 style={{ margin: 0, color: "#1e293b" }}>{data.label}</h3>
         <span
@@ -58,19 +82,38 @@ export function ModuleDetailPanel({ data }: ModuleDetailPanelProps) {
                 >
                   {type}
                 </div>
-                {entries.map((entry) => (
-                  <div
-                    key={entry}
-                    style={{
-                      fontSize: 13,
-                      color: "#334155",
-                      fontFamily: "monospace",
-                      padding: "2px 0",
-                    }}
-                  >
-                    {entry}
-                  </div>
-                ))}
+                {entries.map((entry) => {
+                  const { name } = parseComponentEntry(entry);
+                  const componentId = `${data.label}::${type}::${name}`;
+                  const isSelected = selectedComponentId === componentId;
+
+                  return (
+                    <div
+                      key={entry}
+                      onClick={() => onSelectComponent?.(componentId)}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = "#f1f5f9";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = isSelected
+                          ? "#e2e8f0"
+                          : "transparent";
+                      }}
+                      style={{
+                        fontSize: 13,
+                        color: "#334155",
+                        fontFamily: "monospace",
+                        padding: "4px 8px",
+                        borderRadius: 4,
+                        cursor: "pointer",
+                        background: isSelected ? "#e2e8f0" : "transparent",
+                        marginBottom: 2,
+                      }}
+                    >
+                      {entry}
+                    </div>
+                  );
+                })}
               </div>
             ))}
           </Section>
@@ -139,6 +182,211 @@ export function ModuleDetailPanel({ data }: ModuleDetailPanelProps) {
   );
 }
 
+function ComponentDetail({
+  component,
+  onBack,
+}: {
+  component: CheatSheetComponentItem;
+  onBack: () => void;
+}) {
+  return (
+    <div
+      style={{
+        marginBottom: 20,
+        padding: 12,
+        borderRadius: 8,
+        background: "#f8fafc",
+        border: "1px solid #e2e8f0",
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          marginBottom: 10,
+        }}
+      >
+        <h4 style={{ margin: 0, color: "#0f172a", fontSize: 16 }}>
+          {component.name}
+        </h4>
+        <button
+          onClick={onBack}
+          style={{
+            fontSize: 12,
+            padding: "4px 10px",
+            borderRadius: 4,
+            border: "1px solid #cbd5e1",
+            background: "#ffffff",
+            cursor: "pointer",
+          }}
+        >
+          返回模块
+        </button>
+      </div>
+
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
+        <Badge color={typeColor(component.type)}>{component.type}</Badge>
+        <Badge color="#64748b">{component.module}</Badge>
+        <Badge color={component.assembled ? "#22c55e" : "#ef4444"}>
+          {component.assembled ? "已组装" : "未组装"}
+        </Badge>
+      </div>
+
+      {component.base_path && (
+        <div
+          style={{
+            fontSize: 12,
+            color: "#64748b",
+            marginBottom: 12,
+            fontFamily: "monospace",
+          }}
+        >
+          base_path: {component.base_path}
+        </div>
+      )}
+
+      <DetailTable
+        title="构造参数"
+        columns={["名称", "类型"]}
+        rows={component.constructor_params.map((p) => [p.name, p.type])}
+      />
+
+      {component.inject_fields.length > 0 && (
+        <DetailTable
+          title="字段注入"
+          columns={["名称", "类型"]}
+          rows={component.inject_fields.map((p) => [p.name, p.type])}
+        />
+      )}
+
+      {component.type === "controller" && component.methods.length > 0 && (
+        <div style={{ marginTop: 12 }}>
+          <h5 style={{ margin: "0 0 6px 0", fontSize: 13, color: "#0f172a" }}>
+            HTTP 方法
+          </h5>
+          {component.methods.map((m) => (
+            <div
+              key={`${m.http_method}${m.path}${m.name}`}
+              style={{
+                display: "flex",
+                gap: 8,
+                alignItems: "center",
+                padding: "4px 0",
+                fontSize: 12,
+                borderBottom: "1px solid #e2e8f0",
+              }}
+            >
+              <span
+                style={{
+                  fontWeight: 700,
+                  color: "#fff",
+                  background: methodColor(m.http_method || ""),
+                  padding: "2px 6px",
+                  borderRadius: 4,
+                }}
+              >
+                {m.http_method || ""}
+              </span>
+              <span style={{ fontFamily: "monospace", color: "#334155" }}>
+                {m.path}
+              </span>
+              <span style={{ color: "#64748b", marginLeft: "auto" }}>
+                {m.name}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DetailTable({
+  title,
+  columns,
+  rows,
+}: {
+  title: string;
+  columns: string[];
+  rows: string[][];
+}) {
+  return (
+    <div style={{ marginTop: 12 }}>
+      <h5 style={{ margin: "0 0 6px 0", fontSize: 13, color: "#0f172a" }}>
+        {title}
+      </h5>
+      {rows.length === 0 ? (
+        <span style={{ color: "#94a3b8", fontSize: 12 }}>无</span>
+      ) : (
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+          <thead>
+            <tr style={{ background: "#f1f5f9" }}>
+              {columns.map((col) => (
+                <th
+                  key={col}
+                  style={{
+                    textAlign: "left",
+                    padding: "4px 8px",
+                    borderBottom: "1px solid #e2e8f0",
+                    color: "#64748b",
+                    fontWeight: 600,
+                  }}
+                >
+                  {col}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row, idx) => (
+              <tr key={idx}>
+                {row.map((cell, cidx) => (
+                  <td
+                    key={cidx}
+                    style={{
+                      padding: "4px 8px",
+                      borderBottom: "1px solid #f1f5f9",
+                      fontFamily: cidx === 1 ? "monospace" : undefined,
+                      color: "#334155",
+                    }}
+                  >
+                    {cell}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+}
+
+function Badge({
+  children,
+  color,
+}: {
+  children: React.ReactNode;
+  color: string;
+}) {
+  return (
+    <span
+      style={{
+        display: "inline-block",
+        padding: "2px 8px",
+        borderRadius: 999,
+        fontSize: 11,
+        fontWeight: 600,
+        color: "#fff",
+        background: color,
+      }}
+    >
+      {children}
+    </span>
+  );
+}
+
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div style={{ marginBottom: 20 }}>
@@ -178,6 +426,19 @@ function methodColor(method: string): string {
     case "DELETE":
       return "#ef4444";
     case "PATCH":
+      return "#8b5cf6";
+    default:
+      return "#64748b";
+  }
+}
+
+function typeColor(type: string): string {
+  switch (type) {
+    case "controller":
+      return "#3b82f6";
+    case "service":
+      return "#22c55e";
+    case "mapper":
       return "#8b5cf6";
     default:
       return "#64748b";

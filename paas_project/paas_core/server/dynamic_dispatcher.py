@@ -23,8 +23,8 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from fastapi import HTTPException, Request
 
-from .microkernel import MicroKernel
-from .sdk import ClassMeta, MethodMeta, get_meta
+from paas_core.kernel.microkernel import MicroKernel
+from paas_core.sdk import ClassMeta, MethodMeta, get_meta
 
 
 class DynamicDispatcher:

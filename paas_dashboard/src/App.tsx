@@ -8,6 +8,7 @@ import type { ModuleNodeData } from "./lib/graphBuilder";
 function App() {
   const { data, loading, error, refetch } = useCheatSheet();
   const [selectedModule, setSelectedModule] = useState<ModuleNodeData | null>(null);
+  const [selectedComponentId, setSelectedComponentId] = useState<string | null>(null);
 
   if (!data && loading) {
     return (
@@ -68,8 +69,20 @@ function App() {
       />
 
       <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
-        <ArchitectureGraph data={data} onSelectModule={setSelectedModule} />
-        <ModuleDetailPanel data={selectedModule} />
+        <ArchitectureGraph
+          data={data}
+          onSelectModule={(moduleData) => {
+            setSelectedModule(moduleData);
+            setSelectedComponentId(null);
+          }}
+          onSelectComponent={setSelectedComponentId}
+        />
+        <ModuleDetailPanel
+          data={selectedModule}
+          components={data.components}
+          selectedComponentId={selectedComponentId}
+          onSelectComponent={setSelectedComponentId}
+        />
       </div>
     </div>
   );

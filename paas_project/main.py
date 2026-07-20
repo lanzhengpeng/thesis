@@ -15,7 +15,7 @@
 
 兼容旧入口（单端口聚合模式）：
 
-    uvicorn paas_core.web_server:create_app --reload --port 8000
+    uvicorn paas_core.server.web_server:create_app --reload --port 8000
 """
 
 from __future__ import annotations
@@ -30,10 +30,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT))
 
-from paas_core.microkernel import MicroKernel
-from paas_core.plugin_watcher import PluginWatcher
-from paas_core.service_server import SERVICE_PORT, create_service_app
-from paas_core.system_server import SYSTEM_PORT, create_system_app
+from paas_core.kernel.microkernel import MicroKernel
+from paas_core.kernel.plugin_watcher import PluginWatcher
+from paas_core.server.service_server import SERVICE_PORT, create_service_app
+from paas_core.server.system_server import SYSTEM_PORT, create_system_app
 
 
 def boot() -> MicroKernel:

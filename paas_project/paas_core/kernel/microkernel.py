@@ -18,8 +18,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from paas_core.sdk import ComponentType, get_meta, is_component
+
 from .di_container import AssemblyReport, DIContainer
-from .sdk import ComponentType, get_meta, is_component
 
 
 PLUGINS_DIR = Path(__file__).resolve().parent.parent / "plugins"
@@ -330,6 +331,8 @@ class MicroKernel:
                     }
                 )
 
+        components = self._build_component_view(report)
+
         return {
             "status": "ok",
             "modules": {
@@ -347,7 +350,67 @@ class MicroKernel:
             },
             "call_graph": report.call_graph,
             "api_map": api_map,
+            "components": components,
         }
+
+    def _build_component_view(self, report: AssemblyReport) -> List[Dict[str, Any]]:
+        """
+        为每个已注册的 CSM 组件生成结构化元数据，包括构造参数、字段注入与 Controller 方法。
+        """
+
+        def _annotation_name(annotation: Any) -> str:
+            if isinstance(annotation, type):
+                return annotation.__name__
+            if isinstance(annotation, str):
+                return annotation
+            if hasattr(annotation, "__forward_arg__"):
+                return annotation.__forward_arg__
+            return str(annotation)
+
+        assembled_names = {r.instance.__class__.__name__ for r in report.success}
+        components: List[Dict[str, Any]] = []
+
+        for cls, meta in self.container.all_classes().items():
+            constructor_params = [
+                {"name": name, "type": _annotation_name(annotation)}
+                for name, annotation in meta.dependencies
+                if name not in meta.inject_fields
+            ]
+
+            inject_fields = []
+            for field_name in meta.inject_fields:
+                annotation = cls.__annotations__.get(field_name)
+                inject_fields.append(
+                    {"name": field_name, "type": _annotation_name(annotation)}
+                )
+
+            item: Dict[str, Any] = {
+                "name": cls.__name__,
+                "type": meta.component_type.value,
+                "module": meta.module_name,
+                "base_path": meta.path,
+                "assembled": cls.__name__ in assembled_names,
+                "constructor_params": constructor_params,
+                "inject_fields": inject_fields,
+                "methods": [],
+            }
+
+            for method in meta.methods:
+                method_item: Dict[str, Any] = {
+                    "name": method.name,
+                    "params": method.params,
+                    "calls": method.calls,
+                    "sql": method.sql,
+                }
+                if meta.component_type == ComponentType.CONTROLLER:
+                    method_item["http_method"] = method.http_method
+                    method_item["path"] = (meta.path + (method.path or "")).replace("//", "/")
+                item["methods"].append(method_item)
+
+            components.append(item)
+
+        components.sort(key=lambda c: (c["module"], c["type"], c["name"]))
+        return components
 
     # ------------------------------------------------------------------
     # 内省辅助函数

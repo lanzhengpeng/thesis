@@ -18,7 +18,7 @@ from collections import deque
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Type
 
-from .sdk import ClassMeta, ComponentType, get_meta, is_component
+from paas_core.sdk import ClassMeta, ComponentType, get_meta, is_component
 
 
 @dataclass
@@ -188,7 +188,7 @@ class DIContainer:
                         component_type=meta.component_type,
                     )
                 )
-                self._add_to_call_graph(meta)
+                self._add_to_call_graph(cls, meta)
             except Exception as exc:
                 msg = f"{cls.__name__}: {exc}"
                 self.report.failed.append((cls.__name__, msg, traceback.format_exc()))
@@ -316,14 +316,15 @@ class DIContainer:
 
         return instance
 
-    def _add_to_call_graph(self, meta: ClassMeta) -> None:
+    def _add_to_call_graph(self, cls: Type, meta: ClassMeta) -> None:
         """
         将当前组件及其直接依赖记录到调用图。
 
         调用图用于生成作弊纸（cheat-sheet）和前端架构可视化。
 
         参数：
-            meta: 已实例化组件的 ClassMeta 元数据。
+            cls: 已实例化的类。
+            meta: 该类附加的 ClassMeta 元数据。
         """
         mod = meta.module_name
         ctype = meta.component_type.value
@@ -334,7 +335,7 @@ class DIContainer:
             dep_cls = self._resolve_dependency(dep_annotation)
             if dep_cls:
                 dep_names.append(dep_cls.__name__)
-        entry = f"{meta.component_type.value.capitalize()}({', '.join(dep_names) or 'None'})"
+        entry = f"{cls.__name__}({', '.join(dep_names) or 'None'})"
         self.report.call_graph[mod][ctype].append(entry)
 
     # ------------------------------------------------------------------

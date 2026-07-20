@@ -19,6 +19,8 @@ from .sdk import (
     Service,
     get_meta,
     is_component,
+    service_method,
+    sql_operation,
 )
 
 __all__ = [
@@ -34,6 +36,9 @@ __all__ = [
     "PUT",
     "DELETE",
     "PATCH",
+    # Service / Mapper 方法装饰器
+    "service_method",
+    "sql_operation",
     # 元数据辅助函数
     "get_meta",
     "is_component",
