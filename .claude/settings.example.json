@@ -1,0 +1,17 @@
+{
+  "mcpServers": {
+    "thesis-helpers": {
+      "command": "/Users/lanzhengpeng/develop/thesis/mcp-server/.venv/bin/python3",
+      "args": ["-m", "thesis_mcp.server"],
+      "cwd": "/Users/lanzhengpeng/develop/thesis/mcp-server",
+      "env": {
+        "LOCAL_API_KEY": "qwe",
+        "LOCAL_BASE_URL": "http://112.132.229.234:8030/v1",
+        "LOCAL_MODEL": "DeepSeek-R1-Distill-Qwen-671B",
+        "LINGLOFT_API_KEY": "sk-7K6EIpSNY7ih7NAn2RzJzlJDVul9KGjjuBMvDzAVLxrMVUwM",
+        "LINGLOFT_BASE_URL": "https://api.lingloft.cn/v1",
+        "LINGLOFT_MODEL": "gpt-5.4"
+      }
+    }
+  }
+}

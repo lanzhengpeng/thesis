@@ -1,0 +1,129 @@
+"""
+路由桥接
+=======
+
+将 Controller 实例动态转换为 FastAPI HTTP 路由的通用工具。
+
+该模块属于稳定内核区，system_server 与 service_server 均可复用。
+"""
+
+from __future__ import annotations
+
+import inspect
+import re
+from typing import Any, Callable, Dict, List, Optional
+
+from fastapi import Body, FastAPI, Request
+
+from .di_container import DIContainer
+from .microkernel import MicroKernel
+from .sdk import MethodMeta, get_meta
+
+
+_PATH_PARAM_RE = re.compile(r"\{(\w+)\}")
+
+
+def mount_controllers(app: FastAPI, kernel: MicroKernel) -> None:
+    """将内核中所有组装成功的 Controller 实例挂载到 FastAPI 应用。"""
+    container = kernel.container
+    if container.report is None:
+        return
+
+    for rec in container.report.get_controllers():
+        _mount_controller(app, rec.instance)
+
+
+def _mount_controller(app: FastAPI, controller_instance: Any) -> None:
+    """将一个控制器实例挂载到 FastAPI 应用。"""
+    meta = get_meta(controller_instance)
+    if meta is None:
+        return
+
+    for method_meta in meta.methods:
+        full_path = (meta.path + method_meta.path).replace("//", "/")
+        handler = _build_fastapi_endpoint(controller_instance, method_meta)
+        app.add_api_route(
+            path=full_path,
+            endpoint=handler,
+            methods=[method_meta.http_method],
+            summary=f"{controller_instance.__class__.__name__}.{method_meta.name}",
+        )
+
+
+def _build_fastapi_endpoint(controller_instance: Any, method_meta: MethodMeta) -> Callable:
+    """
+    动态构建一个与路由模板中路径参数签名匹配的 FastAPI 异步端点。
+    """
+    original_method = getattr(controller_instance, method_meta.name)
+    sig = inspect.signature(original_method)
+    path_param_names = _PATH_PARAM_RE.findall(method_meta.path)
+
+    # 识别 body 参数：第一个非 self、非路径参数的参数
+    body_param_name: Optional[str] = None
+    for name, param in sig.parameters.items():
+        if name == "self":
+            continue
+        if name in path_param_names:
+            continue
+        body_param_name = name
+        break
+
+    # 构建函数源码
+    # FastAPI 规则：无默认值的参数必须排在有默认值参数之前。
+    args_decl = []
+    call_kwargs = []
+
+    for pname in path_param_names:
+        args_decl.append(f"{pname}: str")
+        call_kwargs.append(f"{pname}={pname}")
+
+    args_decl.append("request: Request")
+
+    if body_param_name:
+        args_decl.append("payload: dict = Body(default_factory=dict)")
+        call_kwargs.append(f"{body_param_name}=payload")
+
+    args_str = ", ".join(args_decl)
+    kwargs_str = ", ".join(call_kwargs)
+
+    func_source = f"""
+async def endpoint({args_str}):
+    result = await __call_original_method__({kwargs_str})
+    if isinstance(result, dict) or isinstance(result, list):
+        return result
+    return {{"result": result}}
+"""
+
+    namespace: Dict[str, Any] = {
+        "__call_original_method__": _make_async_caller(original_method),
+        "Body": Body,
+        "Request": Request,
+    }
+    exec(func_source, namespace)
+    endpoint = namespace["endpoint"]
+    endpoint.__name__ = f"{controller_instance.__class__.__name__}_{method_meta.name}"
+    return endpoint
+
+
+def _make_async_caller(method: Callable) -> Callable:
+    """包装可能为同步的控制器方法，使其可被 await。"""
+
+    async def caller(*args, **kwargs):
+        result = method(*args, **kwargs)
+        if inspect.isawaitable(result):
+            return await result
+        return result
+
+    return caller
+
+
+def summarize_report(report) -> Dict[str, Any]:
+    """生成报告的简要摘要。"""
+    return {
+        "success_count": len(report.success),
+        "failed_count": len(report.failed),
+        "failed": [
+            {"class": name, "error": msg.split("\n")[0]}
+            for name, msg, _ in report.failed
+        ],
+    }

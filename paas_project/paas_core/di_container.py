@@ -1,0 +1,248 @@
+"""
+依赖注入容器
+============
+
+实现两遍扫描生命周期：
+
+1. 发现阶段：遍历插件模块，注册带装饰器的类。
+2. 组装阶段：按拓扑顺序实例化类，并注入已创建的依赖。
+
+故障隔离：如果某个类或其传递依赖实例化失败，整棵子树会被剪掉，
+不会影响兄弟模块。
+"""
+
+from __future__ import annotations
+
+import traceback
+from collections import deque
+from dataclasses import dataclass, field
+from typing import Any, Dict, List, Optional, Type
+
+from .sdk import ClassMeta, ComponentType, get_meta, is_component
+
+
+@dataclass
+class InstanceRecord:
+    """实例化成功的记录。"""
+
+    instance: Any
+    module_name: str
+    component_type: ComponentType
+
+
+@dataclass
+class AssemblyReport:
+    """组装报告。"""
+
+    success: List[InstanceRecord] = field(default_factory=list)
+    failed: List[tuple] = field(default_factory=list)
+    # module_name -> {component_type -> class_name}
+    call_graph: Dict[str, Dict[str, List[str]]] = field(default_factory=dict)
+
+    def is_alive(self, module_name: str) -> bool:
+        """判断某个模块是否至少有一个组件存活。"""
+        return any(r.module_name == module_name for r in self.success)
+
+    def get_controllers(self) -> List[InstanceRecord]:
+        """获取所有控制器实例。"""
+        return [r for r in self.success if r.component_type == ComponentType.CONTROLLER]
+
+    def get_services(self) -> List[InstanceRecord]:
+        """获取所有服务实例。"""
+        return [r for r in self.success if r.component_type == ComponentType.SERVICE]
+
+    def get_mappers(self) -> List[InstanceRecord]:
+        """获取所有数据访问实例。"""
+        return [r for r in self.success if r.component_type == ComponentType.MAPPER]
+
+
+class DIContainer:
+    """
+    保存已发现类的注册表和已组装实例。
+    """
+
+    def __init__(self):
+        # 键：类对象
+        self._classes: Dict[Type, ClassMeta] = {}
+        # 键：类对象 -> 组装后的实例
+        self._instances: Dict[Type, Any] = {}
+        # 键：类名 -> 类对象（用于简单查找）
+        self._by_name: Dict[str, Type] = {}
+        self.report: Optional[AssemblyReport] = None
+
+    # ------------------------------------------------------------------
+    # 发现阶段
+    # ------------------------------------------------------------------
+
+    def register_class(self, cls: Type) -> None:
+        """注册一个带装饰器的类。"""
+        if not is_component(cls):
+            return
+        meta = get_meta(cls)
+        self._classes[cls] = meta
+        self._by_name[cls.__name__] = cls
+
+    def discover_module_classes(self, module: Any) -> List[Type]:
+        """在已加载的模块对象中注册所有带装饰器的类。"""
+        discovered = []
+        for attr_name in dir(module):
+            attr = getattr(module, attr_name)
+            if isinstance(attr, type) and is_component(attr):
+                self.register_class(attr)
+                discovered.append(attr)
+        return discovered
+
+    def all_classes(self) -> Dict[Type, ClassMeta]:
+        """返回所有已注册的类。"""
+        return self._classes
+
+    # ------------------------------------------------------------------
+    # 组装阶段
+    # ------------------------------------------------------------------
+
+    def assemble(self) -> AssemblyReport:
+        """按依赖顺序实例化所有已注册的类。"""
+        self.report = AssemblyReport()
+        order = self._topological_order()
+
+        for cls in order:
+            meta = self._classes[cls]
+            try:
+                instance = self._instantiate(cls, meta)
+                self._instances[cls] = instance
+                self.report.success.append(
+                    InstanceRecord(
+                        instance=instance,
+                        module_name=meta.module_name,
+                        component_type=meta.component_type,
+                    )
+                )
+                self._add_to_call_graph(meta)
+            except Exception as exc:
+                msg = f"{cls.__name__}: {exc}"
+                self.report.failed.append((cls.__name__, msg, traceback.format_exc()))
+                # 标记为失败，依赖它的类会被跳过
+                self._instances[cls] = None
+
+        return self.report
+
+    def _topological_order(self) -> List[Type]:
+        """
+        使用 Kahn 算法进行拓扑排序，按组件类型优先级：
+        mapper < service < controller。
+        """
+        type_rank = {
+            ComponentType.MAPPER: 0,
+            ComponentType.SERVICE: 1,
+            ComponentType.CONTROLLER: 2,
+        }
+
+        in_degree: Dict[Type, int] = {cls: 0 for cls in self._classes}
+        graph: Dict[Type, List[Type]] = {cls: [] for cls in self._classes}
+
+        for cls, meta in self._classes.items():
+            for dep_name, dep_annotation in meta.dependencies:
+                dep_cls = self._resolve_dependency(dep_annotation)
+                if dep_cls is None:
+                    continue
+                if dep_cls not in self._classes:
+                    continue
+                graph[dep_cls].append(cls)
+                in_degree[cls] += 1
+
+        # 优先队列：按组件优先级排序，再按类名排序以保证确定性
+        queue = deque(
+            sorted(
+                [c for c, d in in_degree.items() if d == 0],
+                key=lambda c: (type_rank.get(self._classes[c].component_type, 99), c.__name__),
+            )
+        )
+
+        order = []
+        while queue:
+            cls = queue.popleft()
+            order.append(cls)
+            for dependent in sorted(graph[cls], key=lambda c: c.__name__):
+                in_degree[dependent] -= 1
+                if in_degree[dependent] == 0:
+                    queue.append(dependent)
+
+        # 检测循环依赖
+        if len(order) != len(self._classes):
+            unresolved = [c.__name__ for c in self._classes if c not in order]
+            raise RuntimeError(f"检测到循环依赖：{unresolved}")
+
+        return order
+
+    def _resolve_dependency(self, annotation: Any) -> Optional[Type]:
+        """将类型注解映射为已注册的类。"""
+        if isinstance(annotation, type):
+            return annotation
+        if isinstance(annotation, str):
+            return self._by_name.get(annotation)
+        # typing.ForwardRef
+        if hasattr(annotation, "__forward_arg__"):
+            return self._by_name.get(annotation.__forward_arg__)
+        return None
+
+    def _instantiate(self, cls: Type, meta: ClassMeta) -> Any:
+        """实例化一个类，注入依赖。"""
+        kwargs = {}
+        for dep_name, dep_annotation in meta.dependencies:
+            dep_cls = self._resolve_dependency(dep_annotation)
+            if dep_cls is None:
+                continue
+            dep_instance = self._instances.get(dep_cls)
+            if dep_instance is None:
+                raise RuntimeError(
+                    f"{cls.__name__} 的依赖 {dep_cls.__name__} 不可用"
+                )
+            kwargs[dep_name] = dep_instance
+
+        instance = cls(**kwargs)
+
+        # 字段注入
+        for field_name in meta.inject_fields:
+            annotation = cls.__annotations__.get(field_name)
+            dep_cls = self._resolve_dependency(annotation)
+            if dep_cls and dep_cls in self._instances and self._instances[dep_cls] is not None:
+                setattr(instance, field_name, self._instances[dep_cls])
+
+        return instance
+
+    def _add_to_call_graph(self, meta: ClassMeta) -> None:
+        """将当前组件及其依赖记录到调用图。"""
+        mod = meta.module_name
+        ctype = meta.component_type.value
+        self.report.call_graph.setdefault(mod, {}).setdefault(ctype, [])
+        # 记录直接依赖，用于绘制调用图
+        dep_names = []
+        for dep_name, dep_annotation in meta.dependencies:
+            dep_cls = self._resolve_dependency(dep_annotation)
+            if dep_cls:
+                dep_names.append(dep_cls.__name__)
+        entry = f"{meta.component_type.value.capitalize()}({', '.join(dep_names) or 'None'})"
+        self.report.call_graph[mod][ctype].append(entry)
+
+    # ------------------------------------------------------------------
+    # 运行时辅助函数
+    # ------------------------------------------------------------------
+
+    def get_instance(self, cls: Type) -> Any:
+        """根据类获取实例。"""
+        return self._instances.get(cls)
+
+    def get_instances_by_module(self, module_name: str) -> List[Any]:
+        """获取某个模块下的所有实例。"""
+        return [
+            r.instance
+            for r in (self.report.success if self.report else [])
+            if r.module_name == module_name
+        ]
+
+    def reset(self) -> None:
+        """清空容器状态。"""
+        self._classes.clear()
+        self._instances.clear()
+        self._by_name.clear()
+        self.report = None

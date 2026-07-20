@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "paas-dashboard",
+      "runtimeExecutable": "/Users/lanzhengpeng/develop/thesis/start_dashboard.sh",
+      "runtimeArgs": [],
+      "port": 5173
+    }
+  ]
+}
