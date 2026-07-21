@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { ArchitectureGraph, ModuleDetailPanel } from "./features/architecture";
+import { AgentChatPanel } from "./features/agent";
 import type { ModuleNodeData } from "./features/architecture";
 import { StatusHeader } from "./components/StatusHeader";
 import { useCheatSheet } from "./hooks/useCheatSheet";
@@ -15,64 +16,34 @@ function App() {
   const [selectedComponentId, setSelectedComponentId] = useState<string | null>(null);
   const [selectedMethod, setSelectedMethod] = useState<SelectedMethod | null>(null);
 
-  if (!data && loading) {
-    return (
-      <div
-        style={{
-          width: "100vw",
-          height: "100vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          color: "#64748b",
-        }}
-      >
-        正在加载系统架构...
-      </div>
-    );
-  }
-
-  if (!data) {
-    return (
-      <div
-        style={{
-          width: "100vw",
-          height: "100vh",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          color: "#64748b",
-          gap: 12,
-        }}
-      >
-        <div>无法加载系统架构</div>
-        {error && <div style={{ color: "#ef4444" }}>{error}</div>}
-        <button onClick={refetch} style={{ padding: "8px 16px" }}>
-          重试
-        </button>
-      </div>
-    );
-  }
-
-  return (
+  const mainContent = !data ? (
     <div
       style={{
-        width: "100vw",
-        height: "100vh",
+        flex: 1,
+        height: "100%",
         display: "flex",
         flexDirection: "column",
-        overflow: "hidden",
+        alignItems: "center",
+        justifyContent: "center",
+        color: "#64748b",
+        gap: 12,
+        background: "#f8fafc",
       }}
     >
-      <StatusHeader
-        counts={data.counts}
-        modules={data.modules}
-        loading={loading}
-        error={error}
-        onRefresh={refetch}
-      />
-
+      {loading ? (
+        <div>正在加载系统架构...</div>
+      ) : (
+        <>
+          <div>无法加载系统架构</div>
+          {error && <div style={{ color: "#ef4444" }}>{error}</div>}
+          <button onClick={refetch} style={{ padding: "8px 16px" }}>
+            重试
+          </button>
+        </>
+      )}
+    </div>
+  ) : (
+    <>
       <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
         <ArchitectureGraph
           data={data}
@@ -94,14 +65,39 @@ function App() {
             setSelectedComponentId(null);
           }}
         />
-        <ModuleDetailPanel
-          data={selectedModule}
-          components={data.components}
-          selectedComponentId={selectedComponentId}
-          selectedMethod={selectedMethod}
-          onSelectComponent={setSelectedComponentId}
-          onSelectMethod={setSelectedMethod}
-        />
+      </div>
+      <ModuleDetailPanel
+        data={selectedModule}
+        components={data.components}
+        selectedComponentId={selectedComponentId}
+        selectedMethod={selectedMethod}
+        onSelectComponent={setSelectedComponentId}
+        onSelectMethod={setSelectedMethod}
+      />
+    </>
+  );
+
+  return (
+    <div
+      style={{
+        width: "100vw",
+        height: "100vh",
+        display: "flex",
+        flexDirection: "column",
+        overflow: "hidden",
+      }}
+    >
+      <StatusHeader
+        counts={data?.counts ?? { controllers: 0, services: 0, mappers: 0 }}
+        modules={data?.modules ?? { loaded: [], failed: [] }}
+        loading={loading}
+        error={error}
+        onRefresh={refetch}
+      />
+
+      <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
+        <AgentChatPanel />
+        {mainContent}
       </div>
     </div>
   );

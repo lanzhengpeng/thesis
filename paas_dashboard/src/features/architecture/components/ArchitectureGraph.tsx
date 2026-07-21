@@ -1,11 +1,20 @@
-import { useCallback, useEffect, useMemo, useRef, type MouseEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type MouseEvent,
+} from "react";
 import {
   Background,
   Controls,
   MiniMap,
+  Panel,
   ReactFlow,
   useEdgesState,
   useNodesState,
+  useViewport,
   type Edge,
   type Node,
   type NodeTypes,
@@ -58,6 +67,115 @@ function getParentModuleId(node: Node, nodeMap: Map<string, Node>): string | nul
   return null;
 }
 
+type InteractMode = "mouse" | "trackpad";
+
+/**
+ * 右下角交互模式切换面板，显示当前缩放比例并支持鼠标/触摸板模式切换。
+ */
+function InteractionModePanel({
+  mode,
+  onChange,
+}: {
+  mode: InteractMode;
+  onChange: (mode: InteractMode) => void;
+}) {
+  const { zoom } = useViewport();
+  const [open, setOpen] = useState(false);
+
+  const modes: { key: InteractMode; label: string; desc: string; icon: string }[] = [
+    { key: "mouse", label: "鼠标模式", desc: "左键拖拽，滚轮缩放", icon: "🖱️" },
+    { key: "trackpad", label: "触摸板模式", desc: "双指平移，捏合缩放", icon: "👆" },
+  ];
+
+  const current = modes.find((m) => m.key === mode) ?? modes[0];
+
+  return (
+    <Panel position="bottom-right" style={{ margin: 0 }}>
+      <div style={{ position: "relative" }}>
+        <button
+          onClick={() => setOpen((v) => !v)}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            padding: "8px 12px",
+            borderRadius: 8,
+            border: "1px solid #e2e8f0",
+            background: "#ffffff",
+            boxShadow: "0 2px 8px rgba(0, 0, 0, 0.08)",
+            cursor: "pointer",
+            fontSize: 13,
+            color: "#0f172a",
+          }}
+        >
+          <span>{current.icon}</span>
+          <span>{current.label}</span>
+          <span style={{ color: "#64748b", marginLeft: 4 }}>
+            {Math.round(zoom * 100)}%
+          </span>
+          <span style={{ color: "#94a3b8", fontSize: 10 }}>▾</span>
+        </button>
+
+        {open && (
+          <>
+            <div
+              style={{
+                position: "fixed",
+                inset: 0,
+                zIndex: 1,
+              }}
+              onClick={() => setOpen(false)}
+            />
+            <div
+              style={{
+                position: "absolute",
+                bottom: "calc(100% + 8px)",
+                right: 0,
+                zIndex: 2,
+                minWidth: 180,
+                padding: 6,
+                borderRadius: 10,
+                border: "1px solid #e2e8f0",
+                background: "#ffffff",
+                boxShadow: "0 4px 16px rgba(0, 0, 0, 0.12)",
+              }}
+            >
+              {modes.map((m) => (
+                <button
+                  key={m.key}
+                  onClick={() => {
+                    onChange(m.key);
+                    setOpen(false);
+                  }}
+                  style={{
+                    width: "100%",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    padding: "8px 10px",
+                    borderRadius: 6,
+                    border: "none",
+                    background: mode === m.key ? "#eff6ff" : "transparent",
+                    color: mode === m.key ? "#1d4ed8" : "#0f172a",
+                    cursor: "pointer",
+                    textAlign: "left",
+                  }}
+                >
+                  <span style={{ fontSize: 16 }}>{m.icon}</span>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 500 }}>{m.label}</div>
+                    <div style={{ fontSize: 11, color: "#64748b" }}>{m.desc}</div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+    </Panel>
+  );
+}
+
 export function ArchitectureGraph({
   data,
   onSelectModule,
@@ -71,6 +189,7 @@ export function ArchitectureGraph({
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes as Node[]);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges as Edge[]);
+  const [interactMode, setInteractMode] = useState<InteractMode>("mouse");
 
   // 当前真实处于悬浮状态的最深层级节点 ID（方法级优先级由事件顺序 + stopPropagation 保证）
   const hoveredNodeIdRef = useRef<string | null>(null);
@@ -114,10 +233,21 @@ export function ArchitectureGraph({
         const edgeType = edge.data?.edgeType;
         const isGatewayEdge = !edgeType;
 
-        if (edgeType === "crossMethod" || edgeType === "crossModule" || edgeType === "inner") {
+        if (edgeType === "crossMethod" || edgeType === "crossModule") {
           return {
             ...edge,
             hidden: true,
+            animated: false,
+            selected: false,
+            zIndex: DEFAULT_EDGE_ZINDEX,
+            style: edge.data?.defaultStyle || edge.style,
+          };
+        }
+
+        if (edgeType === "inner") {
+          return {
+            ...edge,
+            hidden: false,
             animated: false,
             selected: false,
             zIndex: DEFAULT_EDGE_ZINDEX,
@@ -423,44 +553,55 @@ export function ArchitectureGraph({
     onSelectMethod?.(null);
   }, [resetToDefault, onSelectMethod]);
 
+  const isMouseMode = interactMode === "mouse";
+
   return (
     <div style={{ flex: 1, position: "relative" }}>
       <ReactFlow
-        nodes={nodes}
-        edges={edges}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
-        onNodeMouseEnter={onNodeMouseEnter}
-        onNodeMouseLeave={onNodeMouseLeave}
-        onNodeClick={onNodeClick}
-        onPaneClick={onPaneClick}
-        nodeTypes={nodeTypes}
-        fitView
-        fitViewOptions={{ padding: 0.2 }}
-        attributionPosition="bottom-left"
-        // 注意：React Flow v12 没有 elevatedEdgesInFront，等效能力通过
-        // 1) elevateEdgesOnSelect 让 selected 边额外提升；
-        // 2) react-flow-overrides.css 将 edges 层置于 nodes 层之上；
-        // 3) 聚焦边手动设置 zIndex: 1000 + selected: true 共同实现置顶。
-        elevateEdgesOnSelect={true}
-      >
-        <Background color="#cbd5e1" gap={16} />
-        <Controls />
-        <MiniMap
-          nodeStrokeWidth={3}
-          nodeColor={(node) => {
-            if (node.type === "gateway") return "#1e293b";
-            if (node.type === "failedModule") return "#ef4444";
-            if (node.type === "component") {
-              const type = (node.data as { componentType?: string })?.componentType;
-              if (type === "controller") return "#3b82f6";
-              if (type === "service") return "#22c55e";
-              if (type === "mapper") return "#8b5cf6";
-            }
-            return "#3b82f6";
-          }}
-        />
-      </ReactFlow>
-    </div>
+          nodes={nodes}
+          edges={edges}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          onNodeMouseEnter={onNodeMouseEnter}
+          onNodeMouseLeave={onNodeMouseLeave}
+          onNodeClick={onNodeClick}
+          onPaneClick={onPaneClick}
+          nodeTypes={nodeTypes}
+          // 初始加载与节点全量更新时自动 fitView；覆盖默认 minZoom 限制，确保大架构图也能完整显示
+          fitView
+          fitViewOptions={{ padding: 0.2, minZoom: 0.1, maxZoom: 1 }}
+          minZoom={0.1}
+          maxZoom={2}
+          attributionPosition="bottom-left"
+          // 注意：React Flow v12 没有 elevatedEdgesInFront，等效能力通过
+          // 1) elevateEdgesOnSelect 让 selected 边额外提升；
+          // 2) react-flow-overrides.css 将 edges 层置于 nodes 层之上；
+          // 3) 聚焦边手动设置 zIndex: 1000 + selected: true 共同实现置顶。
+          elevateEdgesOnSelect={true}
+          // 交互模式动态映射
+          panOnDrag={isMouseMode}
+          zoomOnScroll={isMouseMode}
+          panOnScroll={!isMouseMode}
+          selectionOnDrag={false}
+        >
+          <Background color="#cbd5e1" gap={16} />
+          <Controls />
+          <MiniMap
+            nodeStrokeWidth={3}
+            nodeColor={(node) => {
+              if (node.type === "gateway") return "#1e293b";
+              if (node.type === "failedModule") return "#ef4444";
+              if (node.type === "component") {
+                const type = (node.data as { componentType?: string })?.componentType;
+                if (type === "controller") return "#3b82f6";
+                if (type === "service") return "#22c55e";
+                if (type === "mapper") return "#8b5cf6";
+              }
+              return "#3b82f6";
+            }}
+          />
+          <InteractionModePanel mode={interactMode} onChange={setInteractMode} />
+        </ReactFlow>
+      </div>
   );
 }

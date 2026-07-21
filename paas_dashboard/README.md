@@ -29,17 +29,18 @@
 - 每个 CSM 组件（Controller/Service/Mapper）是一个可拖拽的父容器，内部的方法节点采用**单行水平展开**：所有方法卡片在同一水平行从左到右依次排列，不再换行，彻底避免边穿过无关卡片。
 - **每个方法渲染为独立的 React Flow 子节点**，拥有自己的四向 handle（上/下/左/右），并支持在所属 CSM 容器内部自由拖拽（`extent: 'parent'` 限制不可拖出父容器）。
 - 方法卡片**仅展示功能名**（`feature`），不再展示参数、HTTP 路径或 SQL；这些细节在右侧面板的组件详情中查看。
-- **方法级精确连线（局部默认隐藏 + 跨模块/方法按需聚焦）**：
-  - 模块内部调用（Controller → Service → Mapper）使用**灰色虚线**，默认**隐藏**，避免初始加载时内部线条过多。
+- **方法级精确连线（跨模块默认隐藏 + 模块内默认可见）**：
+  - 模块内部调用（Controller → Service → Mapper）使用**灰色虚线**，默认**可见**，帮助理解组件间调用关系。
   - 跨模块调用分为两级：
     - **模块级连线（crossModule）**：大框连大框，默认**完全隐藏**。
     - **方法级连线（crossMethod）**：精确到具体方法，默认**完全隐藏**。
   - **悬浮到模块外框**时，当前模块及其依赖模块高亮，模块级连线以亮橙色实线 + 流动动画 + 置顶 zIndex 展示；无关模块及其内部节点透明度降为 `0.2`。
   - **悬浮到具体方法**时，该方法及其直接上下游方法（同模块或跨模块）高亮，模块与组件外框保持中性，相关的方法级连线与模块内连线以亮橙色 + 流动动画 + 置顶 zIndex 展示；无关节点与连线暗化降噪。
-  - 鼠标移出节点后自动恢复到全局默认视图：跨模块连线隐藏，内部连线恢复灰色虚线。
+  - 鼠标移出节点后自动恢复到全局默认视图：跨模块连线隐藏，内部连线恢复可见。
   - 模块内部调用使用方法节点**顶部 target + 底部 source** 的 handle，跨模块调用使用**左侧 target + 右侧 source**。
   - 所有边使用 `smoothstep` 路由，并通过 `pathOptions: { borderRadius: 16 }` 设置 16px 圆角折线。
 - 以节点画布形式展示所有插件模块（成功模块、失败模块）。
+- **左侧固定 AI 智能体聊天面板**：基于自然语言输入自动生成并部署模块，支持 SSE 流式响应、Markdown 渲染与代码高亮。
 - 顶部展示系统整体统计：Controller / Service / Mapper 数量、模块加载情况。
 - **悬浮**画布节点，右侧面板展示该模块的组件、依赖和 API 列表；悬浮具体 CSM 方法可查看其构造参数、方法入参、下游 `calls` 目标及 Mapper SQL。
 - 每 5 秒自动轮询后端作弊纸，实现近似实时的架构刷新。
@@ -48,6 +49,7 @@
 
 启动后访问 `http://localhost:5173`，可看到：
 
+- 左侧边栏：AI 智能体助手聊天面板，可输入自然语言任务并查看流式生成结果
 - 顶部状态栏：`Controller 2 / Service 2 / Mapper 2 / 模块 3/3`
 - 中央画布：网关节点 + 宽大模块容器 + CSM 组件卡片 + 仅展示功能名的方法块 + 虚线调用边；悬浮模块/方法时自动聚焦高亮
 - 右侧详情面板：悬浮模块时展示模块详情，悬浮方法时展示其所属 CSM 组件详情
@@ -59,9 +61,14 @@
 | 技术 | 版本 | 用途 |
 |------|------|------|
 | React | ^19.2.7 | UI 框架 |
-| TypeScript | ^5.8.3 | 类型安全 |
-| Vite | ^6.3.5 | 构建与开发服务器 |
+| TypeScript | ~6.0.2 | 类型安全 |
+| Vite | ^8.1.1 | 构建与开发服务器 |
 | @xyflow/react | ^12.11.2 | 节点画布（React Flow v12） |
+| @ant-design/x | ^2.8.0 | 智能体聊天原子组件（Bubble、Sender） |
+| @ant-design/x-markdown | ^2.8.0 | AI 消息 Markdown 渲染与代码高亮 |
+| ai | ^3.4.33 | Vercel AI SDK React Hook（useChat） |
+| highlight.js | ^11.11.1 | 代码块语法高亮 |
+| marked-highlight | ^2.2.4 | marked 高亮扩展 |
 | 原生 fetch | - | HTTP 请求 |
 
 ---
@@ -90,20 +97,26 @@ paas_dashboard/
     ├── components/
     │   └── StatusHeader.tsx   # 顶部状态栏
     └── features/
-        └── architecture/      # 架构可视化功能模块
-            ├── index.ts       # 功能模块对外导出
+        ├── architecture/      # 架构可视化功能模块
+        │   ├── index.ts       # 功能模块对外导出
+        │   ├── components/
+        │   │   ├── ArchitectureGraph.tsx   # 画布主组件
+        │   │   └── ModuleDetailPanel.tsx   # 右侧详情面板
+        │   ├── nodes/
+        │   │   ├── ComponentNode.tsx       # CSM 组件容器样式
+        │   │   ├── GatewayNode.tsx         # 网关节点样式
+        │   │   ├── MethodNode.tsx          # 方法子节点样式
+        │   │   └── ModuleNode.tsx          # 模块节点样式
+        │   ├── lib/
+        │   │   └── graphBuilder.ts         # 解析作弊纸 → React Flow 节点/边
+        │   └── styles/
+        │       └── react-flow-overrides.css  # React Flow 样式微调
+        └── agent/             # AI 智能体聊天功能模块
+            ├── index.ts       # 对外导出 AgentChatPanel
             ├── components/
-            │   ├── ArchitectureGraph.tsx   # 画布主组件
-            │   └── ModuleDetailPanel.tsx   # 右侧详情面板
-            ├── nodes/
-            │   ├── ComponentNode.tsx       # CSM 组件容器样式
-            │   ├── GatewayNode.tsx         # 网关节点样式
-            │   ├── MethodNode.tsx          # 方法子节点样式
-            │   └── ModuleNode.tsx          # 模块节点样式
-            ├── lib/
-            │   └── graphBuilder.ts         # 解析作弊纸 → React Flow 节点/边
+            │   └── AgentChatPanel.tsx      # 左侧智能体聊天面板
             └── styles/
-                └── react-flow-overrides.css  # React Flow 样式微调
+                └── agent-chat.css          # 聊天消息 Markdown 样式
 ```
 
 ---
@@ -181,8 +194,8 @@ const { data, loading, error, refetch } = useCheatSheet();
    - 解析 `components[].methods[].calls`，从源方法节点连到目标方法节点。
    - **模块内方法连线（inner）**：
      - 同模块内的组件调用（Controller → Service → Mapper）。
-     - 默认 `hidden: true`，无悬浮时不显示，避免初始线条过多。
-     - 仅在方法级悬浮且与当前方法相关时才显示。
+     - 默认 `hidden: false`，初始加载时即展示模块内部调用关系。
+     - 方法级悬浮时，仅与当前方法相关的 inner 边高亮显示，无关的 inner 边临时隐藏。
      - 样式为灰色虚线（`#94a3b8`），`strokeWidth: 2`，`opacity: 0.9`，使用 `sourceHandle: bottom` → `targetHandle: top`。
    - **跨模块方法连线（crossMethod）**：
      - 调用方与接收方不在同一 `module`，精确到具体方法。
@@ -208,6 +221,20 @@ const { data, loading, error, refetch } = useCheatSheet();
 - `method`：方法子节点
 
 支持缩放、平移、MiniMap、Controls。
+
+**自适应缩放与缩放限制**：
+
+- 在 `<ReactFlow>` 上开启 `fitView`，并配置 `fitViewOptions={{ padding: 0.2, minZoom: 0.1, maxZoom: 1 }}`。
+- 根组件同时设置 `minZoom={0.1}`、`maxZoom={2}`，避免节点众多时用户无法缩放到全貌。
+- 画布首次加载或节点数据全量更新时，React Flow 会自动 fitView，将所有节点完整展示在可视区域内。
+
+**交互模式切换（右下角面板）**：
+
+- 使用 `<Panel position="bottom-right">` 悬浮放置模式切换按钮。
+- 显示当前缩放比例（如 `25%`），通过 `useViewport()` 实时获取 `zoom` 并转换为百分比。
+- 支持两种模式：
+  - **鼠标模式**（默认）：`panOnDrag={true}`、`zoomOnScroll={true}`、`panOnScroll={false}`，左键拖拽画布、滚轮缩放。
+  - **触摸板模式**：`panOnDrag={false}`、`zoomOnScroll={false}`、`panOnScroll={true}`，双指平移、捏合缩放。
 
 **Hover 双层聚焦模式**（由 `onNodeMouseEnter` / `onNodeMouseLeave` 驱动）：
 
@@ -296,6 +323,45 @@ CSM 组件容器：
 - 成功/失败模块数
 - 立即刷新按钮
 
+### 5.10 `features/agent/components/AgentChatPanel.tsx`
+
+左侧固定宽度的 AI 智能体聊天面板（`400px`），采用 flex 列布局：
+
+- **顶部标题区**：展示面板标题与副标题。
+- **中间消息列表**：可滚动，使用 Ant Design X 的 `Bubble.List` 渲染对话。
+  - 用户消息居右（`placement: "end"`），AI 消息居左（`placement: "start"`）。
+  - AI 消息使用 `@ant-design/x-markdown` 渲染，支持 Markdown、行内代码、代码块语法高亮（`highlight.js` + `marked-highlight`）。
+  - 流式输出时自动追加内容并滚动到底部。
+- **底部输入区**：使用 Ant Design X 的 `Sender` 组件。
+  - `Enter` 发送，`Shift + Enter` 换行。
+  - 请求中显示加载状态，支持点击停止生成。
+  - 空消息列表时展示欢迎提示。
+
+**SSE 适配**：
+
+后端 Agent 接口返回 `data: <文本片段>\n\n` 格式的 SSE 流，而非 Vercel AI SDK 的标准数据流协议。`AgentChatPanel.tsx` 通过自定义 `fetch` 将 SSE 转换为纯文本流，再交给 `useChat` 在 `streamMode: "text"` 下消费。
+
+**请求体适配**：
+
+`useChat` 默认发送 `{ messages: [...] }`，但后端期望 `{ task: "..." }`。通过 `experimental_prepareRequestBody` 将最后一条用户消息内容映射为 `task` 字段：
+
+```typescript
+experimental_prepareRequestBody: ({ messages: chatMessages }) => {
+  const lastMessage = chatMessages[chatMessages.length - 1];
+  return { task: lastMessage?.content || "" };
+},
+```
+
+**工具调用进度块**：
+
+当后端返回 `> 🛠️ 正在执行: [tool_name]...\n\n` 等 Markdown 引用块时，`agent-chat.css` 会将其渲染为蓝色高亮任务进度条，便于用户感知 Agent 正在调用工具。
+
+**错误处理**：
+
+- 后端不可用时，聊天面板仍可正常显示与输入（`App.tsx` 已将聊天面板与架构画布解耦）。
+- 请求失败会在消息列表下方展示红色错误提示。
+- 通过 `keepLastMessageOnError: true` 保留用户输入，便于重试。
+
 ---
 
 ## 6. 与后端对接
@@ -314,9 +380,9 @@ http://localhost:8000/admin/kernel/cheat-sheet
 
 后端 `paas_core/server/system_server.py` 已配置 `CORSMiddleware`，允许 `http://localhost:5173` 访问。若前端部署到其他域名，请同步修改后端 `allow_origins`。
 
-### 6.3 Agent 接口（可选扩展）
+### 6.3 Agent 接口（智能体聊天面板）
 
-后端系统口还提供 LangGraph Agent 接口：
+左侧 `AgentChatPanel` 通过以下接口与后端 LangGraph Agent 交互：
 
 ```text
 POST http://localhost:8000/admin/agent/generate
@@ -328,7 +394,18 @@ POST http://localhost:8000/admin/agent/generate
 {"task": "创建用户模块"}
 ```
 
-该接口会根据自然语言任务自动生成 CSM 插件代码、执行安全检查并重载内核。前端可在此基础上扩展“自然语言生成模块”的交互页面。
+响应为 SSE 流，每帧格式为：
+
+```text
+data: 这是第一段生成内容
+
+data: 这是第二段生成内容
+
+```
+
+前端将其转换为纯文本流，供 Vercel AI SDK `useChat` 消费，实现逐字显示。
+
+该接口会根据自然语言任务自动生成 CSM 插件代码、执行安全检查并重载内核。生成结果会实时展示在左侧聊天面板中。
 
 ### 6.4 作弊纸数据结构
 
@@ -505,6 +582,13 @@ useEffect(() => {
 1. 在 `features/architecture/nodes/` 下新建节点组件。
 2. 在 `features/architecture/components/ArchitectureGraph.tsx` 的 `nodeTypes` 中注册。
 3. 在 `features/architecture/lib/graphBuilder.ts` 中生成对应 `type` 的节点。
+
+### Q6: 智能体聊天面板没有响应或报错
+
+1. 确认后端 `admin/agent/generate` 接口已启动：`curl -X POST http://localhost:8000/admin/agent/generate -H "Content-Type: application/json" -d '{"task":"hello"}'`。
+2. 检查浏览器控制台是否有 CORS 错误，确认后端 `allow_origins` 包含前端地址。
+3. 该接口返回 SSE 流，格式需为 `data: <文本>\n\n`；若后端输出格式变更，需同步调整 `AgentChatPanel.tsx` 中的 `customFetch` 解析逻辑。
+4. 即使架构画布加载失败，聊天面板仍可独立使用（`App.tsx` 中两者已解耦）。
 
 ---
 

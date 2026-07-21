@@ -10,7 +10,12 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@ant-design/x": "^2.8.0",
+    "@ant-design/x-markdown": "^2.8.0",
     "@xyflow/react": "^12.11.2",
+    "ai": "^3.4.33",
+    "highlight.js": "^11.11.1",
+    "marked-highlight": "^2.2.4",
     "react": "^19.2.7",
     "react-dom": "^19.2.7"
   },
