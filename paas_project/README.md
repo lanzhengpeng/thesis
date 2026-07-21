@@ -338,19 +338,32 @@ paas_project/
 - Python >= 3.10（使用了 `dict | None` 等联合类型语法）
 - pip
 
-### 5.2 安装依赖
+### 5.2 环境准备
+
+后端使用 **conda `thesis` 环境**运行，请确保已创建并激活该环境：
 
 ```bash
-cd paas_project
+conda create -n thesis python=3.11 -y
+conda activate thesis
 pip install -r requirements.txt
 ```
+
+> 后续所有后端命令均默认在 `thesis` 环境中执行。如果未手动激活环境，请使用 `conda run -n thesis <command>`。
 
 ### 5.3 启动服务
 
 推荐方式：一键启动双进程（系统口 8000 + 服务口 8001）：
 
 ```bash
-python main.py
+cd paas_project
+conda run -n thesis python main.py
+```
+
+或使用项目提供的启动脚本（已内置 `thesis` 环境）：
+
+```bash
+cd paas_project
+./start_backend.sh
 ```
 
 输出示例：
@@ -364,16 +377,16 @@ python main.py
 
 ```bash
 # 仅系统口
-python main.py --mode system
+./start_backend.sh --mode system
 
 # 仅服务口
-python main.py --mode service
+./start_backend.sh --mode service
 ```
 
 如需回到旧的单端口聚合模式（例如开发调试）：
 
 ```bash
-uvicorn paas_core.server.web_server:create_app --reload --port 8000
+conda run -n thesis uvicorn paas_core.server.web_server:create_app --reload --port 8000
 ```
 
 ### 5.4 测试接口
@@ -764,7 +777,7 @@ class OrderService:
 
 ### 8.3 调试模式
 
-直接运行 `python main.py` 会在控制台打印完整的启动日志和作弊纸内容，便于排查问题。
+直接运行 `./start_backend.sh` 会在控制台打印完整的启动日志和作弊纸内容，便于排查问题。
 
 ---
 
