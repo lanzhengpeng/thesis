@@ -39,7 +39,7 @@ interface ArchitectureGraphProps {
   data: CheatSheetResponse;
   onSelectModule: (data: ModuleNodeData) => void;
   onSelectComponent: (componentId: string) => void;
-  onSelectMethod?: (method: { componentId: string; methodName: string }) => void;
+  onSelectMethod?: (method: { componentId: string; methodName: string } | null) => void;
 }
 
 function getParentModuleId(node: Node, nodeMap: Map<string, Node>): string | null {
@@ -74,6 +74,7 @@ export function ArchitectureGraph({
 
   // 当前真实处于悬浮状态的最深层级节点 ID（方法级优先级由事件顺序 + stopPropagation 保证）
   const hoveredNodeIdRef = useRef<string | null>(null);
+  const lockedNodeIdRef = useRef<string | null>(null);
   const selectedModuleIdRef = useRef<string | null>(null);
   const selectedComponentIdRef = useRef<string | null>(null);
   const selectedMethodRef = useRef<{ componentId: string; methodName: string } | null>(null);
@@ -101,6 +102,10 @@ export function ArchitectureGraph({
         ...node,
         style: { ...node.style, opacity: 1 },
         zIndex: defaultNodeZIndexMap.get(node.id) ?? node.zIndex,
+        data:
+          node.type === "method"
+            ? { ...(node.data as MethodNodeData), locked: false }
+            : node.data,
       }))
     );
 
@@ -208,7 +213,8 @@ export function ArchitectureGraph({
 
   // 状态 3：悬浮到具体方法上（Method-Level Hover）
   const enterMethodFocus = useCallback(
-    (methodId: string) => {
+    (methodId: string, options?: { locked?: boolean }) => {
+      const locked = options?.locked ?? false;
       const relatedMethodIds = new Set<string>([methodId]);
       const relatedEdgeIds = new Set<string>();
 
@@ -230,12 +236,14 @@ export function ArchitectureGraph({
             if (relatedMethodIds.has(node.id)) {
               return {
                 ...node,
+                data: { ...(node.data as MethodNodeData), locked: node.id === methodId && locked },
                 style: { ...node.style, opacity: 1 },
                 zIndex: defaultNodeZIndexMap.get(node.id) ?? node.zIndex,
               };
             }
             return {
               ...node,
+              data: { ...(node.data as MethodNodeData), locked: false },
               style: { ...node.style, opacity: 0.2 },
               zIndex: defaultNodeZIndexMap.get(node.id) ?? node.zIndex,
             };
@@ -331,6 +339,9 @@ export function ArchitectureGraph({
       // 1. 阻止事件冒泡到父级（模块外框）
       event.stopPropagation();
 
+      // 若已有方法被锁定，忽略其他悬浮事件，保持当前锁定态
+      if (lockedNodeIdRef.current) return;
+
       // 防抖：重复进入同一节点时不重复计算
       if (hoveredNodeIdRef.current === node.id) return;
       hoveredNodeIdRef.current = node.id;
@@ -354,6 +365,9 @@ export function ArchitectureGraph({
       // 1. 阻止事件冒泡到父级（模块外框）
       event.stopPropagation();
 
+      // 若已有方法被锁定，保持锁定态，不随鼠标移出重置
+      if (lockedNodeIdRef.current) return;
+
       // 2. 只有真正移出当前追踪的最深层级节点时才重置画布
       if (hoveredNodeIdRef.current !== node.id) return;
       hoveredNodeIdRef.current = null;
@@ -361,6 +375,53 @@ export function ArchitectureGraph({
     },
     [resetToDefault]
   );
+
+  const onNodeClick = useCallback(
+    (event: MouseEvent, node: Node) => {
+      event.stopPropagation();
+
+      if (node.type === "method") {
+        if (lockedNodeIdRef.current === node.id) {
+          // 再次点击已锁定方法：解锁并恢复默认视图
+          lockedNodeIdRef.current = null;
+          hoveredNodeIdRef.current = null;
+          resetToDefault();
+          selectedMethodRef.current = null;
+          onSelectMethod?.(null);
+          return;
+        }
+
+        // 锁定新方法：保持方法级聚焦并加粗边框
+        lockedNodeIdRef.current = node.id;
+        hoveredNodeIdRef.current = node.id;
+        enterMethodFocus(node.id, { locked: true });
+        updatePanelSelection(node);
+        return;
+      }
+
+      // 点击非方法节点：若当前有锁定方法，先解锁
+      if (lockedNodeIdRef.current) {
+        lockedNodeIdRef.current = null;
+        hoveredNodeIdRef.current = null;
+        resetToDefault();
+        selectedMethodRef.current = null;
+        onSelectMethod?.(null);
+      }
+
+      // 同步更新右侧面板为当前点击的模块/组件
+      updatePanelSelection(node);
+    },
+    [enterMethodFocus, resetToDefault, updatePanelSelection, onSelectMethod]
+  );
+
+  const onPaneClick = useCallback(() => {
+    if (!lockedNodeIdRef.current) return;
+    lockedNodeIdRef.current = null;
+    hoveredNodeIdRef.current = null;
+    resetToDefault();
+    selectedMethodRef.current = null;
+    onSelectMethod?.(null);
+  }, [resetToDefault, onSelectMethod]);
 
   return (
     <div style={{ flex: 1, position: "relative" }}>
@@ -371,6 +432,8 @@ export function ArchitectureGraph({
         onEdgesChange={onEdgesChange}
         onNodeMouseEnter={onNodeMouseEnter}
         onNodeMouseLeave={onNodeMouseLeave}
+        onNodeClick={onNodeClick}
+        onPaneClick={onPaneClick}
         nodeTypes={nodeTypes}
         fitView
         fitViewOptions={{ padding: 0.2 }}

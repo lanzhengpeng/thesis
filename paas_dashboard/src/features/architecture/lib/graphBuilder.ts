@@ -27,6 +27,7 @@ export interface MethodNodeData {
   componentId: string;
   method: CheatSheetMethodItem;
   height: number;
+  locked?: boolean;
 }
 
 export interface ModuleNodeData {

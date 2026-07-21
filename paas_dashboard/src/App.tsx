@@ -85,8 +85,12 @@ function App() {
             setSelectedComponentId(componentId);
             setSelectedMethod(null);
           }}
-          onSelectMethod={({ componentId, methodName }) => {
-            setSelectedMethod({ componentId, methodName });
+          onSelectMethod={(method) => {
+            if (method === null) {
+              setSelectedMethod(null);
+            } else {
+              setSelectedMethod({ componentId: method.componentId, methodName: method.methodName });
+            }
             setSelectedComponentId(null);
           }}
         />

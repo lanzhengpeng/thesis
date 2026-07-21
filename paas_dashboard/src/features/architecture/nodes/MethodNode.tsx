@@ -12,7 +12,7 @@ const TYPE_STYLES: Record<
 
 export function MethodNode(props: NodeProps) {
   const data = props.data as MethodNodeData;
-  const { method, componentType, height } = data;
+  const { method, componentType, height, locked } = data;
   const styles = TYPE_STYLES[componentType];
   const label = method.feature || method.name;
 
@@ -25,9 +25,9 @@ export function MethodNode(props: NodeProps) {
         alignItems: "center",
         justifyContent: "center",
         background: "#ffffff",
-        border: `1px solid ${styles.border}40`,
+        border: `${locked ? 3 : 1}px solid ${styles.border}${locked ? "" : "40"}`,
         borderRadius: 8,
-        boxShadow: "0 2px 8px rgba(0, 0, 0, 0.06)",
+        boxShadow: locked ? `0 0 0 3px ${styles.border}30, 0 2px 8px rgba(0, 0, 0, 0.06)` : "0 2px 8px rgba(0, 0, 0, 0.06)",
         padding: "0 12px",
         boxSizing: "border-box",
         position: "relative",
