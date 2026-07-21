@@ -574,8 +574,9 @@ export function buildGraph(
           } else {
             const defaultStyle = {
               stroke: INNER_EDGE_COLOR,
-              strokeWidth: 1.5,
+              strokeWidth: 2,
               strokeDasharray: "5,5",
+              opacity: 0.9,
             };
             edges.push({
               id: edgeId,

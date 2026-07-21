@@ -35,7 +35,7 @@
     - **模块级连线（crossModule）**：大框连大框，默认**完全隐藏**。
     - **方法级连线（crossMethod）**：精确到具体方法，默认**完全隐藏**。
   - **悬浮到模块外框**时，当前模块及其依赖模块高亮，模块级连线以亮橙色实线 + 流动动画 + 置顶 zIndex 展示；无关模块及其内部节点透明度降为 `0.2`。
-  - **悬浮到具体方法**时，该方法及其直接上下游方法（同模块或跨模块）高亮，相关的方法级连线与模块内连线以亮橙色 + 流动动画 + 置顶 zIndex 展示；无关节点与连线暗化降噪。
+  - **悬浮到具体方法**时，该方法及其直接上下游方法（同模块或跨模块）高亮，模块与组件外框保持中性，相关的方法级连线与模块内连线以亮橙色 + 流动动画 + 置顶 zIndex 展示；无关节点与连线暗化降噪。
   - 鼠标移出节点后自动恢复到全局默认视图：跨模块连线隐藏，内部连线恢复灰色虚线。
   - 模块内部调用使用方法节点**顶部 target + 底部 source** 的 handle，跨模块调用使用**左侧 target + 右侧 source**。
   - 所有边使用 `smoothstep` 路由，并通过 `pathOptions: { borderRadius: 16 }` 设置 16px 圆角折线。
@@ -182,7 +182,7 @@ const { data, loading, error, refetch } = useCheatSheet();
    - **模块内方法连线（inner）**：
      - 同模块内的组件调用（Controller → Service → Mapper）。
      - 默认 `hidden: false`，始终可见。
-     - 样式为灰色虚线（`#94a3b8`），`strokeWidth: 1.5`，使用 `sourceHandle: bottom` → `targetHandle: top`。
+     - 样式为灰色虚线（`#94a3b8`），`strokeWidth: 2`，`opacity: 0.9`，使用 `sourceHandle: bottom` → `targetHandle: top`。
    - **跨模块方法连线（crossMethod）**：
      - 调用方与接收方不在同一 `module`，精确到具体方法。
      - 默认 `hidden: true`，避免初始加载时线条爆炸。
@@ -216,6 +216,7 @@ const { data, loading, error, refetch } = useCheatSheet();
   - 无关模块及其内部节点透明度降至 `0.2`，`zIndex` 降到 `0`。
 - 悬浮到**方法节点**（`method`）：
   - 高亮当前方法节点，以及所有以它为 `source` 或 `target` 的直接上下游方法节点（同模块或跨模块）。
+  - 模块与组件外框保持中性（不整体高亮也不整体暗化），仅通过方法卡片自身的透明度变化体现聚焦，视觉更清晰。
   - 隐藏所有**模块级跨模块连线**（`crossModule`）。
   - 显示相关的**方法级跨模块连线**（`crossMethod`）与**模块内方法连线**（`inner`），开启 `animated`，`zIndex` 置顶到 `1000`，`selected: true`。
   - 无关节点透明度降至 `0.2`，无关的方法连线隐藏或降级到 `zIndex: 0`。

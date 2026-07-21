@@ -216,33 +216,27 @@ export function ArchitectureGraph({ data, onSelectModule, onSelectComponent }: A
       });
 
       setNodes((prev) => {
-        const nodeMap = new Map(prev.map((n) => [n.id, n]));
-        const relatedModuleIds = new Set<string>();
-
-        relatedMethodIds.forEach((id) => {
-          const node = nodeMap.get(id);
-          if (node) {
-            const moduleId = getParentModuleId(node, nodeMap);
-            if (moduleId) relatedModuleIds.add(moduleId);
-          }
-        });
-
         return prev.map((node) => {
-          const nodeModuleId = getParentModuleId(node, nodeMap);
-          const isRelatedMethod = relatedMethodIds.has(node.id);
-          const isRelatedModule = nodeModuleId ? relatedModuleIds.has(nodeModuleId) : false;
-
-          if (isRelatedMethod || isRelatedModule) {
+          // 方法级悬浮时，模块与组件保持中性不突出，仅对方法节点做高亮/暗化
+          if (node.type === "method") {
+            if (relatedMethodIds.has(node.id)) {
+              return {
+                ...node,
+                style: { ...node.style, opacity: 1 },
+                zIndex: defaultNodeZIndexMap.get(node.id) ?? node.zIndex,
+              };
+            }
             return {
               ...node,
-              style: { ...node.style, opacity: 1 },
+              style: { ...node.style, opacity: 0.2 },
               zIndex: defaultNodeZIndexMap.get(node.id) ?? node.zIndex,
             };
           }
+
           return {
             ...node,
-            style: { ...node.style, opacity: 0.2 },
-            zIndex: DIMMED_NODE_ZINDEX,
+            style: { ...node.style, opacity: 1 },
+            zIndex: defaultNodeZIndexMap.get(node.id) ?? node.zIndex,
           };
         });
       });
