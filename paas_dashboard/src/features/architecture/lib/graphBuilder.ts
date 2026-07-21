@@ -583,7 +583,7 @@ export function buildGraph(
               source: sourceId,
               target: targetId,
               type: "smoothstep",
-              hidden: false,
+              hidden: true,
               animated: false,
               zIndex: DEFAULT_EDGE_ZINDEX,
               sourceHandle: "bottom",

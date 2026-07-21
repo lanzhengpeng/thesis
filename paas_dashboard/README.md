@@ -29,8 +29,8 @@
 - 每个 CSM 组件（Controller/Service/Mapper）是一个可拖拽的父容器，内部的方法节点采用**单行水平展开**：所有方法卡片在同一水平行从左到右依次排列，不再换行，彻底避免边穿过无关卡片。
 - **每个方法渲染为独立的 React Flow 子节点**，拥有自己的四向 handle（上/下/左/右），并支持在所属 CSM 容器内部自由拖拽（`extent: 'parent'` 限制不可拖出父容器）。
 - 方法卡片**仅展示功能名**（`feature`），不再展示参数、HTTP 路径或 SQL；这些细节在右侧面板的组件详情中查看。
-- **方法级精确连线（局部默认展示 + 跨模块按需聚焦）**：
-  - 模块内部调用（Controller → Service → Mapper）使用**灰色虚线**，默认始终可见，让人一眼看清模块内的垂直业务链路。
+- **方法级精确连线（局部默认隐藏 + 跨模块/方法按需聚焦）**：
+  - 模块内部调用（Controller → Service → Mapper）使用**灰色虚线**，默认**隐藏**，避免初始加载时内部线条过多。
   - 跨模块调用分为两级：
     - **模块级连线（crossModule）**：大框连大框，默认**完全隐藏**。
     - **方法级连线（crossMethod）**：精确到具体方法，默认**完全隐藏**。
@@ -181,7 +181,8 @@ const { data, loading, error, refetch } = useCheatSheet();
    - 解析 `components[].methods[].calls`，从源方法节点连到目标方法节点。
    - **模块内方法连线（inner）**：
      - 同模块内的组件调用（Controller → Service → Mapper）。
-     - 默认 `hidden: false`，始终可见。
+     - 默认 `hidden: true`，无悬浮时不显示，避免初始线条过多。
+     - 仅在方法级悬浮且与当前方法相关时才显示。
      - 样式为灰色虚线（`#94a3b8`），`strokeWidth: 2`，`opacity: 0.9`，使用 `sourceHandle: bottom` → `targetHandle: top`。
    - **跨模块方法连线（crossMethod）**：
      - 调用方与接收方不在同一 `module`，精确到具体方法。

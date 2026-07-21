@@ -101,7 +101,7 @@ export function ArchitectureGraph({ data, onSelectModule, onSelectComponent }: A
         const edgeType = edge.data?.edgeType;
         const isGatewayEdge = !edgeType;
 
-        if (edgeType === "crossMethod" || edgeType === "crossModule") {
+        if (edgeType === "crossMethod" || edgeType === "crossModule" || edgeType === "inner") {
           return {
             ...edge,
             hidden: true,
@@ -180,7 +180,7 @@ export function ArchitectureGraph({ data, onSelectModule, onSelectComponent }: A
             return { ...edge, hidden: true, selected: false };
           }
 
-          if (edgeType === "crossMethod") {
+          if (edgeType === "crossMethod" || edgeType === "inner") {
             return { ...edge, hidden: true, selected: false };
           }
 
