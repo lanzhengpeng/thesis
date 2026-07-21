@@ -1,6 +1,7 @@
 import type { ModuleNodeData } from "../lib/graphBuilder";
 import type { CheatSheetComponentItem, CheatSheetMethodItem } from "../../../types/cheatSheet";
 import { parseComponentEntry } from "../lib/graphBuilder";
+import { ModuleSourceEditor } from "./ModuleSourceEditor";
 
 interface ModuleDetailPanelProps {
   isOpen: boolean;
@@ -11,6 +12,8 @@ interface ModuleDetailPanelProps {
   selectedMethod?: { componentId: string; methodName: string } | null;
   onSelectComponent?: (componentId: string) => void;
   onSelectMethod?: (method: { componentId: string; methodName: string } | null) => void;
+  onModuleChanged?: () => void;
+  onModuleDeleted?: () => void;
 }
 
 function PanelHeader({
@@ -73,6 +76,8 @@ export function ModuleDetailPanel({
   selectedMethod,
   onSelectComponent,
   onSelectMethod,
+  onModuleChanged,
+  onModuleDeleted,
 }: ModuleDetailPanelProps) {
   const isFailed = data?.status === "failed";
 
@@ -234,6 +239,13 @@ export function ModuleDetailPanel({
                       </div>
                     ))
                   )}
+                </Section>
+                <Section title="源码管理">
+                  <ModuleSourceEditor
+                    pluginName={data.label}
+                    onChanged={onModuleChanged}
+                    onDeleted={onModuleDeleted}
+                  />
                 </Section>
               </>
             )}
@@ -654,7 +666,7 @@ const drawerStyle = (isOpen: boolean): React.CSSProperties => ({
   borderLeft: isOpen ? "1px solid #e2e8f0" : "none",
   overflow: "hidden",
   flexShrink: 0,
-  transition: "width 300ms ease, opacity 250ms ease",
+  transition: "all 300ms ease-in-out",
   opacity: isOpen ? 1 : 0,
   boxSizing: "border-box",
 });

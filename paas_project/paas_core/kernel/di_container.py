@@ -261,6 +261,9 @@ class DIContainer:
         - 字符串前向引用（如 "UserMapper"）
         - typing.ForwardRef 对象
 
+        当依赖模块被热重载后，原始注解中的类对象可能已被容器替换。
+        此时通过类名再查找一次，保证跨模块依赖仍可解析。
+
         参数：
             annotation: 类型注解。
 
@@ -268,7 +271,10 @@ class DIContainer:
             对应的类；如果无法解析则返回 None。
         """
         if isinstance(annotation, type):
-            return annotation
+            if annotation in self._classes:
+                return annotation
+            # 按类名兜底：处理热重载后旧类对象失效的情况
+            return self._by_name.get(annotation.__name__)
         if isinstance(annotation, str):
             return self._by_name.get(annotation)
         # typing.ForwardRef

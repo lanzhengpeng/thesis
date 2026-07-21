@@ -9,17 +9,35 @@
 
 from __future__ import annotations
 
+import os
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from paas_core.agent.agent_api import create_agent_router
 from paas_core.kernel.microkernel import MicroKernel
 
+from .module_files_api import create_module_files_router
 from .route_bridge import summarize_report
 
 
 # 系统管理口监听端口，供本系统前端与管理员使用
 SYSTEM_PORT = 8000
+
+# 允许前端跨域访问，支持通过环境变量追加来源（多个用逗号分隔）
+DEFAULT_CORS_ORIGINS = ["http://localhost:5173"]
+
+
+def _get_cors_origins() -> list[str]:
+    """从环境变量读取额外 CORS 来源，默认保留开发服务器。"""
+    extra = os.getenv("PAA_DASHBOARD_ORIGINS", "")
+    origins = list(DEFAULT_CORS_ORIGINS)
+    if extra:
+        for origin in extra.split(","):
+            origin = origin.strip()
+            if origin and origin not in origins:
+                origins.append(origin)
+    return origins
 
 
 def create_system_app(kernel: MicroKernel) -> FastAPI:
@@ -44,7 +62,7 @@ def create_system_app(kernel: MicroKernel) -> FastAPI:
     # 允许平台前端开发服务器跨域访问
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["http://localhost:5173"],
+        allow_origins=_get_cors_origins(),
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -52,6 +70,9 @@ def create_system_app(kernel: MicroKernel) -> FastAPI:
 
     # 注册 LangGraph agent 管理接口
     app.include_router(create_agent_router(kernel), prefix="/admin/agent")
+
+    # 注册模块源码管理接口
+    app.include_router(create_module_files_router(kernel), prefix="/admin/kernel")
 
     @app.get("/admin/kernel/cheat-sheet")
     def cheat_sheet():

@@ -48,6 +48,10 @@ def _fallback_module_name(task: str) -> str:
 def _extract_module_name(task: str) -> str:
     """尝试从任务中提取模块名。"""
     task_lower = task.lower()
+    # 优先匹配显式的 xxx_module 标识
+    explicit_match = re.search(r"\b([a-zA-Z_][a-zA-Z0-9_]*_module)\b", task_lower)
+    if explicit_match:
+        return explicit_match.group(1)
     # 简单关键词匹配
     keywords_map = {
         "用户": "user_module",
@@ -78,26 +82,31 @@ def _default_questions(task: str) -> List[Dict[str, str]]:
             "id": "q1",
             "text": "这个模块的核心业务实体是什么？（例如：用户、订单、商品）",
             "reason": "确定模块需要管理的核心数据对象",
+            "suggestions": ["用户", "订单", "商品", "评论"],
         },
         {
             "id": "q2",
             "text": "该实体有哪些关键字段？（例如：用户名、邮箱、创建时间）",
             "reason": "用于设计 Mapper 的数据结构和 Service 的方法参数",
+            "suggestions": ["id、名称、状态", "id、用户名、邮箱、创建时间", "id、标题、内容、创建时间"],
         },
         {
             "id": "q3",
             "text": "需要暴露哪些 REST 接口？（例如：列表查询、详情查询、创建）",
             "reason": "用于设计 Controller 的路由",
+            "suggestions": ["列表查询、详情查询、创建", "创建、查询、更新、删除", "列表查询、详情查询、创建、更新、删除"],
         },
         {
             "id": "q4",
             "text": "是否需要依赖其他模块？（例如：订单模块依赖用户模块）",
             "reason": "用于确定跨模块依赖和调用关系",
+            "suggestions": ["无", "依赖 user_module", "依赖 order_module"],
         },
         {
             "id": "q5",
             "text": "有哪些核心业务规则需要校验？",
             "reason": "用于在 Service 层实现业务逻辑",
+            "suggestions": ["状态字段不能为空", "名称唯一", "创建时设置默认状态"],
         },
     ]
 

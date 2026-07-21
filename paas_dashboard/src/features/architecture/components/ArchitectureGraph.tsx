@@ -14,6 +14,7 @@ import {
   ReactFlow,
   useEdgesState,
   useNodesState,
+  useReactFlow,
   useViewport,
   type Edge,
   type Node,
@@ -53,6 +54,8 @@ interface ArchitectureGraphProps {
   onNodeClick?: () => void;
   /** 点击画布空白处时触发，用于关闭右侧面板 */
   onPaneClick?: () => void;
+  /** 侧边栏展开/折叠状态变化时用于触发 fitView */
+  layoutKey: string;
 }
 
 function getParentModuleId(node: Node, nodeMap: Map<string, Node>): string | null {
@@ -72,6 +75,21 @@ function getParentModuleId(node: Node, nodeMap: Map<string, Node>): string | nul
 }
 
 type InteractMode = "mouse" | "trackpad";
+
+/**
+ * 监听侧边栏展开/折叠，画布容器被挤压后自动 fitView，保证节点始终居中且不溢出。
+ */
+function FitViewHandler({ layoutKey }: { layoutKey: string }) {
+  const { fitView } = useReactFlow();
+  const initialKeyRef = useRef(layoutKey);
+
+  useEffect(() => {
+    if (layoutKey === initialKeyRef.current) return;
+    fitView({ duration: 300 });
+  }, [layoutKey, fitView]);
+
+  return null;
+}
 
 /**
  * 右下角交互模式切换面板，显示当前缩放比例并支持鼠标/触摸板模式切换。
@@ -187,6 +205,7 @@ export function ArchitectureGraph({
   onSelectMethod,
   onNodeClick: onNodeClickProp,
   onPaneClick: onPaneClickProp,
+  layoutKey,
 }: ArchitectureGraphProps) {
   const { nodes: initialNodes, edges: initialEdges } = useMemo(
     () => buildGraph(data.call_graph, data.modules, data.api_map, data.components),
@@ -606,6 +625,7 @@ export function ArchitectureGraph({
             }}
           />
           <InteractionModePanel mode={interactMode} onChange={setInteractMode} />
+          <FitViewHandler layoutKey={layoutKey} />
         </ReactFlow>
       </div>
   );

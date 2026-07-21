@@ -137,7 +137,15 @@ class MicroKernel:
             report.message = str(exc)
             report.trace = traceback.format_exc()
 
-        self.module_reports.append(report)
+        # 热重载时替换同模块旧报告，避免模块列表出现重复项
+        replaced = False
+        for i, existing in enumerate(self.module_reports):
+            if existing.module_name == module_name:
+                self.module_reports[i] = report
+                replaced = True
+                break
+        if not replaced:
+            self.module_reports.append(report)
 
     def _import_file(self, plugin_name: str, py_file: Path, force: bool = False) -> None:
         """
@@ -417,24 +425,40 @@ class MicroKernel:
     # 内省辅助函数
     # ------------------------------------------------------------------
 
+    def _latest_module_reports(self) -> Dict[str, ModuleLoadReport]:
+        """
+        获取每个插件模块的最新加载报告，用于去重并反映当前状态。
+
+        返回：
+            module_name -> ModuleLoadReport 的字典，按首次出现顺序排列。
+        """
+        latest: Dict[str, ModuleLoadReport] = {}
+        for report in self.module_reports:
+            latest[report.module_name] = report
+        return latest
+
     def get_loaded_modules(self) -> List[str]:
         """
-        获取所有成功加载的模块名。
+        获取所有成功加载的模块名（去重）。
 
         返回：
             模块名字符串列表。
         """
-        return [r.module_name for r in self.module_reports if r.status == "ok"]
+        return [
+            name
+            for name, report in self._latest_module_reports().items()
+            if report.status == "ok"
+        ]
 
     def get_failed_modules(self) -> List[dict]:
         """
-        获取所有加载失败的模块信息。
+        获取所有加载失败的模块信息（去重）。
 
         返回：
             包含 module 与 error 字段的字典列表。
         """
         return [
-            {"module": r.module_name, "error": r.message}
-            for r in self.module_reports
-            if r.status == "failed"
+            {"module": name, "error": report.message}
+            for name, report in self._latest_module_reports().items()
+            if report.status == "failed"
         ]

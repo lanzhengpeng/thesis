@@ -7,6 +7,8 @@ PaaS 核心：模块化微内核 PaaS 的稳定内核。
 """
 
 # 从 SDK 模块导出装饰器与元数据辅助函数，供业务插件导入使用。
+from fastapi import HTTPException
+
 from .sdk import (
     Controller,
     DELETE,
@@ -42,4 +44,6 @@ __all__ = [
     # 元数据辅助函数
     "get_meta",
     "is_component",
+    # HTTP 异常，供 Controller 返回错误响应
+    "HTTPException",
 ]

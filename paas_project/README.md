@@ -168,6 +168,10 @@ class UserService:
         self.user_mapper = user_mapper
 ```
 
+> 补充：`modules.loaded` / `modules.failed` 在返回前会按模块名去重，热重载不会重复计数；
+> 依赖解析在类对象被热重载替换后会按类名兜底，确保跨模块调用（如 `OrderService -> UserService`）
+> 在重载 `user_module` 后仍然能被正确组装。
+
 ### 3.3 动态 API 双端口桥接（`system_server.py` / `service_server.py`）
 
 底座将内存中存活的 Controller 实例动态转换为 FastAPI HTTP 路由，但管理流量与业务流量分别跑在不同端口：
@@ -276,7 +280,7 @@ AI 文件操作工具内置强校验，锁死 `plugins/` 目录，无法通过 `
 5. 执行 `static_check` 静态安全检查。
 6. 调用 `MicroKernel.reload_plugin()` 刷新系统口容器；8001 服务口通过文件监听自动感知变更。
 
-**流式响应**：`/admin/agent/generate` 现在返回 `text/event-stream` SSE 流，前端可实时看到大模型输出（`on_chat_model_stream`）和工具执行提示（`on_tool_start`），无需解析中间 JSON；最终结果以一条 JSON 事件推送。
+**流式响应**：`/admin/agent/generate` 与 `/admin/agent/sessions/{id}/generate` 返回 `text/event-stream` SSE 流。为避免把架构 JSON、代码片段等内部大模型输出直接暴露给用户，流水线不再推送 `on_chat_model_stream` 原始文本块；改为通过 `agent_step` 事件实时推送节点级进度（如“设计模块架构”、“生成 CSM 代码”、“审查与部署模块”）与工具调用提示，前端以可折叠的“执行步骤”面板展示。与此同时，流水线会在每个步骤完成后推送简短的 Markdown 进度文案，并在最终阶段把格式化后的 Markdown 摘要按字符对分块流式输出，让前端呈现出类似 Coze 的逐字打字机效果。最终仍通过带标记的 `pipeline_result` 事件返回结构化结果摘要，用于会话状态更新与后续扩展。
 
 **LLM 配置**：默认读取环境变量 `OPENAI_API_KEY`、`OPENAI_BASE_URL`、`AGENT_MODEL`；未配置时回退到 `test_api.ipynb` 中记录的本地接口。若 LLM 不可用或返回格式错误，agent 会自动使用内置模板，保证随时可运行。
 
@@ -444,11 +448,16 @@ SSE 事件说明：
 
 | 事件来源 | SSE 数据示例 | 含义 |
 |----------|--------------|------|
-| `on_chat_model_stream` | `data: 正在生成 UserMapper...\n\n` | 大模型实时输出块，前端可直接拼接实现打字机效果 |
-| `on_tool_start` | `data: \n> 🛠️ 正在执行: write_plugin_file...\n\n` | 内部工具开始执行，前端可用 Markdown 引用样式渲染 |
-| 流水线结束 | `data: {"status": "deployed", ...}\n\n` | 最终生成结果 JSON，包含文件列表、静态检查、重载报告等 |
+| 通用问答 | `data: 你好！有什么可以帮你的吗？\n\n` | `/admin/agent/chat` 识别为闲聊时，直接返回自然语言文本 |
+| 执行步骤 | `data: <<<AGENT_EVENT|{"type": "agent_step", "payload": {"id": "step-architect", "status": "running", "title": "设计模块架构", "detail": "..."}}|AGENT_EVENT>>>\n\n` | 流水线执行到某节点或工具调用时推送，前端渲染为可折叠执行步骤面板 |
+| 需求收集 | `data: <<<AGENT_EVENT|{"type": "requirements_gathering", "payload": {"session_id": "...", "questions": [...]}}|AGENT_EVENT>>>\n\n` | `/admin/agent/chat` 识别为模块生成任务时，返回自定义事件，前端切换为需求收集模式 |
+| 进度文案 | `data: ✅ **设计模块架构完成** — 模块名 user_module，API 前缀 /api/users\n\n` | 每个步骤完成后以 Markdown 文本帧推送，实时出现在 AI 消息中 |
+| 最终摘要 | `data: ## 模块生成完成\n\n- **模块名**：user_module\n...` | 最终结果按字符对分块流式推送，前端实现打字机效果 |
+| 流水线结束 | `data: <<<AGENT_EVENT|{"type": "pipeline_result", "payload": {"status": "deployed", ...}}|AGENT_EVENT>>>\n\n` | 结构化结果事件，前端解析后固化为聊天记录并收起步骤面板，不直接渲染 JSON |
 
 > 工具执行完毕（`on_tool_end`）的冗长 JSON 结果不会推送给前端，仅注入 LangGraph 状态供后续大模型节点使用。
+> 自定义事件统一使用 `<<<AGENT_EVENT|...|AGENT_EVENT>>>` 标记包装，与正常对话文本严格区分，防止 JSON 脏数据直接暴露给用户。
+> 最终 Markdown 摘要在 `pipeline_result` 事件之前以字符对分块流式推送，让前端无需额外动画即可呈现逐字显现效果。
 
 Agent 会根据任务自动创建 `plugins/<module_name>/` 目录、生成 CSM 代码、执行静态检查并重载内核。成功后可在 8001 服务口调用对应的业务接口。
 
@@ -668,8 +677,11 @@ class OrderService:
 | `/admin/kernel/modules` | GET | 列出已加载/失败的模块 |
 | `/admin/kernel/cheat-sheet` | GET | 获取全局调用图、API 映射与结构化组件元数据 |
 | `/admin/kernel/reload/{plugin_name}` | POST | 重新加载指定插件（刷新系统口容器；8001 服务口通过文件监听自动热更新） |
-| `/admin/agent/generate` | POST | LangGraph Agent：自然语言生成并部署插件模块，返回 `text/event-stream` SSE 流 |
-| `/admin/agent/sessions/{session_id}/generate` | POST | 在需求确认后触发代码生成流水线，同样返回 SSE 流 |
+| `/admin/agent/chat` | POST | 通用智能体统一入口：意图识别后分发为通用问答或多轮需求生成流程，返回 SSE 流 |
+| `/admin/agent/generate` | POST | （兼容接口）LangGraph Agent：自然语言生成并部署插件模块，返回 SSE 流 |
+| `/admin/agent/sessions` | POST | 创建需求分析会话 |
+| `/admin/agent/sessions/{session_id}/answers` | POST | 提交需求答案 |
+| `/admin/agent/sessions/{session_id}/generate` | POST | 在需求确认后触发代码生成流水线，返回 SSE 流 |
 
 > **注意**：
 > 1. `/admin/kernel/reload` 主动刷新 **8000 系统口** 的内存容器，用于前端画布实时展示。
@@ -683,25 +695,356 @@ class OrderService:
 {
   "status": "ok",
   "modules": {
-    "loaded": ["user_module", "order_module"],
-    "failed": [{"module": "faulty_module", "error": "..."}]
+    "loaded": [
+      "agent_demo_module",
+      "faulty_module",
+      "order_module",
+      "user_module"
+    ],
+    "failed": []
   },
   "counts": {
-    "controllers": 2,
-    "services": 2,
-    "mappers": 2
+    "controllers": 3,
+    "services": 3,
+    "mappers": 3
   },
   "call_graph": {
+    "agent_demo_module": {
+      "mapper": ["AgentDemoMapper(None)"],
+      "service": ["AgentDemoService(AgentDemoMapper)"],
+      "controller": ["AgentDemoController(AgentDemoService)"]
+    },
     "order_module": {
       "mapper": ["OrderMapper(None)"],
       "service": ["OrderService(OrderMapper, UserService)"],
       "controller": ["OrderController(OrderService)"]
+    },
+    "user_module": {
+      "mapper": ["UserMapper(None)"],
+      "service": ["UserService(UserMapper)"],
+      "controller": ["UserController(UserService)"]
     }
   },
   "api_map": [
-    {"module": "user_module", "method": "GET", "path": "/api/users/", "handler": "UserController.list_users"}
+    {
+      "module": "agent_demo_module",
+      "method": "POST",
+      "path": "/api/agent_demos/",
+      "handler": "AgentDemoController.create_agent_demo"
+    },
+    {
+      "module": "agent_demo_module",
+      "method": "GET",
+      "path": "/api/agent_demos/{id}",
+      "handler": "AgentDemoController.get_agent_demo"
+    },
+    {
+      "module": "agent_demo_module",
+      "method": "GET",
+      "path": "/api/agent_demos/",
+      "handler": "AgentDemoController.list_agent_demos"
+    },
+    {
+      "module": "user_module",
+      "method": "POST",
+      "path": "/api/users/",
+      "handler": "UserController.create_user"
+    },
+    {
+      "module": "user_module",
+      "method": "GET",
+      "path": "/api/users/{id}",
+      "handler": "UserController.get_user"
+    },
+    {
+      "module": "user_module",
+      "method": "GET",
+      "path": "/api/users/",
+      "handler": "UserController.list_users"
+    },
+    {
+      "module": "order_module",
+      "method": "POST",
+      "path": "/api/orders/",
+      "handler": "OrderController.create_order"
+    },
+    {
+      "module": "order_module",
+      "method": "GET",
+      "path": "/api/orders/{order_id}",
+      "handler": "OrderController.get_order"
+    },
+    {
+      "module": "order_module",
+      "method": "GET",
+      "path": "/api/orders/",
+      "handler": "OrderController.list_orders"
+    }
   ],
   "components": [
+    {
+      "name": "AgentDemoController",
+      "type": "controller",
+      "module": "agent_demo_module",
+      "base_path": "/api/agent_demos",
+      "assembled": true,
+      "constructor_params": [
+        { "name": "agent_demo_service", "type": "AgentDemoService" }
+      ],
+      "inject_fields": [],
+      "methods": [
+        {
+          "name": "create_agent_demo",
+          "feature": "创建",
+          "params": [],
+          "calls": ["AgentDemoService.create"],
+          "sql": null,
+          "http_method": "POST",
+          "path": "/api/agent_demos/"
+        },
+        {
+          "name": "get_agent_demo",
+          "feature": "查询详情",
+          "params": [],
+          "calls": ["AgentDemoService.get_by_id"],
+          "sql": null,
+          "http_method": "GET",
+          "path": "/api/agent_demos/{id}"
+        },
+        {
+          "name": "list_agent_demos",
+          "feature": "查询列表",
+          "params": [],
+          "calls": ["AgentDemoService.list"],
+          "sql": null,
+          "http_method": "GET",
+          "path": "/api/agent_demos/"
+        }
+      ]
+    },
+    {
+      "name": "AgentDemoMapper",
+      "type": "mapper",
+      "module": "agent_demo_module",
+      "base_path": "",
+      "assembled": true,
+      "constructor_params": [],
+      "inject_fields": [],
+      "methods": [
+        {
+          "name": "create",
+          "feature": "创建 AgentDemo 记录",
+          "params": ["name"],
+          "calls": [],
+          "sql": "INSERT INTO items (name) VALUES (%s)"
+        },
+        {
+          "name": "get_by_id",
+          "feature": "根据 ID 查询 AgentDemo",
+          "params": ["id"],
+          "calls": [],
+          "sql": "SELECT 1"
+        },
+        {
+          "name": "list",
+          "feature": "查询 AgentDemo 列表",
+          "params": [],
+          "calls": [],
+          "sql": "SELECT 1"
+        }
+      ]
+    },
+    {
+      "name": "AgentDemoService",
+      "type": "service",
+      "module": "agent_demo_module",
+      "base_path": "",
+      "assembled": true,
+      "constructor_params": [
+        { "name": "agent_demo_mapper", "type": "AgentDemoMapper" }
+      ],
+      "inject_fields": [],
+      "methods": [
+        {
+          "name": "create",
+          "feature": "创建 AgentDemo",
+          "params": ["name"],
+          "calls": ["AgentDemoMapper.create"],
+          "sql": null
+        },
+        {
+          "name": "get_by_id",
+          "feature": "查询 AgentDemo 详情",
+          "params": ["id"],
+          "calls": ["AgentDemoMapper.get_by_id"],
+          "sql": null
+        },
+        {
+          "name": "list",
+          "feature": "查询 AgentDemo 列表",
+          "params": [],
+          "calls": ["AgentDemoMapper.list"],
+          "sql": null
+        }
+      ]
+    },
+    {
+      "name": "FaultyService",
+      "type": "service",
+      "module": "faulty_module",
+      "base_path": "",
+      "assembled": false,
+      "constructor_params": [],
+      "inject_fields": [],
+      "methods": []
+    },
+    {
+      "name": "OrderController",
+      "type": "controller",
+      "module": "order_module",
+      "base_path": "/api/orders",
+      "assembled": true,
+      "constructor_params": [
+        { "name": "order_service", "type": "OrderService" }
+      ],
+      "inject_fields": [],
+      "methods": [
+        {
+          "name": "create_order",
+          "feature": "创建订单",
+          "params": [],
+          "calls": ["OrderService.create_order"],
+          "sql": null,
+          "http_method": "POST",
+          "path": "/api/orders/"
+        },
+        {
+          "name": "get_order",
+          "feature": "查询订单",
+          "params": [],
+          "calls": ["OrderService.get_order"],
+          "sql": null,
+          "http_method": "GET",
+          "path": "/api/orders/{order_id}"
+        },
+        {
+          "name": "list_orders",
+          "feature": "查询列表",
+          "params": [],
+          "calls": ["OrderService.list_orders"],
+          "sql": null,
+          "http_method": "GET",
+          "path": "/api/orders/"
+        }
+      ]
+    },
+    {
+      "name": "OrderMapper",
+      "type": "mapper",
+      "module": "order_module",
+      "base_path": "",
+      "assembled": true,
+      "constructor_params": [],
+      "inject_fields": [],
+      "methods": [
+        {
+          "name": "create",
+          "feature": "创建订单",
+          "params": ["user_id", "total"],
+          "calls": [],
+          "sql": "INSERT INTO orders (user_id, total) VALUES (%s, %s)"
+        },
+        {
+          "name": "get",
+          "feature": "查询订单",
+          "params": ["order_id"],
+          "calls": [],
+          "sql": "SELECT * FROM orders WHERE id = %s"
+        },
+        {
+          "name": "list_all",
+          "feature": "全量列表",
+          "params": [],
+          "calls": [],
+          "sql": "SELECT * FROM orders"
+        }
+      ]
+    },
+    {
+      "name": "OrderService",
+      "type": "service",
+      "module": "order_module",
+      "base_path": "",
+      "assembled": true,
+      "constructor_params": [
+        { "name": "order_mapper", "type": "OrderMapper" },
+        { "name": "user_service", "type": "UserService" }
+      ],
+      "inject_fields": [],
+      "methods": [
+        {
+          "name": "create_order",
+          "feature": "创建订单",
+          "params": ["user_id", "total"],
+          "calls": ["UserService.get_user", "OrderMapper.create"],
+          "sql": null
+        },
+        {
+          "name": "get_order",
+          "feature": "查询订单",
+          "params": ["order_id"],
+          "calls": ["OrderMapper.get"],
+          "sql": null
+        },
+        {
+          "name": "list_orders",
+          "feature": "全量列表",
+          "params": [],
+          "calls": ["OrderMapper.list_all"],
+          "sql": null
+        }
+      ]
+    },
+    {
+      "name": "UserController",
+      "type": "controller",
+      "module": "user_module",
+      "base_path": "/api/users",
+      "assembled": true,
+      "constructor_params": [
+        { "name": "user_service", "type": "UserService" }
+      ],
+      "inject_fields": [],
+      "methods": [
+        {
+          "name": "create_user",
+          "feature": "创建用户",
+          "params": [],
+          "calls": ["UserService.create_user"],
+          "sql": null,
+          "http_method": "POST",
+          "path": "/api/users/"
+        },
+        {
+          "name": "get_user",
+          "feature": "查询详情",
+          "params": [],
+          "calls": ["UserService.get_user"],
+          "sql": null,
+          "http_method": "GET",
+          "path": "/api/users/{id}"
+        },
+        {
+          "name": "list_users",
+          "feature": "查询列表",
+          "params": [],
+          "calls": ["UserService.list_users"],
+          "sql": null,
+          "http_method": "GET",
+          "path": "/api/users/"
+        }
+      ]
+    },
     {
       "name": "UserMapper",
       "type": "mapper",
@@ -714,9 +1057,23 @@ class OrderService:
         {
           "name": "create",
           "feature": "创建用户",
-          "params": ["username", "email"],
+          "params": ["name"],
           "calls": [],
-          "sql": "INSERT INTO users (username, email) VALUES (%s, %s)"
+          "sql": "INSERT INTO items (name) VALUES (%s)"
+        },
+        {
+          "name": "get_by_id",
+          "feature": "根据 ID 查询用户详情",
+          "params": ["id"],
+          "calls": [],
+          "sql": "SELECT 1"
+        },
+        {
+          "name": "list_users",
+          "feature": "查询用户列表",
+          "params": [],
+          "calls": [],
+          "sql": "SELECT 1"
         }
       ]
     },
@@ -726,34 +1083,30 @@ class OrderService:
       "module": "user_module",
       "base_path": "",
       "assembled": true,
-      "constructor_params": [{"name": "user_mapper", "type": "UserMapper"}],
-      "inject_fields": [],
-      "methods": [
-        {
-          "name": "register",
-          "feature": "用户注册",
-          "params": ["username", "email"],
-          "calls": ["UserMapper.create"],
-          "sql": null
-        }
-      ]
-    },
-    {
-      "name": "UserController",
-      "type": "controller",
-      "module": "user_module",
-      "base_path": "/api/users",
-      "assembled": true,
-      "constructor_params": [{"name": "user_service", "type": "UserService"}],
+      "constructor_params": [
+        { "name": "user_mapper", "type": "UserMapper" }
+      ],
       "inject_fields": [],
       "methods": [
         {
           "name": "create_user",
           "feature": "创建用户",
-          "http_method": "POST",
-          "path": "/api/users/",
-          "params": ["payload"],
-          "calls": ["UserService.register"],
+          "params": ["name"],
+          "calls": ["UserMapper.create"],
+          "sql": null
+        },
+        {
+          "name": "get_user",
+          "feature": "查询详情",
+          "params": ["id"],
+          "calls": ["UserMapper.get_by_id"],
+          "sql": null
+        },
+        {
+          "name": "list_users",
+          "feature": "查询列表",
+          "params": [],
+          "calls": ["UserMapper.list_users"],
           "sql": null
         }
       ]
@@ -812,7 +1165,7 @@ class OrderService:
 
 - [ ] 数据库持久化（SQLAlchemy + Alembic migration）
 - [x] 模块热重载时自动刷新 8001 服务口路由（无需重启服务）
-- [x] AI 对话入口：自然语言 → 生成模块 → 自动部署（LangGraph Agent 已接入）
+- [x] AI 对话入口：自然语言 → 意图识别 → 通用问答 / 多轮需求生成 → 自动部署（LangGraph Agent 已接入，支持闲聊与模块生成任务分发）
 - [ ] Diff 确认机制：AI 修改先生成 Draft，人工确认后应用
 
 ### 9.3 远期

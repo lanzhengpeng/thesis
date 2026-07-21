@@ -27,6 +27,10 @@
 - 模块节点为**宽大、方正、内边距充足的容器**，为内部 CSM 组件留出足够呼吸空间。
 - 每个模块卡片内部按 **Controller → Service → Mapper** 三层严格垂直堆叠；同一层内组件水平并排，层与层之间等距分布。
 - 每个 CSM 组件（Controller/Service/Mapper）是一个可拖拽的父容器，内部的方法节点采用**单行水平展开**：所有方法卡片在同一水平行从左到右依次排列，不再换行，彻底避免边穿过无关卡片。
+- 页面整体采用**浅灰沉浸式背景（`#F4F5F7`）**，中央 React Flow 画布被包裹在一张**白色浮动卡片**（`bg-white`、圆角、细灰边、柔和阴影、外边距 `16px`）中，营造类似 Coze 工作流的聚焦编辑感。
+- **左侧 AI 智能体聊天面板为 Flex 兄弟节点**：默认展开，固定宽度 `320px`；点击标题栏箭头或顶部状态栏的“收起/展开 AI 助手”按钮后，宽度过渡为 `0` 并隐藏内容，中央画布会随其收起/展开而被挤压/拉伸。
+- **右侧详情面板同样为 Flex 兄弟节点**：默认宽度 `0` 完全收起，点击任意模块/组件/方法节点后宽度过渡为 `340px` 并滑出；关闭后面板宽度回到 `0`。由于左右两侧都是 Flex 节点，画布容器会在两侧变化时被物理挤压，不会出现悬浮遮罩遮挡画布的情况。
+- 左右侧边栏通过 `width` + `opacity` 过渡（`300ms ease-in-out`）实现平滑动画；React Flow 监听两侧展开/折叠状态变化，自动调用 `fitView({ duration: 300 })`，让画布在容器尺寸变化后平滑重新居中。
 - **每个方法渲染为独立的 React Flow 子节点**，拥有自己的四向 handle（上/下/左/右），并支持在所属 CSM 容器内部自由拖拽（`extent: 'parent'` 限制不可拖出父容器）。
 - 方法卡片**仅展示功能名**（`feature`），不再展示参数、HTTP 路径或 SQL；这些细节在右侧面板的组件详情中查看。
 - **方法级精确连线（默认全部隐藏，按需聚焦显示）**：
@@ -40,19 +44,19 @@
   - 模块内部调用使用方法节点**顶部 target + 底部 source** 的 handle，跨模块调用使用**左侧 target + 右侧 source**。
   - 所有边使用 `smoothstep` 路由，并通过 `pathOptions: { borderRadius: 16 }` 设置 16px 圆角折线。
 - 以节点画布形式展示所有插件模块（成功模块、失败模块）。
-- **左侧固定 AI 智能体聊天面板**：基于自然语言输入自动生成并部署模块，支持 SSE 流式响应、Markdown 渲染与代码高亮。
-- 顶部展示系统整体统计：Controller / Service / Mapper 数量、模块加载情况。
-- **右侧详情面板为抽屉式交互**：默认完全收起，点击任意模块/组件/方法节点后从右侧滑出，展示对应详情；点击面板右上角 X 或点击画布空白处均可关闭；悬浮节点仅负责视觉高亮，不再触发面板内容变化。
+- **左侧可折叠 AI 智能体聊天面板**：宽度 `320px`，基于自然语言输入自动分发为通用问答或模块生成流程，支持 SSE 流式响应、Markdown 渲染与代码高亮，模块生成时展示需求确认卡片。可通过标题栏箭头或顶部状态栏按钮收起/展开。
+- 顶部展示系统整体统计：Controller / Service / Mapper 数量、模块加载情况；左侧提供“收起/展开 AI 助手”按钮，用于显式控制聊天面板状态。
+- **右侧可折叠详情面板**：默认宽度 `0` 完全收起，与左侧面板、中央画布同为 Flex 行中的兄弟节点；点击任意模块/组件/方法节点后宽度从 `0` 过渡到 `340px` 并展示对应详情，点击面板右上角 X 或点击画布空白处均可关闭；悬浮节点仅负责视觉高亮，不再触发面板内容变化。
 - 每 5 秒自动轮询后端作弊纸，实现近似实时的架构刷新。
 
 ### 1.1 截图示意
 
 启动后访问 `http://localhost:5173`，可看到：
 
-- 左侧边栏：AI 智能体助手聊天面板，可输入自然语言任务并查看流式生成结果
-- 顶部状态栏：`Controller 2 / Service 2 / Mapper 2 / 模块 3/3`
-- 中央画布：网关节点 + 宽大模块容器 + CSM 组件卡片 + 仅展示功能名的方法块 + 虚线调用边；悬浮模块/方法时自动聚焦高亮
-- 右侧详情面板：默认收起，点击节点后从右侧滑出展示模块/组件/方法详情
+- 浅灰背景 (`#F4F5F7`) 上的白色圆角浮动画布卡片，中央展示网关节点、宽大模块容器、CSM 组件卡片、仅展示功能名的方法块与虚线调用边；悬浮模块/方法时自动聚焦高亮。
+- 左侧边栏：可折叠的 AI 智能体助手聊天面板（默认展开，宽 `320px`）。
+- 顶部状态栏：标题、显式的“收起/展开 AI 助手”按钮、`Controller 2 / Service 2 / Mapper 2 / 模块 3/3` 统计、立即刷新按钮。
+- 右侧边栏：默认收起（宽 `0`），点击节点后从右侧滑出（宽 `340px`）展示模块/组件/方法详情。
 
 ---
 
@@ -228,6 +232,12 @@ const { data, loading, error, refetch } = useCheatSheet();
 - 根组件同时设置 `minZoom={0.1}`、`maxZoom={2}`，避免节点众多时用户无法缩放到全貌。
 - 画布首次加载或节点数据全量更新时，React Flow 会自动 fitView，将所有节点完整展示在可视区域内。
 
+**侧边栏展开/折叠自适应（`FitViewHandler`）**：
+
+- `App.tsx` 将左侧聊天面板与右侧详情面板的展开/折叠状态组合为 `layoutKey`（如 `"true-false"`）并透传给 `ArchitectureGraph`。
+- `ArchitectureGraph` 在 `<ReactFlow>` 内部渲染 `FitViewHandler` 子组件，通过 `useReactFlow().fitView({ duration: 300 })` 监听 `layoutKey` 变化。
+- 当任意侧边栏收起或展开时，画布容器会被 Flex 布局物理挤压/拉伸；React Flow 在 300ms 内平滑重新居中所有节点，避免节点被推到可视区域外。
+
 **交互模式切换（右下角面板）**：
 
 - 使用 `<Panel position="bottom-right">` 悬浮放置模式切换按钮。
@@ -311,11 +321,12 @@ CSM 组件容器：
 
 ### 5.8 `features/architecture/components/ModuleDetailPanel.tsx`
 
-右侧详情面板采用**抽屉式布局**：
+右侧面板（`ModuleDetailPanel.tsx`）采用**Flex 兄弟节点布局**，不再是悬浮遮罩：
 
+- 与左侧聊天面板、中央画布共同组成一行 Flex 布局。
 - 默认宽度为 `0`，完全收起，不占用画布可视区域。
-- 通过 `isOpen` 控制展开/收起：展开时宽度过渡到 `340px`，同时透明度从 `0` 变为 `1`，形成平滑滑出效果。
-- 面板顶部标题栏右侧提供 **X 关闭按钮**，点击调用 `onClose` 收起抽屉。
+- 通过 `isOpen` 控制展开/收起：展开时宽度过渡到 `340px`，同时透明度从 `0` 变为 `1`，形成平滑滑出效果；收起时宽度回到 `0`。
+- 由于面板是 Flex 节点，中央画布会随其展开/收起而物理挤压/拉伸，配合 `ArchitectureGraph` 中的 `fitView` 监听保证节点始终居中。
 - 点击画布节点时，`App.tsx` 将 `isDetailPanelOpen` 置为 `true` 并填充 `selectedNodeData`；点击画布空白处或关闭按钮时置为 `false`。
 - 展示内容与之前一致：
   - 模块运行状态
@@ -330,42 +341,76 @@ CSM 组件容器：
 顶部状态栏展示：
 
 - 标题
+- “收起/展开 AI 助手”按钮，用于显式控制左侧聊天面板的展开/折叠
 - Controller / Service / Mapper 总数
 - 成功/失败模块数
 - 立即刷新按钮
 
+该按钮与左侧聊天面板标题栏的箭头按钮共享同一状态，确保无论从顶部还是侧边栏操作，面板行为一致。
+
 ### 5.10 `features/agent/components/AgentChatPanel.tsx`
 
-左侧固定宽度的 AI 智能体聊天面板（`400px`），采用 flex 列布局：
+左侧可折叠 AI 智能体聊天面板，展开时固定宽度 `320px`，收起时宽度为 `0`，采用 Flex 列布局：
 
-- **顶部标题区**：展示面板标题与副标题。
+- **顶部标题区**：展示面板标题与副标题；右侧提供收起/展开箭头按钮，点击后通过 `onToggle` 通知父组件切换状态。
 - **中间消息列表**：可滚动，使用 Ant Design X 的 `Bubble.List` 渲染对话。
-  - 用户消息居右（`placement: "end"`），AI 消息居左（`placement: "start"`）。
+  - 用户消息居右（`placement: "end"`），保持填充气泡样式，与 AI 消息形成区分。
+  - AI 消息居左（`placement: "start"`），使用 `variant: "borderless"` 去除背景、边框与阴影，文本直接与面板背景融合，呈现类似 Coze 的文档化排版。
   - AI 消息使用 `@ant-design/x-markdown` 渲染，支持 Markdown、行内代码、代码块语法高亮（`highlight.js` + `marked-highlight`）。
-  - 流式输出时自动追加内容并滚动到底部。
-- **底部输入区**：使用 Ant Design X 的 `Sender` 组件。
-  - `Enter` 发送，`Shift + Enter` 换行。
-  - 请求中显示加载状态，支持点击停止生成。
+  - 流式输出时自动追加内容并滚动到底部；当前正在生成的 AI 消息启用 `streaming={{ hasNextChunk: true, tail: true }}`，实现逐字打字机效果与尾部光标。
+  - 后端在模块生成/修复过程中会持续推送 Markdown 进度文案与最终摘要的字符对分块流，前端将其实时渲染在 borderless AI 气泡中；收到 `pipeline_result` 后自动固化为一条正式聊天记录。
+  - 若检测到 AI 消息内容为未经格式化的原生 JSON（仅针对 `role === "assistant"`），会自动包裹在 ````json` 代码块中渲染，防止直接暴露给用户。
+- **底部输入区**：
+  - 通用问答模式下使用 Ant Design X 的 `Sender` 组件，`Enter` 发送，`Shift + Enter` 换行。
+  - 模块生成模式下底部替换为需求确认卡片，展示问题列表与输入框，用户填写后点击「提交答案」。
+  - 请求中显示加载状态，支持点击停止生成；模块生成过程中同样支持取消。
   - 空消息列表时展示欢迎提示。
 
-**SSE 适配**：
+**统一入口**：
 
-后端 Agent 接口返回 `data: <文本片段>\n\n` 格式的 SSE 流，而非 Vercel AI SDK 的标准数据流协议。`AgentChatPanel.tsx` 通过自定义 `fetch` 将 SSE 转换为纯文本流，再交给 `useChat` 在 `streamMode: "text"` 下消费。
+- 面板统一请求 `/admin/agent/chat`，请求体为 `{ message: "..." }`。
+- 后端先做意图识别：
+  - 通用问答：返回普通文本 SSE 流。
+  - 模块生成任务：返回带标记的自定义事件 `<<<AGENT_EVENT|{"type": "requirements_gathering", ...}|AGENT_EVENT>>>`。
+  - 模块修复任务：返回带标记的自定义事件 `<<<AGENT_EVENT|{"type": "agent_step", ...}|AGENT_EVENT>>>` 与最终的 `<<<AGENT_EVENT|{"type": "pipeline_result", ...}|AGENT_EVENT>>>`。
+- 组件通过 `useEffect` 监听 `useChat` 的 `messages` 数组，解析最后一条 AI 消息中的标记，安全触发模式切换，避免在 `customFetch` 中截断数据流导致 SDK 状态错乱。
+
+**无边框 AI 消息**：
+
+AI 角色气泡通过 `variant: "borderless"` 与自定义 CSS 类 `agent-chat-ai-borderless` 移除背景、边框、阴影与内边距，使生成内容像直接“打印”在聊天区域；用户消息保留原有填充气泡样式，便于区分对话双方。
+
+**执行步骤面板（可折叠）**：
+
+- 当后端推送 `agent_step` 事件时，前端维护一个 `thinkingSteps` 状态数组，按 `id` 去重/更新。
+- 在当前最后一条 AI 消息的 `header` 插槽中渲染灰色圆角折叠面板，顶部 toggle 显示「展开/收起 执行步骤 (已完成数/总数)」。
+- 面板列出每个步骤的图标（⏳/✅/❌）、标题与可选补充信息；用户可随时手动展开/收起。
+- 收到 `pipeline_result` 后，面板自动收起，最终答案已经成为一条 borderless AI 聊天记录。
+
+**模块生成实时流（打字机效果）**：
+
+- 需求确认后，前端调用 `/admin/agent/sessions/{session_id}/generate`。
+- 不再一次性缓冲完整响应，而是使用 `ReadableStream` + `TextDecoder` 逐帧解析 SSE。
+- 后端现在会混合输出两类帧：
+  - `agent_step` 自定义事件：更新执行步骤面板。
+  - 普通 Markdown 文本帧：问候语、步骤完成文案、以及按字符对分块推送的最终 Markdown 摘要。
+- 普通文本帧追加到 `generatingText`，由 key 为 `"generating"` 的 AI 气泡通过 `XMarkdown` 的 `streaming` 能力实时渲染，产生真正的打字机效果。
+- 当 `pipeline_result` 事件到达时，前端把已渲染的 `generatingText` 固化为一条正式 assistant 消息，清空生成状态，避免与聊天内容重复。
+- 通过 `AbortController` 支持用户在生成过程中点击取消按钮中止流式消费。
 
 **请求体适配**：
 
-`useChat` 默认发送 `{ messages: [...] }`，但后端期望 `{ task: "..." }`。通过 `experimental_prepareRequestBody` 将最后一条用户消息内容映射为 `task` 字段：
+`useChat` 默认发送 `{ messages: [...] }`，但后端期望 `{ message: "..." }`。通过 `experimental_prepareRequestBody` 将最后一条用户消息内容映射为 `message` 字段：
 
 ```typescript
 experimental_prepareRequestBody: ({ messages: chatMessages }) => {
   const lastMessage = chatMessages[chatMessages.length - 1];
-  return { task: lastMessage?.content || "" };
+  return { message: lastMessage?.content || "" };
 },
 ```
 
-**工具调用进度块**：
+**SSE 适配**：
 
-当后端返回 `> 🛠️ 正在执行: [tool_name]...\n\n` 等 Markdown 引用块时，`agent-chat.css` 会将其渲染为蓝色高亮任务进度条，便于用户感知 Agent 正在调用工具。
+后端 Agent 接口返回 `data: <文本片段>\n\n` 格式的 SSE 流，而非 Vercel AI SDK 的标准数据流协议。`AgentChatPanel.tsx` 通过自定义 `fetch` 将 SSE 转换为纯文本流，再交给 `useChat` 在 `streamMode: "text"` 下消费。`agent_step` 等自定义事件标记会透传到 `messages` 中，由组件统一解析并路由到执行步骤面板，不会直接渲染在 Markdown 内容里。
 
 **错误处理**：
 
@@ -389,34 +434,47 @@ http://localhost:8000/admin/kernel/cheat-sheet
 
 ### 6.2 跨域说明
 
-后端 `paas_core/server/system_server.py` 已配置 `CORSMiddleware`，允许 `http://localhost:5173` 访问。若前端部署到其他域名，请同步修改后端 `allow_origins`。
+后端 `paas_core/server/system_server.py` 已配置 `CORSMiddleware`，默认允许 `http://localhost:5173` 访问。若前端部署到其他域名，可通过环境变量 `PAA_DASHBOARD_ORIGINS` 传入额外的允许来源（多个用逗号分隔），例如：
+
+```bash
+PAA_DASHBOARD_ORIGINS="http://localhost:5173,http://localhost:59615" python main.py
+```
+
+修改后请重启后端生效。
 
 ### 6.3 Agent 接口（智能体聊天面板）
 
-左侧 `AgentChatPanel` 通过以下接口与后端 LangGraph Agent 交互：
+左侧 `AgentChatPanel` 通过统一入口与后端 LangGraph Agent 交互：
 
 ```text
-POST http://localhost:8000/admin/agent/generate
+POST http://localhost:8000/admin/agent/chat
 ```
 
 请求体示例：
 
 ```json
-{"task": "创建用户模块"}
+{"message": "创建用户模块"}
 ```
 
-响应为 SSE 流，每帧格式为：
+响应为 SSE 流，每帧格式为 `data: <文本>\n\n`。前端将其转换为纯文本流，供 Vercel AI SDK `useChat` 消费，实现逐字显示。
 
-```text
-data: 这是第一段生成内容
+根据后端意图识别结果，面板会自动切换为两种模式：
 
-data: 这是第二段生成内容
+1. **通用问答模式**：后端返回自然语言文本流，直接渲染为 Markdown 气泡。
+2. **模块生成模式**：后端返回自定义事件 `<<<AGENT_EVENT|{"type": "requirements_gathering", ...}|AGENT_EVENT>>>`，前端识别后展示需求收集卡片，引导用户回答澄清问题。需求确认后再调用 `/admin/agent/sessions/{session_id}/generate` 触发代码生成流水线。流水线执行过程中会不断返回 `<<<AGENT_EVENT|{"type": "agent_step", ...}|AGENT_EVENT>>>` 事件，前端将其渲染为可折叠的“执行步骤”面板；同时后端会以字符对分块流式推送 Markdown 进度文案与最终摘要，前端在 borderless AI 气泡中实时渲染出打字机效果。最终通过 `<<<AGENT_EVENT|{"type": "pipeline_result", ...}|AGENT_EVENT>>>` 事件固化为一条正式聊天记录。
 
-```
+SSE 事件说明：
 
-前端将其转换为纯文本流，供 Vercel AI SDK `useChat` 消费，实现逐字显示。
+| 事件来源 | SSE 数据示例 | 含义 |
+|----------|--------------|------|
+| 通用问答 | `data: 你好！有什么可以帮你的吗？\n\n` | `/admin/agent/chat` 识别为闲聊时，直接返回自然语言文本 |
+| 需求收集 | `data: <<<AGENT_EVENT|{"type": "requirements_gathering", "payload": {"session_id": "...", "questions": [...]}}|AGENT_EVENT>>>\n\n` | `/admin/agent/chat` 识别为模块生成任务时，返回自定义事件，前端切换为需求收集模式 |
+| 执行步骤 | `data: <<<AGENT_EVENT|{"type": "agent_step", "payload": {"id": "step-architect", "status": "running", "title": "设计模块架构", "detail": "..."}}|AGENT_EVENT>>>\n\n` | 流水线执行到某节点或工具调用时推送，前端渲染为可折叠执行步骤面板 |
+| 进度文案 | `data: ✅ **设计模块架构完成** — 模块名 user_module，API 前缀 /api/users\n\n` | 每个步骤完成后以 Markdown 文本帧推送，实时出现在 AI 消息中 |
+| 最终摘要 | `data: ## 模块生成完成\n\n- **模块名**：user_module\n...` | 最终结果以字符对分块流式推送，形成打字机效果 |
+| 流水线结束 | `data: <<<AGENT_EVENT|{"type": "pipeline_result", "payload": {"status": "deployed", ...}}|AGENT_EVENT>>>\n\n` | 结构化结果事件，前端收到后固化为聊天记录并收起步骤面板，不直接渲染 JSON |
 
-该接口会根据自然语言任务自动生成 CSM 插件代码、执行安全检查并重载内核。生成结果会实时展示在左侧聊天面板中。
+该接口会根据自然语言任务自动生成 CSM 插件代码、执行安全检查并重载内核。成功后可在 8001 服务口调用对应的业务接口。
 
 ### 6.4 作弊纸数据结构
 
@@ -596,10 +654,16 @@ useEffect(() => {
 
 ### Q6: 智能体聊天面板没有响应或报错
 
-1. 确认后端 `admin/agent/generate` 接口已启动：`curl -X POST http://localhost:8000/admin/agent/generate -H "Content-Type: application/json" -d '{"task":"hello"}'`。
+1. 确认后端 `/admin/agent/chat` 接口已启动：
+   ```bash
+   curl -N -X POST http://localhost:8000/admin/agent/chat \
+     -H "Content-Type: application/json" \
+     -d '{"message":"你好"}'
+   ```
 2. 检查浏览器控制台是否有 CORS 错误，确认后端 `allow_origins` 包含前端地址。
-3. 该接口返回 SSE 流，格式需为 `data: <文本>\n\n`；若后端输出格式变更，需同步调整 `AgentChatPanel.tsx` 中的 `customFetch` 解析逻辑。
+3. 该接口返回 SSE 流，通用文本格式为 `data: <文本>\n\n`；模块生成任务会返回带标记的自定义事件 `<<<AGENT_EVENT|...|AGENT_EVENT>>>`。若后端输出格式变更，需同步调整 `AgentChatPanel.tsx` 中的标记解析逻辑。
 4. 即使架构画布加载失败，聊天面板仍可独立使用（`App.tsx` 中两者已解耦）。
+5. 若控制台持续报 `/admin/kernel/cheat-sheet` 连接错误，说明后端未启动或网络不通；`useCheatSheet` 已做静默退避处理，不会刷屏。
 
 ---
 

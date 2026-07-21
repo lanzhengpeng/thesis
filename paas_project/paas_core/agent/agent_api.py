@@ -11,14 +11,19 @@ Agent 管理接口
 
 from __future__ import annotations
 
+from typing import AsyncIterator
+
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from paas_core.kernel.microkernel import MicroKernel
 
-from .agents.requirements_agent import _default_requirements_doc, _extract_module_name
+from .agents.requirements_agent import _default_requirements_doc, _extract_module_name, generate_first_questions
+from .llm_utils import GENERAL_CHAT_SYSTEM_PROMPT, classify_intent, stream_llm_text
 from .pipeline import stream_pipeline
+from .repair_pipeline import stream_repair_pipeline
+from .schemas import wrap_agent_event
 from .session_api import create_session_router
 from .session_store import create_session, update_session
 
@@ -40,6 +45,12 @@ class AgentTaskResponse(BaseModel):
     checks: dict
     reload_report: dict
     logs: list
+
+
+class ChatRequest(BaseModel):
+    """通用智能体聊天请求体。"""
+
+    message: str
 
 
 def create_agent_router(kernel: MicroKernel) -> APIRouter:
@@ -92,6 +103,102 @@ def create_agent_router(kernel: MicroKernel) -> APIRouter:
         return StreamingResponse(
             stream_pipeline(kernel, session_id, task, requirements_doc),
             media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "X-Accel-Buffering": "no",
+            },
+        )
+
+    @router.post("/chat")
+    async def chat(req: ChatRequest):
+        """
+        通用智能体统一入口：先做意图识别，再分发到通用问答或多轮需求流程。
+
+        请求体：
+            {"message": "你好"}
+
+        返回：
+            SSE 流（media_type="text/event-stream"）。
+            - 通用问答：直接返回大模型文本流。
+            - 模块生成任务：返回一条带标记的自定义事件
+              `<<<AGENT_EVENT|{"type": "requirements_gathering", ...}|AGENT_EVENT>>>`，
+              前端识别后切换为需求收集模式。
+        """
+        if not req.message or not req.message.strip():
+            raise HTTPException(status_code=400, detail="message 不能为空")
+
+        message = req.message.strip()
+        intent = classify_intent(message)
+
+        if intent == "module_generation":
+            result = generate_first_questions(message)
+            questions = result.get("questions") or []
+            requirements_doc = result.get("requirements_doc") or _default_requirements_doc(message)
+            confirmed = bool(result.get("confirmed"))
+            if confirmed:
+                requirements_doc["confirmed"] = True
+
+            session_id = create_session(message, questions)
+            update_session(
+                session_id,
+                questions=questions,
+                requirements_doc=requirements_doc,
+                status="requirements_confirmed" if confirmed else "requirements_gathering",
+                logs=[f"意图识别为模块生成，创建会话，任务: {message}"],
+            )
+
+            async def requirements_event_stream() -> AsyncIterator[str]:
+                yield "data: 好的，我先来确认一下需求细节。\n\n"
+                payload = {
+                    "session_id": session_id,
+                    "task": message,
+                    "questions": questions,
+                    "requirements_doc": requirements_doc,
+                }
+                yield f"data: {wrap_agent_event('requirements_gathering', payload)}\n\n"
+
+            return StreamingResponse(
+                requirements_event_stream(),
+                media_type="text/event-stream",
+                headers={
+                    "Cache-Control": "no-cache",
+                    "Connection": "keep-alive",
+                    "X-Accel-Buffering": "no",
+                },
+            )
+
+        if intent == "module_modification":
+            session_id = create_session(message)
+            update_session(
+                session_id,
+                status="repairing",
+                logs=[f"意图识别为模块修复，创建会话，任务: {message}"],
+            )
+
+            return StreamingResponse(
+                stream_repair_pipeline(kernel, session_id, message),
+                media_type="text/event-stream",
+                headers={
+                    "Cache-Control": "no-cache",
+                    "Connection": "keep-alive",
+                    "X-Accel-Buffering": "no",
+                },
+            )
+
+        # 通用问答：流式调用大模型
+        async def general_chat_stream() -> AsyncIterator[str]:
+            async for chunk in stream_llm_text(GENERAL_CHAT_SYSTEM_PROMPT, message):
+                yield f"data: {chunk}\n\n"
+
+        return StreamingResponse(
+            general_chat_stream(),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "X-Accel-Buffering": "no",
+            },
         )
 
     return router

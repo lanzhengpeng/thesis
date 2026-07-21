@@ -1,5 +1,74 @@
 /* AgentChatPanel 专用样式：优化 Markdown 工具调用引用块 */
 
+.agent-chat-ai-borderless {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  line-height: 1.6 !important;
+}
+
+.agent-chat-thinking-panel {
+  margin-bottom: 4px;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.agent-chat-thinking-toggle {
+  width: 100%;
+  padding: 6px 10px;
+  font-size: 11px;
+  color: #475569;
+  background: transparent;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+}
+
+.agent-chat-thinking-toggle:hover {
+  background: #e2e8f0;
+}
+
+.agent-chat-thinking-list {
+  padding: 4px 10px 8px;
+}
+
+.agent-chat-thinking-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: #64748b;
+  margin-bottom: 3px;
+}
+
+.agent-chat-thinking-item--error {
+  color: #991b1b;
+}
+
+.agent-chat-thinking-icon {
+  flex-shrink: 0;
+  width: 14px;
+  text-align: center;
+}
+
+.agent-chat-thinking-title {
+  flex: 1 1 auto;
+}
+
+.agent-chat-thinking-detail {
+  flex-shrink: 0;
+  color: #94a3b8;
+  margin-left: auto;
+  max-width: 55%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 10px;
+}
+
 .agent-chat-markdown blockquote {
   margin: 8px 0;
   padding: 10px 14px;

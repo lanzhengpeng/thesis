@@ -11,7 +11,7 @@
 
 from __future__ import annotations
 
-import json
+import uuid
 from typing import Any, AsyncIterator, Dict, Optional
 
 from langgraph.graph import END, StateGraph
@@ -24,8 +24,18 @@ from .agents import (
     run_requirements_node,
     run_reviewer_deployer_node,
 )
-from .schemas import PipelineState
+from .formatting import format_pipeline_markdown, sse_text_frame, stream_text_chunks
+from .schemas import PipelineState, wrap_agent_event
 from .session_store import update_session
+
+
+_STEP_TITLES = {
+    "requirements": "确认需求",
+    "architect": "设计模块架构",
+    "generator": "生成 CSM 代码",
+    "reviewer": "审查与部署模块",
+    "finalize": "整理生成结果",
+}
 
 
 def _node_requirements(state: PipelineState, kernel: MicroKernel) -> Dict[str, Any]:
@@ -166,10 +176,10 @@ async def stream_pipeline(
 
     遍历 ``graph.astream_events(initial_state, version="v2")`` 产生的事件：
 
-    - ``on_chat_model_stream``: 将模型输出块实时推送给前端，实现打字机效果。
-    - ``on_tool_start``: 向前端发送 Markdown 引用形式的工具执行提示。
+    - ``on_chain_start`` / ``on_chain_end``: 向前端发送步骤事件与 Markdown 进度文案。
+    - ``on_tool_start``: 向前端发送工具执行提示。
     - ``on_tool_end``: 不推送，工具结果保留在 LangGraph 状态流中供后续节点使用。
-    - 流水线结束后：将最终结果写入会话并推送一份 JSON 总结。
+    - 流水线结束后：先以字符对分块流式推送最终 Markdown 摘要，再推送 ``pipeline_result`` 结构化事件。
 
     参数：
         kernel: 微内核实例。
@@ -198,26 +208,73 @@ async def stream_pipeline(
     final_result: Dict[str, Any] = {}
     error_message: Optional[str] = None
 
+    yield sse_text_frame("收到，我开始生成模块...\n")
+
     try:
         async for event in graph.astream_events(initial_state, version="v2"):
             event_type = event.get("event")
-            if event_type == "on_chat_model_stream":
-                chunk = event.get("data", {}).get("chunk")
-                text = getattr(chunk, "content", None)
-                if text:
-                    yield f"data: {text}\n\n"
+            name = event.get("name", "")
+
+            if event_type == "on_chain_start" and name in _STEP_TITLES:
+                yield f"data: {wrap_agent_event('agent_step', {
+                    'id': f'step-{name}',
+                    'status': 'running',
+                    'title': _STEP_TITLES[name],
+                    'detail': '',
+                })}\n\n"
+
+            elif event_type == "on_chain_end" and name in _STEP_TITLES:
+                detail = ""
+                output = event.get("data", {}).get("output", {})
+                if name == "architect":
+                    arch = output.get("architecture_doc") or {}
+                    detail = f"模块名: {arch.get('module_name', '')}, API 前缀: {arch.get('api_prefix', '')}"
+                elif name == "generator":
+                    files = output.get("files") or {}
+                    detail = f"生成文件: {', '.join(files.keys())}"
+                elif name == "reviewer":
+                    status = output.get("status", "")
+                    written = output.get("written") or []
+                    detail = f"状态: {status}"
+                    if written:
+                        detail += f", 写入: {', '.join(written)}"
+                yield f"data: {wrap_agent_event('agent_step', {
+                    'id': f'step-{name}',
+                    'status': 'done',
+                    'title': f"{_STEP_TITLES[name]}完成",
+                    'detail': detail,
+                })}\n\n"
+                yield sse_text_frame(f"✅ **{_STEP_TITLES[name]}完成** — {detail}\n")
+
             elif event_type == "on_tool_start":
                 tool_name = event.get("name", "unknown_tool")
-                yield f"data: \n> 🛠️ 正在执行: {tool_name}...\n\n"
+                yield f"data: {wrap_agent_event('agent_step', {
+                    'id': f'tool-{tool_name}-{uuid.uuid4().hex[:6]}',
+                    'status': 'running',
+                    'title': f"执行工具: {tool_name}",
+                    'detail': '',
+                })}\n\n"
+
             elif event_type == "on_tool_end":
                 # 工具结果已通过 LangGraph 状态流转到后续节点，无需再发给前端。
                 pass
-            elif event_type == "on_chain_end" and event.get("name") == "finalize":
+
+            elif event_type == "on_chat_model_stream":
+                # 模块生成流水线的模型输出（架构 JSON、代码片段等）不适合直接作为聊天文本展示，
+                # 避免把 call_graph、脏 JSON 等内部数据暴露给用户。进度感知通过 agent_step 实现。
+                pass
+
+            elif event_type == "on_chain_end" and name == "finalize":
                 output = event.get("data", {}).get("output", {})
                 final_result = output.get("result", {})
     except Exception as exc:  # pragma: no cover
         error_message = str(exc)
-        yield f"data: \n> ❌ 流水线执行出错: {exc}\n\n"
+        yield f"data: {wrap_agent_event('agent_step', {
+            'id': 'step-error',
+            'status': 'error',
+            'title': '流水线执行出错',
+            'detail': error_message,
+        })}\n\n"
 
     if error_message:
         update_session(
@@ -225,7 +282,8 @@ async def stream_pipeline(
             status="stream_failed",
             logs=[f"流式执行失败: {error_message}"],
         )
-        yield f"data: {json.dumps({'status': 'stream_failed', 'error': error_message}, ensure_ascii=False)}\n\n"
+        yield sse_text_frame(f"❌ **流水线执行出错**：{error_message}\n")
+        yield f"data: {wrap_agent_event('pipeline_result', {'status': 'stream_failed', 'error': error_message})}\n\n"
         return
 
     if final_result:
@@ -240,4 +298,7 @@ async def stream_pipeline(
             logs=final_result.get("logs"),
             result=final_result,
         )
-        yield f"data: {json.dumps(final_result, ensure_ascii=False)}\n\n"
+        summary = format_pipeline_markdown(final_result, title="模块生成完成")
+        async for frame in stream_text_chunks(summary, chunk_size=2, delay=0.002):
+            yield frame
+        yield f"data: {wrap_agent_event('pipeline_result', final_result)}\n\n"

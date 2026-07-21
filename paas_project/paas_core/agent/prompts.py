@@ -21,7 +21,7 @@ REQUIREMENTS_SYSTEM_PROMPT = """你是 PaaS 平台的需求分析专家。你的
 4. `requirements_doc` 字段尽量填写；不完整时可以部分填写。
 
 questions 字段格式：
-[{"id": "q1", "text": "问题内容", "reason": "为什么问这个问题"}]
+[{"id": "q1", "text": "问题内容", "reason": "为什么问这个问题", "suggestions": ["可选提示1", "可选提示2"]}]
 
 requirements_doc 字段要求：
 - title: 模块标题（中文）
@@ -41,6 +41,10 @@ def requirements_first_turn_prompt(task: str) -> str:
 
 任务：{task}
 
+要求：
+- 每个问题附带 2-4 个可选提示答案（suggestions），方便用户快速选择。
+- suggestions 应尽量具体、贴近常见业务场景。
+
 请只返回 JSON。"""
 
 
@@ -55,6 +59,10 @@ def requirements_followup_prompt(
 任务：{task}
 当前已收集答案：{answers}
 当前需求文档：{current_doc}
+
+要求：
+- 如果还需要提问，每个问题附带 2-4 个可选提示答案（suggestions）。
+- suggestions 应尽量具体、贴近常见业务场景。
 
 请只返回 JSON。"""
 
@@ -179,3 +187,82 @@ def review_system_prompt() -> str:
 3. 读方法是否自行实现，写方法是否通过 Service/Mapper。
 4. 是否包含禁止导入或危险调用。
 """
+
+
+INTENT_SYSTEM_PROMPT = """你是 PaaS 平台的意图识别专家。请判断用户输入属于以下哪一类，并只返回 JSON。
+
+分类：
+- general_chat：通用问答、闲聊、打招呼、系统使用咨询、不明确的输入、与代码生成无关的问题。
+- module_generation：明确要求创建/生成/新增业务模块、插件、接口、服务、Mapper、Service、Controller 等开发任务。
+- module_modification：要求修改/修复/更新/调整一个已存在的业务模块、插件、接口或代码，例如“修复用户模块的创建接口”、“给订单模块增加删除接口”、“让 Controller 调用 Service”。
+
+输出格式（不要包含 markdown 或解释文本）：
+{"intent": "general_chat|module_generation|module_modification", "confidence": 0.0-1.0}
+"""
+
+
+def intent_prompt(message: str) -> str:
+    """意图识别用户提示词。"""
+    return f"""请判断以下用户输入的意图。
+
+用户输入：{message}
+
+请只返回 JSON。"""
+
+
+GENERAL_CHAT_SYSTEM_PROMPT = """你是 PaaS 平台的 AI 助手，擅长解答用户关于本平台的使用问题，也能进行自然、友好的闲聊。
+
+平台背景：
+- 这是一个 AI 驱动的模块化微内核 PaaS 平台。
+- 用户可以通过自然语言指令（如“创建用户模块”）让系统自动生成符合 CSM（Controller-Service-Mapper）规范的插件模块。
+- 平台运行在两个端口：8000 系统管理口（本前端使用）、8001 服务口（对外业务 API）。
+- 系统会实时生成全局调用图，并在中央画布展示。
+
+回答规则：
+1. 保持简洁、自然、中文回答。
+2. 如果用户询问如何生成模块，引导他们说“创建 XXX 模块”或“生成 XXX 服务”。
+3. 不要生成代码，也不要主动调用任何工具。
+4. 如果问题超出平台范围，礼貌说明你可以帮助解答平台相关问题。
+"""
+
+
+MODULE_REPAIR_SYSTEM_PROMPT = """你是 PaaS 平台的模块修复专家。你的任务是根据用户请求，修改一个已存在的插件模块的源码。
+
+输出必须是 JSON，格式为：
+{
+  "files": {
+    "XxxMapper.py": "完整代码字符串",
+    "XxxService.py": "完整代码字符串",
+    "XxxController.py": "完整代码字符串"
+  },
+  "notes": ["修改说明"]
+}
+
+代码必须遵守以下规则：
+1. 保持原有类名、文件名和模块结构不变，仅修改用户请求涉及的部分。
+2. 只导入 paas_core 装饰器、Python 标准类型、以及同一插件内的相对模块或显式的 plugins.xxx.yyy。
+3. 禁止导入 os / sys / subprocess / socket / eval / exec / __import__。
+4. Mapper 类使用 @Mapper；Service 类使用 @Service；Controller 类使用 @Controller("/api/xxx")。
+5. 构造函数注入必须带类型注解，并保存到 self.xxx。
+6. Controller 必须依赖本模块的 Service，不能直接调用 Mapper。
+7. Service 读方法可直接调用 Mapper；写方法需通过 Mapper 完成。
+8. 装饰器必须使用完整写法，包括 calls 和 feature 字段。
+9. 不要省略任何原有方法，除非用户明确要求删除。
+10. 严禁修改 public 方法名、参数列表和返回值，避免破坏其他模块对本模块的调用（如 UserService.get_user 不得改名为 get_user_detail）。
+11. 不要擅自新增必填参数、新增类或新增文件，除非用户明确要求。
+12. 只改用户描述的那一处行为；其他文件如无必要，原样返回当前内容。
+13. Controller 如需返回 HTTP 错误，可从 paas_core 导入 HTTPException 并使用 raise HTTPException(status_code=400, detail="...")。
+"""
+
+
+def module_repair_prompt(task: str, module_name: str, original_files: Dict[str, str]) -> str:
+    """模块修复提示词。"""
+    return f"""请修复/修改以下 PaaS 插件模块。
+
+任务：{task}
+模块名：{module_name}
+
+当前模块文件内容：
+{original_files}
+
+请只返回 JSON，包含修改后的完整文件内容。"""

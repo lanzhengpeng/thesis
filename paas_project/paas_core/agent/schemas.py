@@ -9,7 +9,17 @@
 
 from __future__ import annotations
 
+import json
 from typing import Any, Dict, List, Optional, TypedDict
+
+
+AGENT_EVENT_MARKER = "<<<AGENT_EVENT|{content}|AGENT_EVENT>>>"
+
+
+def wrap_agent_event(event_type: str, payload: dict) -> str:
+    """把自定义事件包装成带标记的 SSE 文本帧。"""
+    content = json.dumps({"type": event_type, "payload": payload}, ensure_ascii=False)
+    return AGENT_EVENT_MARKER.format(content=content)
 
 
 class RequirementsDoc(TypedDict, total=False):

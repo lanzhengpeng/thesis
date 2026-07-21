@@ -95,7 +95,7 @@ def _render_mapper(arch: ArchitectureDoc) -> str:
         else:
             params_decl = ", ".join(f"{p}: str" for p in params)
             lines.extend([
-                f'    @sql_operation(sql="{sql or 'SELECT 1'}", params={params!r}, feature="{feature}")',
+                f'    @sql_operation(sql="{sql or "SELECT 1"}", params={params!r}, feature="{feature}")',
                 f"    def {name}(self, {params_decl}):",
                 f'        """{feature}。"""',
                 "        pass",

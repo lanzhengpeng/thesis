@@ -86,12 +86,8 @@ def run_service_server() -> None:
     def _on_plugin_changed(plugin_name: str, event_type: str) -> None:
         print(f"\n[服务口] 检测到插件变更: {plugin_name} ({event_type})，正在热更新...")
         try:
-            # 优先尝试按插件重载；若插件是全新创建的，则回退到完整重启
-            plugin_dir = kernel.plugins_dir / plugin_name
-            if plugin_dir.exists() and plugin_name in kernel.get_loaded_modules():
-                report = kernel.reload_plugin(plugin_name)
-            else:
-                report = kernel.reboot()
+            # 使用完整重启而非单插件重载，确保跨模块依赖重新解析
+            report = kernel.reboot()
 
             if report.failed:
                 failed_names = [name for name, _, _ in report.failed]

@@ -168,6 +168,11 @@ def create_session_router(kernel: MicroKernel) -> APIRouter:
                 requirements_doc,
             ),
             media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "X-Accel-Buffering": "no",
+            },
         )
 
     return router
