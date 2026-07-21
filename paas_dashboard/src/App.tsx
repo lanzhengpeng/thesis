@@ -4,10 +4,16 @@ import type { ModuleNodeData } from "./features/architecture";
 import { StatusHeader } from "./components/StatusHeader";
 import { useCheatSheet } from "./hooks/useCheatSheet";
 
+export interface SelectedMethod {
+  componentId: string;
+  methodName: string;
+}
+
 function App() {
   const { data, loading, error, refetch } = useCheatSheet();
   const [selectedModule, setSelectedModule] = useState<ModuleNodeData | null>(null);
   const [selectedComponentId, setSelectedComponentId] = useState<string | null>(null);
+  const [selectedMethod, setSelectedMethod] = useState<SelectedMethod | null>(null);
 
   if (!data && loading) {
     return (
@@ -73,14 +79,24 @@ function App() {
           onSelectModule={(moduleData) => {
             setSelectedModule(moduleData);
             setSelectedComponentId(null);
+            setSelectedMethod(null);
           }}
-          onSelectComponent={setSelectedComponentId}
+          onSelectComponent={(componentId) => {
+            setSelectedComponentId(componentId);
+            setSelectedMethod(null);
+          }}
+          onSelectMethod={({ componentId, methodName }) => {
+            setSelectedMethod({ componentId, methodName });
+            setSelectedComponentId(null);
+          }}
         />
         <ModuleDetailPanel
           data={selectedModule}
           components={data.components}
           selectedComponentId={selectedComponentId}
+          selectedMethod={selectedMethod}
           onSelectComponent={setSelectedComponentId}
+          onSelectMethod={setSelectedMethod}
         />
       </div>
     </div>

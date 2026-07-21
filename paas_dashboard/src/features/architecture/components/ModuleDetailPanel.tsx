@@ -1,19 +1,23 @@
 import type { ModuleNodeData } from "../lib/graphBuilder";
-import type { CheatSheetComponentItem } from "../../../types/cheatSheet";
+import type { CheatSheetComponentItem, CheatSheetMethodItem } from "../../../types/cheatSheet";
 import { parseComponentEntry } from "../lib/graphBuilder";
 
 interface ModuleDetailPanelProps {
   data: ModuleNodeData | null;
   components?: CheatSheetComponentItem[];
   selectedComponentId?: string | null;
+  selectedMethod?: { componentId: string; methodName: string } | null;
   onSelectComponent?: (componentId: string) => void;
+  onSelectMethod?: (method: { componentId: string; methodName: string } | null) => void;
 }
 
 export function ModuleDetailPanel({
   data,
   components = [],
   selectedComponentId,
+  selectedMethod,
   onSelectComponent,
+  onSelectMethod,
 }: ModuleDetailPanelProps) {
   if (!data) {
     return (
@@ -33,8 +37,26 @@ export function ModuleDetailPanel({
       )
     : undefined;
 
+  const selectedMethodComponent = selectedMethod
+    ? components.find(
+        (c) =>
+          selectedMethod.componentId === `${c.module}::${c.type}::${c.name}`
+      )
+    : undefined;
+  const selectedMethodInfo = selectedMethodComponent
+    ? selectedMethodComponent.methods.find((m) => m.name === selectedMethod?.methodName)
+    : undefined;
+
   return (
     <div style={panelStyle}>
+      {selectedMethod && selectedMethodInfo && selectedMethodComponent && !isFailed && (
+        <MethodDetail
+          method={selectedMethodInfo}
+          component={selectedMethodComponent}
+          onBack={() => onSelectMethod?.(null)}
+        />
+      )}
+
       {selectedComponent && !isFailed && (
         <ComponentDetail
           component={selectedComponent}
@@ -177,6 +199,129 @@ export function ModuleDetailPanel({
             {data.error}
           </div>
         </Section>
+      )}
+    </div>
+  );
+}
+
+function MethodDetail({
+  method,
+  component,
+  onBack,
+}: {
+  method: CheatSheetMethodItem;
+  component: CheatSheetComponentItem;
+  onBack: () => void;
+}) {
+  return (
+    <div
+      style={{
+        marginBottom: 20,
+        padding: 12,
+        borderRadius: 8,
+        background: "#f8fafc",
+        border: "1px solid #e2e8f0",
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          marginBottom: 10,
+        }}
+      >
+        <h4 style={{ margin: 0, color: "#0f172a", fontSize: 16 }}>
+          {method.feature || method.name}
+        </h4>
+        <button
+          onClick={onBack}
+          style={{
+            fontSize: 12,
+            padding: "4px 10px",
+            borderRadius: 4,
+            border: "1px solid #cbd5e1",
+            background: "#ffffff",
+            cursor: "pointer",
+          }}
+        >
+          返回模块
+        </button>
+      </div>
+
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
+        <Badge color={typeColor(component.type)}>{component.type}</Badge>
+        <Badge color="#64748b">{component.module}</Badge>
+        <Badge color="#3b82f6">{component.name}</Badge>
+      </div>
+
+      {component.type === "controller" && method.http_method && (
+        <div
+          style={{
+            display: "flex",
+            gap: 8,
+            alignItems: "center",
+            marginBottom: 12,
+            fontSize: 12,
+          }}
+        >
+          <span
+            style={{
+              fontWeight: 700,
+              color: "#fff",
+              background: methodColor(method.http_method),
+              padding: "2px 6px",
+              borderRadius: 4,
+            }}
+          >
+            {method.http_method}
+          </span>
+          <span style={{ fontFamily: "monospace", color: "#334155" }}>{method.path}</span>
+        </div>
+      )}
+
+      <DetailTable
+        title="方法签名"
+        columns={["名称", "类型"]}
+        rows={[[method.name, component.type]]}
+      />
+
+      {method.params.length > 0 && (
+        <DetailTable
+          title="参数"
+          columns={["参数名"]}
+          rows={method.params.map((p) => [p])}
+        />
+      )}
+
+      {method.calls.length > 0 && (
+        <DetailTable
+          title="下游调用"
+          columns={["目标"]}
+          rows={method.calls.map((c) => [c])}
+        />
+      )}
+
+      {method.sql && (
+        <div style={{ marginTop: 12 }}>
+          <h5 style={{ margin: "0 0 6px 0", fontSize: 13, color: "#0f172a" }}>SQL</h5>
+          <pre
+            style={{
+              margin: 0,
+              padding: 10,
+              borderRadius: 6,
+              background: "#f1f5f9",
+              fontSize: 12,
+              fontFamily: "monospace",
+              color: "#334155",
+              overflowX: "auto",
+              whiteSpace: "pre-wrap",
+              wordBreak: "break-all",
+            }}
+          >
+            {method.sql}
+          </pre>
+        </div>
       )}
     </div>
   );

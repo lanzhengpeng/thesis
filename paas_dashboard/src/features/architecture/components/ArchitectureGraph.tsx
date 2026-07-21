@@ -39,6 +39,7 @@ interface ArchitectureGraphProps {
   data: CheatSheetResponse;
   onSelectModule: (data: ModuleNodeData) => void;
   onSelectComponent: (componentId: string) => void;
+  onSelectMethod?: (method: { componentId: string; methodName: string }) => void;
 }
 
 function getParentModuleId(node: Node, nodeMap: Map<string, Node>): string | null {
@@ -57,7 +58,12 @@ function getParentModuleId(node: Node, nodeMap: Map<string, Node>): string | nul
   return null;
 }
 
-export function ArchitectureGraph({ data, onSelectModule, onSelectComponent }: ArchitectureGraphProps) {
+export function ArchitectureGraph({
+  data,
+  onSelectModule,
+  onSelectComponent,
+  onSelectMethod,
+}: ArchitectureGraphProps) {
   const { nodes: initialNodes, edges: initialEdges } = useMemo(
     () => buildGraph(data.call_graph, data.modules, data.api_map, data.components),
     [data]
@@ -70,6 +76,7 @@ export function ArchitectureGraph({ data, onSelectModule, onSelectComponent }: A
   const hoveredNodeIdRef = useRef<string | null>(null);
   const selectedModuleIdRef = useRef<string | null>(null);
   const selectedComponentIdRef = useRef<string | null>(null);
+  const selectedMethodRef = useRef<{ componentId: string; methodName: string } | null>(null);
 
   const defaultNodeZIndexMap = useMemo(() => {
     const map = new Map<string, number>();
@@ -84,6 +91,7 @@ export function ArchitectureGraph({ data, onSelectModule, onSelectComponent }: A
     hoveredNodeIdRef.current = null;
     selectedModuleIdRef.current = null;
     selectedComponentIdRef.current = null;
+    selectedMethodRef.current = null;
   }, [initialNodes, initialEdges, setNodes, setEdges]);
 
   // 状态 1：默认基准状态（Mouse Leave 恢复状态）
@@ -289,23 +297,33 @@ export function ArchitectureGraph({ data, onSelectModule, onSelectComponent }: A
     (node: Node) => {
       if (node.type === "method" && node.data) {
         const methodData = node.data as MethodNodeData;
-        if (selectedComponentIdRef.current !== methodData.componentId) {
-          selectedComponentIdRef.current = methodData.componentId;
-          onSelectComponent(methodData.componentId);
+        const next = { componentId: methodData.componentId, methodName: methodData.name };
+        if (
+          selectedMethodRef.current?.componentId !== next.componentId ||
+          selectedMethodRef.current?.methodName !== next.methodName
+        ) {
+          selectedMethodRef.current = next;
+          selectedComponentIdRef.current = null;
+          selectedModuleIdRef.current = null;
+          onSelectMethod?.(next);
         }
       } else if (node.type === "component" && node.id) {
         if (selectedComponentIdRef.current !== node.id) {
           selectedComponentIdRef.current = node.id;
+          selectedMethodRef.current = null;
+          selectedModuleIdRef.current = null;
           onSelectComponent(node.id);
         }
       } else if ((node.type === "module" || node.type === "failedModule") && node.data) {
         if (selectedModuleIdRef.current !== node.id) {
           selectedModuleIdRef.current = node.id;
+          selectedComponentIdRef.current = null;
+          selectedMethodRef.current = null;
           onSelectModule(node.data as ModuleNodeData);
         }
       }
     },
-    [onSelectComponent, onSelectModule]
+    [onSelectComponent, onSelectMethod, onSelectModule]
   );
 
   const onNodeMouseEnter = useCallback(

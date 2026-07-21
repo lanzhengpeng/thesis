@@ -218,6 +218,7 @@ const { data, loading, error, refetch } = useCheatSheet();
 - 悬浮到**方法节点**（`method`）：
   - 高亮当前方法节点，以及所有以它为 `source` 或 `target` 的直接上下游方法节点（同模块或跨模块）。
   - 模块与组件外框保持中性（不整体高亮也不整体暗化），仅通过方法卡片自身的透明度变化体现聚焦，视觉更清晰。
+  - 右侧面板同步展示该方法的详细信息：所属组件/模块、HTTP 方法/路径（Controller）、参数、下游调用、SQL（Mapper）。
   - 隐藏所有**模块级跨模块连线**（`crossModule`）。
   - 显示相关的**方法级跨模块连线**（`crossMethod`）与**模块内方法连线**（`inner`），开启 `animated`，`zIndex` 置顶到 `1000`，`selected: true`。
   - 无关节点透明度降至 `0.2`，无关的方法连线隐藏或降级到 `zIndex: 0`。
@@ -260,18 +261,19 @@ CSM 组件容器：
 - 不再展示参数标签、HTTP 方法/路径徽章或 Mapper SQL 块
 - 字体加粗，溢出时省略号截断，保持单行紧凑显示
 - 支持在所属 CSM 容器内部拖拽，不可拖出父容器边界
-- **悬浮到方法节点会自动高亮其直接上下游依赖，并在右侧面板展示其所属 CSM 组件详情，避免方法节点无详情面板导致的白屏**
+- **悬浮到方法节点时，右侧面板展示该方法的功能名、参数、下游调用、SQL 等详细信息，不再仅展示所属组件摘要**
 
 右侧面板（`ModuleDetailPanel.tsx`）负责展示具体的方法签名、参数、HTTP 路径、下游 `calls` 目标及 SQL。
 
 ### 5.8 `features/architecture/components/ModuleDetailPanel.tsx`
 
-点击节点后展示：
+悬浮/点击节点后展示：
 
 - 模块运行状态
 - 组件统计
 - 组件与依赖列表（点击组件名可进入组件详情）
 - 选中 CSM 组件时展示：构造参数、方法入参、下游 `calls`、Mapper SQL、Controller HTTP 方法
+- **悬浮到方法节点时展示方法详情**：功能名/方法名、所属组件与模块、HTTP 方法/路径、参数列表、下游调用目标、Mapper SQL
 - API 列表（方法 + 路径）
 
 ### 5.9 `components/StatusHeader.tsx`
