@@ -40,6 +40,57 @@ export function ModuleNode(props: NodeProps) {
           zIndex: 1,
         }}
       />
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        id="bottom"
+        style={{
+          position: "absolute",
+          width: 8,
+          height: 8,
+          borderRadius: "50%",
+          background: "#94a3b8",
+          border: "2px solid #fff",
+          bottom: -5,
+          left: "50%",
+          transform: "translateX(-50%)",
+          zIndex: 1,
+        }}
+      />
+      <Handle
+        type="target"
+        position={Position.Left}
+        id="left"
+        style={{
+          position: "absolute",
+          width: 8,
+          height: 8,
+          borderRadius: "50%",
+          background: "#94a3b8",
+          border: "2px solid #fff",
+          top: "50%",
+          left: -6,
+          transform: "translateY(-50%)",
+          zIndex: 1,
+        }}
+      />
+      <Handle
+        type="source"
+        position={Position.Right}
+        id="right"
+        style={{
+          position: "absolute",
+          width: 8,
+          height: 8,
+          borderRadius: "50%",
+          background: "#94a3b8",
+          border: "2px solid #fff",
+          top: "50%",
+          right: -6,
+          transform: "translateY(-50%)",
+          zIndex: 1,
+        }}
+      />
 
       <div
         style={{

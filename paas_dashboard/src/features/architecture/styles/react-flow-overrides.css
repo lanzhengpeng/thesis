@@ -1,0 +1,12 @@
+/*
+ * 为了让高亮连线在视觉上绝对覆盖节点，需将 edges 层置于 nodes 层之上。
+ * 默认态的模块内虚线本身较淡，即便穿过方法卡片也不会严重遮挡文字；
+ * 聚焦态时高亮边通过 zIndex: 1000 + selected: true 进一步置顶。
+ */
+.react-flow__edges {
+  z-index: 3 !important;
+}
+
+.react-flow__nodes {
+  z-index: 2 !important;
+}

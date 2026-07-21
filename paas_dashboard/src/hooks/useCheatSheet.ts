@@ -19,7 +19,12 @@ export function useCheatSheet(): UseCheatSheetResult {
   const load = useCallback(async () => {
     try {
       const result = await fetchCheatSheet();
-      setData(result);
+      setData((prev) => {
+        if (prev && JSON.stringify(prev) === JSON.stringify(result)) {
+          return prev;
+        }
+        return result;
+      });
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));

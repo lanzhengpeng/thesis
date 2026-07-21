@@ -1,9 +1,8 @@
 import { useState } from "react";
-import { ArchitectureGraph } from "./components/ArchitectureGraph";
-import { ModuleDetailPanel } from "./components/ModuleDetailPanel";
+import { ArchitectureGraph, ModuleDetailPanel } from "./features/architecture";
+import type { ModuleNodeData } from "./features/architecture";
 import { StatusHeader } from "./components/StatusHeader";
 import { useCheatSheet } from "./hooks/useCheatSheet";
-import type { ModuleNodeData } from "./lib/graphBuilder";
 
 function App() {
   const { data, loading, error, refetch } = useCheatSheet();

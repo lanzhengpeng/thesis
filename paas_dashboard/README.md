@@ -29,14 +29,19 @@
 - 每个 CSM 组件（Controller/Service/Mapper）是一个可拖拽的父容器，内部的方法节点采用**单行水平展开**：所有方法卡片在同一水平行从左到右依次排列，不再换行，彻底避免边穿过无关卡片。
 - **每个方法渲染为独立的 React Flow 子节点**，拥有自己的四向 handle（上/下/左/右），并支持在所属 CSM 容器内部自由拖拽（`extent: 'parent'` 限制不可拖出父容器）。
 - 方法卡片**仅展示功能名**（`feature`），不再展示参数、HTTP 路径或 SQL；这些细节在右侧面板的组件详情中查看。
-- **方法级精确连线**：
-  - 模块内部调用（Controller → Service → Mapper）与跨模块调用均使用**虚线**，颜色与源组件所属层一致（Controller 蓝、Service 绿、Mapper 紫），让“谁调用谁”一目了然。
-  - 模块内部调用使用方法节点**顶部 target + 底部 source** 的 handle，连线垂直向下或带有 smoothstep 折角。
-  - 跨模块调用保留**左侧 target + 右侧 source**，使用虚线流动边。
+- **方法级精确连线（局部默认展示 + 跨模块按需聚焦）**：
+  - 模块内部调用（Controller → Service → Mapper）使用**灰色虚线**，默认始终可见，让人一眼看清模块内的垂直业务链路。
+  - 跨模块调用分为两级：
+    - **模块级连线（crossModule）**：大框连大框，默认**完全隐藏**。
+    - **方法级连线（crossMethod）**：精确到具体方法，默认**完全隐藏**。
+  - **悬浮到模块外框**时，当前模块及其依赖模块高亮，模块级连线以亮橙色实线 + 流动动画 + 置顶 zIndex 展示；无关模块及其内部节点透明度降为 `0.2`。
+  - **悬浮到具体方法**时，该方法及其直接上下游方法（同模块或跨模块）高亮，相关的方法级连线与模块内连线以亮橙色 + 流动动画 + 置顶 zIndex 展示；无关节点与连线暗化降噪。
+  - 鼠标移出节点后自动恢复到全局默认视图：跨模块连线隐藏，内部连线恢复灰色虚线。
+  - 模块内部调用使用方法节点**顶部 target + 底部 source** 的 handle，跨模块调用使用**左侧 target + 右侧 source**。
   - 所有边使用 `smoothstep` 路由，并通过 `pathOptions: { borderRadius: 16 }` 设置 16px 圆角折线。
 - 以节点画布形式展示所有插件模块（成功模块、失败模块）。
 - 顶部展示系统整体统计：Controller / Service / Mapper 数量、模块加载情况。
-- 点击画布节点，右侧面板展示该模块的组件、依赖和 API 列表；选中具体 CSM 组件可查看其构造参数、方法入参、下游 `calls` 目标及 Mapper SQL。
+- **悬浮**画布节点，右侧面板展示该模块的组件、依赖和 API 列表；悬浮具体 CSM 方法可查看其构造参数、方法入参、下游 `calls` 目标及 Mapper SQL。
 - 每 5 秒自动轮询后端作弊纸，实现近似实时的架构刷新。
 
 ### 1.1 截图示意
@@ -44,8 +49,8 @@
 启动后访问 `http://localhost:5173`，可看到：
 
 - 顶部状态栏：`Controller 2 / Service 2 / Mapper 2 / 模块 3/3`
-- 中央画布：网关节点 + 宽大模块容器 + CSM 组件卡片 + 仅展示功能名的方法块 + 虚线调用边
-- 右侧详情面板：选中模块的组件统计、调用关系、API 列表
+- 中央画布：网关节点 + 宽大模块容器 + CSM 组件卡片 + 仅展示功能名的方法块 + 虚线调用边；悬浮模块/方法时自动聚焦高亮
+- 右侧详情面板：悬浮模块时展示模块详情，悬浮方法时展示其所属 CSM 组件详情
 
 ---
 
@@ -82,18 +87,23 @@ paas_dashboard/
     │   └── api.ts             # HTTP 请求封装
     ├── hooks/
     │   └── useCheatSheet.ts   # 数据拉取与轮询 Hook
-    ├── lib/
-    │   └── graphBuilder.ts    # 解析作弊纸 → React Flow 节点/边
     ├── components/
-    │   ├── ArchitectureGraph.tsx   # 画布主组件
-    │   ├── GatewayNode.tsx         # 网关节点样式
-    │   ├── ModuleNode.tsx          # 模块节点样式
-    │   ├── ComponentNode.tsx       # CSM 组件容器样式
-    │   ├── MethodNode.tsx          # 方法子节点样式
-    │   ├── ModuleDetailPanel.tsx   # 右侧详情面板
-    │   └── StatusHeader.tsx        # 顶部状态栏
-    └── styles/
-        └── react-flow-overrides.css  # React Flow 样式微调
+    │   └── StatusHeader.tsx   # 顶部状态栏
+    └── features/
+        └── architecture/      # 架构可视化功能模块
+            ├── index.ts       # 功能模块对外导出
+            ├── components/
+            │   ├── ArchitectureGraph.tsx   # 画布主组件
+            │   └── ModuleDetailPanel.tsx   # 右侧详情面板
+            ├── nodes/
+            │   ├── ComponentNode.tsx       # CSM 组件容器样式
+            │   ├── GatewayNode.tsx         # 网关节点样式
+            │   ├── MethodNode.tsx          # 方法子节点样式
+            │   └── ModuleNode.tsx          # 模块节点样式
+            ├── lib/
+            │   └── graphBuilder.ts         # 解析作弊纸 → React Flow 节点/边
+            └── styles/
+                └── react-flow-overrides.css  # React Flow 样式微调
 ```
 
 ---
@@ -156,7 +166,7 @@ export async function fetchCheatSheet(): Promise<CheatSheetResponse>
 const { data, loading, error, refetch } = useCheatSheet();
 ```
 
-### 5.3 `lib/graphBuilder.ts`
+### 5.3 `features/architecture/lib/graphBuilder.ts`
 
 核心转换逻辑：
 
@@ -167,15 +177,26 @@ const { data, loading, error, refetch } = useCheatSheet();
    - 方法节点固定宽度，在同一水平行从左到右依次排列，**不再换行**，避免边穿过无关卡片。
    - 所有方法节点顶部对齐；组件容器高度由最高的方法块决定，保证 Mapper 等高卡片不会侵入下一层。
    - 每个方法节点设置 `draggable: true` 与 `extent: "parent"`，允许在 CSM 容器内拖拽，且不会拖出父容器边界。
-5. 方法级调用边改为**直接连接方法子节点**：
-   - 根据 `components[].methods[].calls`，从源方法节点连到目标方法节点。
-   - **模块内部调用**与**跨模块调用**均使用虚线，颜色与源组件层一致（Controller 蓝、Service 绿、Mapper 紫）。
-   - 模块内部调用使用 `bottom` → `top`，跨模块调用使用 `right` → `left`（并带动画流动效果）。
-   - 所有边使用 `smoothstep` 类型，并通过 `pathOptions: { borderRadius: 16 }` 设置 16px 圆角折线；边 `zIndex: 5`，配合全局 CSS 让连线层位于节点层下方，从而从方法卡片背后穿过。
-6. 节点层级：模块容器 `zIndex: 0`，CSM 组件 `zIndex: 10`，方法子节点 `zIndex: 11`；同时通过 `src/styles/react-flow-overrides.css` 强制 `.react-flow__edges { z-index: 1 }`、`.react-flow__nodes { z-index: 2 }`，确保连线始终渲染在方法卡片背后，不会遮挡文字。
+5. 方法级调用边改为**直接连接方法子节点**，并区分三类策略：
+   - 解析 `components[].methods[].calls`，从源方法节点连到目标方法节点。
+   - **模块内方法连线（inner）**：
+     - 同模块内的组件调用（Controller → Service → Mapper）。
+     - 默认 `hidden: false`，始终可见。
+     - 样式为灰色虚线（`#94a3b8`），`strokeWidth: 1.5`，使用 `sourceHandle: bottom` → `targetHandle: top`。
+   - **跨模块方法连线（crossMethod）**：
+     - 调用方与接收方不在同一 `module`，精确到具体方法。
+     - 默认 `hidden: true`，避免初始加载时线条爆炸。
+     - 样式为亮橙色实线（`#f97316`），`strokeWidth: 2`，使用 `sourceHandle: right` → `targetHandle: left`。
+   - **跨模块级连线（crossModule）**：
+     - 由跨模块方法调用聚合而成，表示模块大框之间的依赖关系。
+     - 默认 `hidden: true`。
+     - 样式为亮橙色实线（`#f97316`），`strokeWidth: 2.5`，使用 `sourceHandle: right` → `targetHandle: left`。
+   - 所有边使用 `smoothstep` 类型，`pathOptions: { borderRadius: 16 }`；边默认 `zIndex: 5`，聚焦时提升到 `zIndex: 1000`。
+   - 每条边在 `data` 中携带 `edgeType: "inner" | "crossMethod" | "crossModule"` 与 `defaultStyle`，便于 `ArchitectureGraph` 在聚焦/取消聚焦时快速恢复默认样式。
+6. 节点层级：模块容器 `zIndex: 0`，CSM 组件 `zIndex: 10`，方法子节点 `zIndex: 11`；同时通过 `src/features/architecture/styles/react-flow-overrides.css` 强制 `.react-flow__edges { z-index: 1 }`、`.react-flow__nodes { z-index: 2 }`，确保连线始终渲染在方法卡片背后，不会遮挡文字。
 7. 所有业务模块在画布中横向并排，网关节点居中置顶。
 
-### 5.4 `components/ArchitectureGraph.tsx`
+### 5.4 `features/architecture/components/ArchitectureGraph.tsx`
 
 渲染 React Flow 画布，注册自定义节点类型：
 
@@ -183,10 +204,33 @@ const { data, loading, error, refetch } = useCheatSheet();
 - `module`：正常加载的模块
 - `failedModule`：加载失败的模块（红色边框）
 - `component`：CSM 组件卡片
+- `method`：方法子节点
 
 支持缩放、平移、MiniMap、Controls。
 
-### 5.5 `components/ModuleNode.tsx`
+**Hover 双层聚焦模式**（由 `onNodeMouseEnter` / `onNodeMouseLeave` 驱动）：
+
+- 悬浮到**模块节点**（`module` / `failedModule`）：
+  - 高亮当前模块及所有与其有跨模块依赖的模块（双向：既包含它依赖的下游模块，也包含依赖它的上游模块）。
+  - 显示相关的**模块级跨模块连线**（`crossModule`），开启 `animated` 流动动画，`zIndex` 置顶到 `1000`，`selected` 设为 `true` 配合 `elevateEdgesOnSelect` 进一步提升层级。
+  - 无关模块及其内部节点透明度降至 `0.2`，`zIndex` 降到 `0`。
+- 悬浮到**方法节点**（`method`）：
+  - 高亮当前方法节点，以及所有以它为 `source` 或 `target` 的直接上下游方法节点（同模块或跨模块）。
+  - 隐藏所有**模块级跨模块连线**（`crossModule`）。
+  - 显示相关的**方法级跨模块连线**（`crossMethod`）与**模块内方法连线**（`inner`），开启 `animated`，`zIndex` 置顶到 `1000`，`selected: true`。
+  - 无关节点透明度降至 `0.2`，无关的方法连线隐藏或降级到 `zIndex: 0`。
+- 鼠标移出节点：
+  - 恢复所有节点 `opacity: 1` 与原始 `zIndex`。
+  - 跨模块连线重新 `hidden: true` 并关闭动画。
+  - 模块内连线恢复默认灰色虚线样式。
+
+**事件防冒泡与优先级**：
+
+- `onNodeMouseEnter` / `onNodeMouseLeave` 第一行调用 `event.stopPropagation()`，防止子节点事件冒泡到父级模块。
+- 使用 `hoveredNodeIdRef` 记录当前最深层级悬浮节点，重复进入同一节点不重复计算；只有真正移出当前追踪节点时才重置画布。
+- 方法级悬浮天然优先于模块级悬浮：鼠标进入方法卡片时，方法节点的事件先被处理并更新状态锁，后续模块级逻辑因 `hoveredNodeIdRef` 已指向方法节点而被忽略。
+
+### 5.5 `features/architecture/nodes/ModuleNode.tsx`
 
 模块节点展示：
 
@@ -195,7 +239,7 @@ const { data, loading, error, refetch } = useCheatSheet();
 - 失败模块额外展示错误信息
 - 容器采用大圆角、大阴影与充足内边距，营造“宽大方正”的模块外壳
 
-### 5.6 `components/ComponentNode.tsx`
+### 5.6 `features/architecture/nodes/ComponentNode.tsx`
 
 CSM 组件容器：
 
@@ -204,7 +248,7 @@ CSM 组件容器：
 - 容器宽度根据方法数量单行水平展开自动计算；容器高度由最高的方法块决定，保证各组件底部对齐、不会侵入下一层
 - 底部预留拖拽余量，方便在容器内拖拽方法节点
 
-### 5.7 `components/MethodNode.tsx`
+### 5.7 `features/architecture/nodes/MethodNode.tsx`
 
 方法子节点：
 
@@ -214,11 +258,11 @@ CSM 组件容器：
 - 不再展示参数标签、HTTP 方法/路径徽章或 Mapper SQL 块
 - 字体加粗，溢出时省略号截断，保持单行紧凑显示
 - 支持在所属 CSM 容器内部拖拽，不可拖出父容器边界
-- **点击方法节点会自动选中其所属的 CSM 组件并在右侧面板展示组件详情，避免方法节点无详情面板导致的白屏**
+- **悬浮到方法节点会自动高亮其直接上下游依赖，并在右侧面板展示其所属 CSM 组件详情，避免方法节点无详情面板导致的白屏**
 
 右侧面板（`ModuleDetailPanel.tsx`）负责展示具体的方法签名、参数、HTTP 路径、下游 `calls` 目标及 SQL。
 
-### 5.8 `components/ModuleDetailPanel.tsx`
+### 5.8 `features/architecture/components/ModuleDetailPanel.tsx`
 
 点击节点后展示：
 
@@ -398,18 +442,19 @@ useEffect(() => {
 
 为了避免模块边框/背景遮挡内部连线，同时让方法节点盖住连线，节点与边分别设置了 `zIndex`：
 
-| 元素 | zIndex |
-|------|--------|
-| module / failedModule | 0 |
-| edge | 5 |
-| component | 10 |
-| method | 11 |
+| 元素 | 默认 zIndex | 聚焦态 zIndex |
+|------|------------|--------------|
+| module / failedModule | 0 | 0（高亮）/ 0（暗化） |
+| component | 10 | 10（高亮）/ 0（暗化） |
+| method | 11 | 11（高亮）/ 0（暗化） |
+| edge（默认/模块内） | 5 | 1000（高亮）/ 0（暗化） |
 
 实现要点：
 - 模块节点只作为背景容器，不拦截鼠标事件。
 - 方法节点作为 component 的子节点，可直接拖拽，并通过 `extent: "parent"` 限制在 CSM 容器内。
 - 边使用 `smoothstep`，`pathOptions: { borderRadius: 16 }` 让折线带有 16px 圆角，视觉上更柔和。
-- 在 `src/styles/react-flow-overrides.css` 中强制 `.react-flow__edges { z-index: 1 }`、`.react-flow__nodes { z-index: 2 }`，确保 SVG 连线始终位于 DOM 节点层下方，从方法卡片背后穿过而不遮挡文字。
+- 在 `src/features/architecture/styles/react-flow-overrides.css` 中将 `.react-flow__edges` 设为 `z-index: 3`、`.react-flow__nodes` 设为 `z-index: 2`，使 SVG 连线层整体位于节点层之上，聚焦态高亮边可覆盖方法卡片；默认态的模块内虚线较淡，不会严重遮挡文字。
+- `<ReactFlow />` 开启 `elevateEdgesOnSelect={true}`，聚焦边同时设置 `selected: true`，获得 React Flow 内部的额外层级提升。
 - 方法节点 handle 分别位于上下左右四个方向，内部调用走上下，跨模块调用走左右，水平位移错开锚点，减少边交叉。
 - 为所有生成节点显式写入 `measured: { width, height }` 与 `handles` 数组，避免在预览或某些无 ResizeObserver 的环境下出现 handle 不可见、边无法计算的问题。
 
@@ -431,7 +476,7 @@ useEffect(() => {
 
 ### Q4: 节点布局错乱
 
-`lib/graphBuilder.ts` 使用固定规则布局：
+`features/architecture/lib/graphBuilder.ts` 使用固定规则布局：
 
 - 模块节点横向并排，网关居中置顶。
 - 模块内部组件按 CSM 三层垂直堆叠。
@@ -442,9 +487,9 @@ useEffect(() => {
 
 ### Q5: 如何添加新的节点样式？
 
-1. 在 `components/` 下新建节点组件。
-2. 在 `ArchitectureGraph.tsx` 的 `nodeTypes` 中注册。
-3. 在 `graphBuilder.ts` 中生成对应 `type` 的节点。
+1. 在 `features/architecture/nodes/` 下新建节点组件。
+2. 在 `features/architecture/components/ArchitectureGraph.tsx` 的 `nodeTypes` 中注册。
+3. 在 `features/architecture/lib/graphBuilder.ts` 中生成对应 `type` 的节点。
 
 ---
 

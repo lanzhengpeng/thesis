@@ -6,7 +6,7 @@ import type {
   CheatSheetComponentItem,
   CheatSheetMethodItem,
   CheatSheetModuleStatus,
-} from "../types/cheatSheet";
+} from "../../../types/cheatSheet";
 
 export type ComponentType = "controller" | "service" | "mapper";
 
@@ -87,6 +87,17 @@ function tbHandles(width: number, height: number): HandleDef[] {
   ];
 }
 
+function moduleHandles(width: number, height: number): HandleDef[] {
+  const cx = width / 2 - 4;
+  const cy = height / 2 - 4;
+  return [
+    { id: "top", type: "target", position: Position.Top, x: cx, y: -4 },
+    { id: "bottom", type: "source", position: Position.Bottom, x: cx, y: height - 4 },
+    { id: "left", type: "target", position: Position.Left, x: -4, y: cy },
+    { id: "right", type: "source", position: Position.Right, x: width - 4, y: cy },
+  ];
+}
+
 function methodHandles(width: number, height: number): HandleDef[] {
   const cx = width / 2 - 4;
   const cy = height / 2 - 4;
@@ -98,11 +109,14 @@ function methodHandles(width: number, height: number): HandleDef[] {
   ];
 }
 
-const TYPE_EDGE_COLORS: Record<ComponentType, string> = {
-  controller: "#3b82f6",
-  service: "#22c55e",
-  mapper: "#8b5cf6",
-};
+export const INNER_EDGE_COLOR = "#94a3b8"; // 模块内方法连线：低调灰色虚线
+export const CROSS_MODULE_EDGE_COLOR = "#f97316"; // 跨模块级连线：醒目亮橙色
+export const CROSS_METHOD_EDGE_COLOR = "#f97316"; // 跨模块方法连线：醒目亮橙色
+
+export const DEFAULT_EDGE_ZINDEX = 5;
+export const FOCUSED_EDGE_ZINDEX = 1000;
+export const DIMMED_EDGE_ZINDEX = 0;
+export const DIMMED_NODE_ZINDEX = 0;
 
 /**
  * 估算组件容器宽度。
@@ -436,7 +450,7 @@ export function buildGraph(
       zIndex: 0,
       style: { width, height },
       measured: { width, height },
-      handles: tbHandles(width, height),
+      handles: moduleHandles(width, height),
       data: {
         label: moduleName,
         status: "ok",
@@ -518,6 +532,8 @@ export function buildGraph(
     }
 
     // 方法级调用边：直接连接方法子节点
+    const crossModulePairs = new Set<string>();
+
     for (const info of componentInfos) {
       for (const method of info.methods) {
         for (const call of method.calls) {
@@ -531,26 +547,86 @@ export function buildGraph(
           edgeIds.add(edgeId);
 
           const isCrossModule = target.module !== moduleName;
-          const stroke = TYPE_EDGE_COLORS[info.type];
 
-          edges.push({
-            id: edgeId,
-            source: sourceId,
-            target: targetId,
-            type: "smoothstep",
-            animated: isCrossModule,
-            zIndex: 5,
-            sourceHandle: isCrossModule ? "right" : "bottom",
-            targetHandle: isCrossModule ? "left" : "top",
-            style: {
-              stroke,
-              strokeWidth: isCrossModule ? 2 : 1.5,
+          if (isCrossModule) {
+            const defaultStyle = {
+              stroke: CROSS_METHOD_EDGE_COLOR,
+              strokeWidth: 2,
+            };
+            edges.push({
+              id: edgeId,
+              source: sourceId,
+              target: targetId,
+              type: "smoothstep",
+              hidden: true,
+              animated: false,
+              zIndex: DEFAULT_EDGE_ZINDEX,
+              sourceHandle: "right",
+              targetHandle: "left",
+              style: defaultStyle,
+              pathOptions: { borderRadius: 16 },
+              data: {
+                edgeType: "crossMethod",
+                defaultStyle,
+              },
+            });
+            crossModulePairs.add(`${moduleName}->${target.module}`);
+          } else {
+            const defaultStyle = {
+              stroke: INNER_EDGE_COLOR,
+              strokeWidth: 1.5,
               strokeDasharray: "5,5",
-            },
-            pathOptions: { borderRadius: 16 },
-          });
+            };
+            edges.push({
+              id: edgeId,
+              source: sourceId,
+              target: targetId,
+              type: "smoothstep",
+              hidden: false,
+              animated: false,
+              zIndex: DEFAULT_EDGE_ZINDEX,
+              sourceHandle: "bottom",
+              targetHandle: "top",
+              style: defaultStyle,
+              pathOptions: { borderRadius: 16 },
+              data: {
+                edgeType: "inner",
+                defaultStyle,
+              },
+            });
+          }
         }
       }
+    }
+
+    // 模块级跨模块连线：由方法级跨模块调用聚合而成，大框连大框
+    for (const pairKey of crossModulePairs) {
+      const [sourceModule, targetModule] = pairKey.split("->");
+      const edgeId = `module-${sourceModule}->${targetModule}`;
+      if (edgeIds.has(edgeId)) continue;
+      edgeIds.add(edgeId);
+
+      const defaultStyle = {
+        stroke: CROSS_MODULE_EDGE_COLOR,
+        strokeWidth: 2.5,
+      };
+      edges.push({
+        id: edgeId,
+        source: sourceModule,
+        target: targetModule,
+        type: "smoothstep",
+        hidden: true,
+        animated: false,
+        zIndex: DEFAULT_EDGE_ZINDEX,
+        sourceHandle: "right",
+        targetHandle: "left",
+        style: defaultStyle,
+        pathOptions: { borderRadius: 16 },
+        data: {
+          edgeType: "crossModule",
+          defaultStyle,
+        },
+      });
     }
   }
 

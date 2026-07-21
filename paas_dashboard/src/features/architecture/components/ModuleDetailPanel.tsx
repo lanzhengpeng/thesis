@@ -1,5 +1,5 @@
 import type { ModuleNodeData } from "../lib/graphBuilder";
-import type { CheatSheetComponentItem } from "../types/cheatSheet";
+import type { CheatSheetComponentItem } from "../../../types/cheatSheet";
 import { parseComponentEntry } from "../lib/graphBuilder";
 
 interface ModuleDetailPanelProps {

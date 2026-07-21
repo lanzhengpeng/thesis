@@ -5,7 +5,14 @@
       "name": "paas-dashboard",
       "runtimeExecutable": "/Users/lanzhengpeng/develop/thesis/start_dashboard.sh",
       "runtimeArgs": [],
-      "port": 5173
-    }
+      "port": 5173,
+      "autoPort": false
+    },
+    {
+      "name": "paas-dashboard-preview",
+      "runtimeExecutable": "/Users/lanzhengpeng/develop/thesis/start_dashboard_preview.sh",
+      "runtimeArgs": [],
+      "autoPort": true
+    },
   ]
 }
