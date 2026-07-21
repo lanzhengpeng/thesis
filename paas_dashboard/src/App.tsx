@@ -4,15 +4,39 @@ import { AgentChatPanel } from "./features/agent";
 import type { ModuleNodeData } from "./features/architecture";
 import { StatusHeader } from "./components/StatusHeader";
 import { useCheatSheet } from "./hooks/useCheatSheet";
+import type { CheatSheetResponse } from "./types/cheatSheet";
 
 export interface SelectedMethod {
   componentId: string;
   methodName: string;
 }
 
+function buildModuleData(moduleName: string, response: CheatSheetResponse): ModuleNodeData {
+  const failed = response.modules.failed.find((f) => f.module === moduleName);
+  const components = response.call_graph[moduleName] || {
+    controller: [],
+    service: [],
+    mapper: [],
+  };
+
+  return {
+    label: moduleName,
+    status: failed ? "failed" : "ok",
+    error: failed?.error,
+    components,
+    apiList: response.api_map.filter((api) => api.module === moduleName),
+    counts: {
+      controllers: components.controller?.length || 0,
+      services: components.service?.length || 0,
+      mappers: components.mapper?.length || 0,
+    },
+  };
+}
+
 function App() {
   const { data, loading, error, refetch } = useCheatSheet();
-  const [selectedModule, setSelectedModule] = useState<ModuleNodeData | null>(null);
+  const [isDetailPanelOpen, setIsDetailPanelOpen] = useState(false);
+  const [selectedNodeData, setSelectedNodeData] = useState<ModuleNodeData | null>(null);
   const [selectedComponentId, setSelectedComponentId] = useState<string | null>(null);
   const [selectedMethod, setSelectedMethod] = useState<SelectedMethod | null>(null);
 
@@ -47,27 +71,52 @@ function App() {
       <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
         <ArchitectureGraph
           data={data}
+          onNodeClick={() => {
+            // 点击节点时展开右侧面板，具体数据由 onSelect* 回调填充
+            setIsDetailPanelOpen(true);
+          }}
+          onPaneClick={() => {
+            // 点击画布空白处收起右侧面板
+            setIsDetailPanelOpen(false);
+          }}
           onSelectModule={(moduleData) => {
-            setSelectedModule(moduleData);
+            setSelectedNodeData(moduleData);
             setSelectedComponentId(null);
             setSelectedMethod(null);
+            setIsDetailPanelOpen(true);
           }}
           onSelectComponent={(componentId) => {
+            const component = data.components.find(
+              (c) => `${c.module}::${c.type}::${c.name}` === componentId
+            );
+            if (component) {
+              setSelectedNodeData(buildModuleData(component.module, data));
+            }
             setSelectedComponentId(componentId);
             setSelectedMethod(null);
+            setIsDetailPanelOpen(true);
           }}
           onSelectMethod={(method) => {
             if (method === null) {
               setSelectedMethod(null);
             } else {
               setSelectedMethod({ componentId: method.componentId, methodName: method.methodName });
+              const component = data.components.find(
+                (c) => `${c.module}::${c.type}::${c.name}` === method.componentId
+              );
+              if (component) {
+                setSelectedNodeData(buildModuleData(component.module, data));
+              }
             }
             setSelectedComponentId(null);
+            setIsDetailPanelOpen(true);
           }}
         />
       </div>
       <ModuleDetailPanel
-        data={selectedModule}
+        isOpen={isDetailPanelOpen}
+        onClose={() => setIsDetailPanelOpen(false)}
+        data={selectedNodeData}
         components={data.components}
         selectedComponentId={selectedComponentId}
         selectedMethod={selectedMethod}

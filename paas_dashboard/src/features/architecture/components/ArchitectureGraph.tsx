@@ -49,6 +49,10 @@ interface ArchitectureGraphProps {
   onSelectModule: (data: ModuleNodeData) => void;
   onSelectComponent: (componentId: string) => void;
   onSelectMethod?: (method: { componentId: string; methodName: string } | null) => void;
+  /** 点击任意节点时触发，用于打开右侧面板 */
+  onNodeClick?: () => void;
+  /** 点击画布空白处时触发，用于关闭右侧面板 */
+  onPaneClick?: () => void;
 }
 
 function getParentModuleId(node: Node, nodeMap: Map<string, Node>): string | null {
@@ -181,6 +185,8 @@ export function ArchitectureGraph({
   onSelectModule,
   onSelectComponent,
   onSelectMethod,
+  onNodeClick: onNodeClickProp,
+  onPaneClick: onPaneClickProp,
 }: ArchitectureGraphProps) {
   const { nodes: initialNodes, edges: initialEdges } = useMemo(
     () => buildGraph(data.call_graph, data.modules, data.api_map, data.components),
@@ -233,21 +239,10 @@ export function ArchitectureGraph({
         const edgeType = edge.data?.edgeType;
         const isGatewayEdge = !edgeType;
 
-        if (edgeType === "crossMethod" || edgeType === "crossModule") {
+        if (edgeType === "crossMethod" || edgeType === "crossModule" || edgeType === "inner") {
           return {
             ...edge,
             hidden: true,
-            animated: false,
-            selected: false,
-            zIndex: DEFAULT_EDGE_ZINDEX,
-            style: edge.data?.defaultStyle || edge.style,
-          };
-        }
-
-        if (edgeType === "inner") {
-          return {
-            ...edge,
-            hidden: false,
             animated: false,
             selected: false,
             zIndex: DEFAULT_EDGE_ZINDEX,
@@ -432,7 +427,10 @@ export function ArchitectureGraph({
   );
 
   const updatePanelSelection = useCallback(
-    (node: Node) => {
+    (node: Node, isClick: boolean) => {
+      // 悬浮仅负责视觉高亮，点击才通知父组件更新右侧面板数据
+      if (!isClick) return;
+
       if (node.type === "method" && node.data) {
         const methodData = node.data as MethodNodeData;
         const next = { componentId: methodData.componentId, methodName: methodData.name };
@@ -476,8 +474,8 @@ export function ArchitectureGraph({
       if (hoveredNodeIdRef.current === node.id) return;
       hoveredNodeIdRef.current = node.id;
 
-      // 同步更新右侧面板（带 ref 去重，避免高频渲染）
-      updatePanelSelection(node);
+      // 悬浮不更新右侧面板数据，只走视觉高亮
+      updatePanelSelection(node, false);
 
       if (node.type === "method") {
         // 执行【方法级】双向依赖高亮、Z-index 置顶等逻辑
@@ -512,12 +510,13 @@ export function ArchitectureGraph({
 
       if (node.type === "method") {
         if (lockedNodeIdRef.current === node.id) {
-          // 再次点击已锁定方法：解锁并恢复默认视图
+          // 再次点击已锁定方法：解锁并恢复默认视图，同时关闭右侧面板
           lockedNodeIdRef.current = null;
           hoveredNodeIdRef.current = null;
           resetToDefault();
           selectedMethodRef.current = null;
           onSelectMethod?.(null);
+          onPaneClickProp?.();
           return;
         }
 
@@ -525,7 +524,8 @@ export function ArchitectureGraph({
         lockedNodeIdRef.current = node.id;
         hoveredNodeIdRef.current = node.id;
         enterMethodFocus(node.id, { locked: true });
-        updatePanelSelection(node);
+        updatePanelSelection(node, true);
+        onNodeClickProp?.();
         return;
       }
 
@@ -538,20 +538,25 @@ export function ArchitectureGraph({
         onSelectMethod?.(null);
       }
 
-      // 同步更新右侧面板为当前点击的模块/组件
-      updatePanelSelection(node);
+      // 同步更新右侧面板为当前点击的模块/组件，并通知父组件打开面板
+      updatePanelSelection(node, true);
+      onNodeClickProp?.();
     },
-    [enterMethodFocus, resetToDefault, updatePanelSelection, onSelectMethod]
+    [enterMethodFocus, resetToDefault, updatePanelSelection, onSelectMethod, onNodeClickProp, onPaneClickProp]
   );
 
   const onPaneClick = useCallback(() => {
-    if (!lockedNodeIdRef.current) return;
-    lockedNodeIdRef.current = null;
-    hoveredNodeIdRef.current = null;
-    resetToDefault();
-    selectedMethodRef.current = null;
-    onSelectMethod?.(null);
-  }, [resetToDefault, onSelectMethod]);
+    // 若当前有锁定方法，先解锁重置
+    if (lockedNodeIdRef.current) {
+      lockedNodeIdRef.current = null;
+      hoveredNodeIdRef.current = null;
+      resetToDefault();
+      selectedMethodRef.current = null;
+      onSelectMethod?.(null);
+    }
+    // 通知父组件关闭右侧面板
+    onPaneClickProp?.();
+  }, [resetToDefault, onSelectMethod, onPaneClickProp]);
 
   const isMouseMode = interactMode === "mouse";
 

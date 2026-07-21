@@ -3,6 +3,8 @@ import type { CheatSheetComponentItem, CheatSheetMethodItem } from "../../../typ
 import { parseComponentEntry } from "../lib/graphBuilder";
 
 interface ModuleDetailPanelProps {
+  isOpen: boolean;
+  onClose?: () => void;
   data: ModuleNodeData | null;
   components?: CheatSheetComponentItem[];
   selectedComponentId?: string | null;
@@ -11,7 +13,60 @@ interface ModuleDetailPanelProps {
   onSelectMethod?: (method: { componentId: string; methodName: string } | null) => void;
 }
 
+function PanelHeader({
+  title,
+  onClose,
+}: {
+  title: string;
+  onClose?: () => void;
+}) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+      }}
+    >
+      <h3
+        style={{
+          margin: 0,
+          color: "#1e293b",
+          fontSize: 16,
+          fontWeight: 600,
+        }}
+      >
+        {title}
+      </h3>
+      {onClose && (
+        <button
+          onClick={onClose}
+          aria-label="关闭"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: 28,
+            height: 28,
+            borderRadius: 6,
+            border: "1px solid #e2e8f0",
+            background: "#ffffff",
+            color: "#64748b",
+            cursor: "pointer",
+            fontSize: 14,
+            lineHeight: 1,
+          }}
+        >
+          ✕
+        </button>
+      )}
+    </div>
+  );
+}
+
 export function ModuleDetailPanel({
+  isOpen,
+  onClose,
   data,
   components = [],
   selectedComponentId,
@@ -19,16 +74,7 @@ export function ModuleDetailPanel({
   onSelectComponent,
   onSelectMethod,
 }: ModuleDetailPanelProps) {
-  if (!data) {
-    return (
-      <div style={panelStyle}>
-        <h3 style={{ margin: 0, color: "#64748b" }}>详情面板</h3>
-        <p style={{ color: "#94a3b8" }}>点击画布上的节点查看详细信息</p>
-      </div>
-    );
-  }
-
-  const isFailed = data.status === "failed";
+  const isFailed = data?.status === "failed";
 
   const selectedComponent = selectedComponentId
     ? components.find(
@@ -48,158 +94,169 @@ export function ModuleDetailPanel({
     : undefined;
 
   return (
-    <div style={panelStyle}>
-      {selectedMethod && selectedMethodInfo && selectedMethodComponent && !isFailed && (
-        <MethodDetail
-          method={selectedMethodInfo}
-          component={selectedMethodComponent}
-          onBack={() => onSelectMethod?.(null)}
-        />
-      )}
-
-      {selectedComponent && !isFailed && (
-        <ComponentDetail
-          component={selectedComponent}
-          onBack={() => onSelectComponent?.("")}
-        />
-      )}
-
-      <div style={{ marginBottom: 16 }}>
-        <h3 style={{ margin: 0, color: "#1e293b" }}>{data.label}</h3>
-        <span
-          style={{
-            display: "inline-block",
-            marginTop: 6,
-            padding: "4px 10px",
-            borderRadius: 999,
-            fontSize: 12,
-            fontWeight: 600,
-            background: isFailed ? "#fee2e2" : "#dcfce7",
-            color: isFailed ? "#991b1b" : "#166534",
-          }}
-        >
-          {isFailed ? "加载失败" : "运行中"}
-        </span>
-      </div>
-
-      {!isFailed && (
-        <>
-          <Section title="组件统计">
-            <Stat label="Controller" value={data.counts.controllers} />
-            <Stat label="Service" value={data.counts.services} />
-            <Stat label="Mapper" value={data.counts.mappers} />
-          </Section>
-
-          <Section title="组件与依赖">
-            {Object.entries(data.components).map(([type, entries]) => (
-              <div key={type} style={{ marginBottom: 10 }}>
-                <div
-                  style={{
-                    fontSize: 12,
-                    fontWeight: 700,
-                    textTransform: "uppercase",
-                    color: "#64748b",
-                    marginBottom: 4,
-                  }}
-                >
-                  {type}
-                </div>
-                {entries.map((entry) => {
-                  const { name } = parseComponentEntry(entry);
-                  const componentId = `${data.label}::${type}::${name}`;
-                  const isSelected = selectedComponentId === componentId;
-
-                  return (
-                    <div
-                      key={entry}
-                      onClick={() => onSelectComponent?.(componentId)}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.background = "#f1f5f9";
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = isSelected
-                          ? "#e2e8f0"
-                          : "transparent";
-                      }}
-                      style={{
-                        fontSize: 13,
-                        color: "#334155",
-                        fontFamily: "monospace",
-                        padding: "4px 8px",
-                        borderRadius: 4,
-                        cursor: "pointer",
-                        background: isSelected ? "#e2e8f0" : "transparent",
-                        marginBottom: 2,
-                      }}
-                    >
-                      {entry}
-                    </div>
-                  );
-                })}
-              </div>
-            ))}
-          </Section>
-
-          <Section title="API 列表">
-            {data.apiList.length === 0 ? (
-              <span style={{ color: "#94a3b8" }}>暂无 API</span>
-            ) : (
-              data.apiList.map((api) => (
-                <div
-                  key={`${api.method}${api.path}`}
-                  style={{
-                    display: "flex",
-                    gap: 8,
-                    alignItems: "center",
-                    padding: "6px 0",
-                    borderBottom: "1px solid #e2e8f0",
-                  }}
-                >
-                  <span
-                    style={{
-                      fontSize: 11,
-                      fontWeight: 700,
-                      color: "#fff",
-                      background: methodColor(api.method),
-                      padding: "2px 6px",
-                      borderRadius: 4,
-                    }}
-                  >
-                    {api.method}
-                  </span>
-                  <span
-                    style={{
-                      fontSize: 13,
-                      color: "#334155",
-                      fontFamily: "monospace",
-                      wordBreak: "break-all",
-                    }}
-                  >
-                    {api.path}
-                  </span>
-                </div>
-              ))
+    <div style={drawerStyle(isOpen)}>
+      <div style={innerStyle}>
+        {!isOpen || !data ? (
+          <>
+            <PanelHeader title="详情面板" onClose={onClose} />
+            <p style={{ color: "#94a3b8" }}>点击画布上的节点查看详细信息</p>
+          </>
+        ) : (
+          <>
+            {selectedMethod && selectedMethodInfo && selectedMethodComponent && !isFailed && (
+              <MethodDetail
+                method={selectedMethodInfo}
+                component={selectedMethodComponent}
+                onBack={() => onSelectMethod?.(null)}
+              />
             )}
-          </Section>
-        </>
-      )}
 
-      {isFailed && data.error && (
-        <Section title="错误信息">
-          <div
-            style={{
-              background: "#fee2e2",
-              color: "#991b1b",
-              padding: 10,
-              borderRadius: 6,
-              fontSize: 13,
-              wordBreak: "break-all",
-            }}
-          >
-            {data.error}
-          </div>
-        </Section>
-      )}
+            {selectedComponent && !isFailed && (
+              <ComponentDetail
+                component={selectedComponent}
+                onBack={() => onSelectComponent?.("")}
+              />
+            )}
+
+            <div style={{ marginBottom: 16 }}>
+              <PanelHeader title={data.label} onClose={onClose} />
+              <span
+                style={{
+                  display: "inline-block",
+                  marginTop: 6,
+                  padding: "4px 10px",
+                  borderRadius: 999,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  background: isFailed ? "#fee2e2" : "#dcfce7",
+                  color: isFailed ? "#991b1b" : "#166534",
+                }}
+              >
+                {isFailed ? "加载失败" : "运行中"}
+              </span>
+            </div>
+
+            {!isFailed && (
+              <>
+                <Section title="组件统计">
+                  <Stat label="Controller" value={data.counts.controllers} />
+                  <Stat label="Service" value={data.counts.services} />
+                  <Stat label="Mapper" value={data.counts.mappers} />
+                </Section>
+
+                <Section title="组件与依赖">
+                  {Object.entries(data.components).map(([type, entries]) => (
+                    <div key={type} style={{ marginBottom: 10 }}>
+                      <div
+                        style={{
+                          fontSize: 12,
+                          fontWeight: 700,
+                          textTransform: "uppercase",
+                          color: "#64748b",
+                          marginBottom: 4,
+                        }}
+                      >
+                        {type}
+                      </div>
+                      {entries.map((entry) => {
+                        const { name } = parseComponentEntry(entry);
+                        const componentId = `${data.label}::${type}::${name}`;
+                        const isSelected = selectedComponentId === componentId;
+
+                        return (
+                          <div
+                            key={entry}
+                            onClick={() => onSelectComponent?.(componentId)}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.background = "#f1f5f9";
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.background = isSelected
+                                ? "#e2e8f0"
+                                : "transparent";
+                            }}
+                            style={{
+                              fontSize: 13,
+                              color: "#334155",
+                              fontFamily: "monospace",
+                              padding: "4px 8px",
+                              borderRadius: 4,
+                              cursor: "pointer",
+                              background: isSelected ? "#e2e8f0" : "transparent",
+                              marginBottom: 2,
+                            }}
+                          >
+                            {entry}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ))}
+                </Section>
+
+                <Section title="API 列表">
+                  {data.apiList.length === 0 ? (
+                    <span style={{ color: "#94a3b8" }}>暂无 API</span>
+                  ) : (
+                    data.apiList.map((api) => (
+                      <div
+                        key={`${api.method}${api.path}`}
+                        style={{
+                          display: "flex",
+                          gap: 8,
+                          alignItems: "center",
+                          padding: "6px 0",
+                          borderBottom: "1px solid #e2e8f0",
+                        }}
+                      >
+                        <span
+                          style={{
+                            fontSize: 11,
+                            fontWeight: 700,
+                            color: "#fff",
+                            background: methodColor(api.method),
+                            padding: "2px 6px",
+                            borderRadius: 4,
+                          }}
+                        >
+                          {api.method}
+                        </span>
+                        <span
+                          style={{
+                            fontSize: 13,
+                            color: "#334155",
+                            fontFamily: "monospace",
+                            wordBreak: "break-all",
+                          }}
+                        >
+                          {api.path}
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </Section>
+              </>
+            )}
+
+            {isFailed && data.error && (
+              <Section title="错误信息">
+                <div
+                  style={{
+                    background: "#fee2e2",
+                    color: "#991b1b",
+                    padding: 10,
+                    borderRadius: 6,
+                    fontSize: 13,
+                    wordBreak: "break-all",
+                  }}
+                >
+                  {data.error}
+                </div>
+              </Section>
+            )}
+          </>
+        )}
+      </div>
     </div>
   );
 }
@@ -590,11 +647,21 @@ function typeColor(type: string): string {
   }
 }
 
-const panelStyle: React.CSSProperties = {
-  width: 340,
+const drawerStyle = (isOpen: boolean): React.CSSProperties => ({
+  width: isOpen ? 340 : 0,
   height: "100%",
   background: "#ffffff",
-  borderLeft: "1px solid #e2e8f0",
+  borderLeft: isOpen ? "1px solid #e2e8f0" : "none",
+  overflow: "hidden",
+  flexShrink: 0,
+  transition: "width 300ms ease, opacity 250ms ease",
+  opacity: isOpen ? 1 : 0,
+  boxSizing: "border-box",
+});
+
+const innerStyle: React.CSSProperties = {
+  width: 340,
+  height: "100%",
   padding: 20,
   overflowY: "auto",
   boxSizing: "border-box",
