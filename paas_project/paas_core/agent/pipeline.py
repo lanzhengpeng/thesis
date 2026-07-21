@@ -11,7 +11,8 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict
+import json
+from typing import Any, AsyncIterator, Dict, Optional
 
 from langgraph.graph import END, StateGraph
 
@@ -24,6 +25,7 @@ from .agents import (
     run_reviewer_deployer_node,
 )
 from .schemas import PipelineState
+from .session_store import update_session
 
 
 def _node_requirements(state: PipelineState, kernel: MicroKernel) -> Dict[str, Any]:
@@ -151,3 +153,91 @@ def run_pipeline(
     }
     final_state = graph.invoke(initial_state)
     return final_state.get("result", final_state)
+
+
+async def stream_pipeline(
+    kernel: MicroKernel,
+    session_id: str,
+    task: str,
+    requirements_doc: Dict[str, Any],
+) -> AsyncIterator[str]:
+    """
+    异步流式执行多智能体流水线，产出 SSE 格式字符串。
+
+    遍历 ``graph.astream_events(initial_state, version="v2")`` 产生的事件：
+
+    - ``on_chat_model_stream``: 将模型输出块实时推送给前端，实现打字机效果。
+    - ``on_tool_start``: 向前端发送 Markdown 引用形式的工具执行提示。
+    - ``on_tool_end``: 不推送，工具结果保留在 LangGraph 状态流中供后续节点使用。
+    - 流水线结束后：将最终结果写入会话并推送一份 JSON 总结。
+
+    参数：
+        kernel: 微内核实例。
+        session_id: 会话 ID。
+        task: 原始任务。
+        requirements_doc: 已确认的需求文档。
+
+    返回：
+        异步迭代器，每个元素都是符合 SSE 规范的 ``data: ...\\n\\n`` 字符串。
+    """
+    graph = build_pipeline_graph(kernel)
+    initial_state: PipelineState = {
+        "session_id": session_id,
+        "task": task,
+        "status": "pending",
+        "requirements_doc": requirements_doc,
+        "architecture_doc": None,
+        "files": {},
+        "written": [],
+        "checks": {},
+        "reload_report": {},
+        "logs": [f"启动流水线，任务: {task}"],
+        "result": {},
+    }
+
+    final_result: Dict[str, Any] = {}
+    error_message: Optional[str] = None
+
+    try:
+        async for event in graph.astream_events(initial_state, version="v2"):
+            event_type = event.get("event")
+            if event_type == "on_chat_model_stream":
+                chunk = event.get("data", {}).get("chunk")
+                text = getattr(chunk, "content", None)
+                if text:
+                    yield f"data: {text}\n\n"
+            elif event_type == "on_tool_start":
+                tool_name = event.get("name", "unknown_tool")
+                yield f"data: \n> 🛠️ 正在执行: {tool_name}...\n\n"
+            elif event_type == "on_tool_end":
+                # 工具结果已通过 LangGraph 状态流转到后续节点，无需再发给前端。
+                pass
+            elif event_type == "on_chain_end" and event.get("name") == "finalize":
+                output = event.get("data", {}).get("output", {})
+                final_result = output.get("result", {})
+    except Exception as exc:  # pragma: no cover
+        error_message = str(exc)
+        yield f"data: \n> ❌ 流水线执行出错: {exc}\n\n"
+
+    if error_message:
+        update_session(
+            session_id,
+            status="stream_failed",
+            logs=[f"流式执行失败: {error_message}"],
+        )
+        yield f"data: {json.dumps({'status': 'stream_failed', 'error': error_message}, ensure_ascii=False)}\n\n"
+        return
+
+    if final_result:
+        update_session(
+            session_id,
+            status=final_result.get("status", "unknown"),
+            architecture_doc=final_result.get("architecture_doc"),
+            generated_files=final_result.get("files"),
+            written=final_result.get("written"),
+            checks=final_result.get("checks"),
+            reload_report=final_result.get("reload_report"),
+            logs=final_result.get("logs"),
+            result=final_result,
+        )
+        yield f"data: {json.dumps(final_result, ensure_ascii=False)}\n\n"

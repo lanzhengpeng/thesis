@@ -12,12 +12,13 @@ Agent 管理接口
 from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from paas_core.kernel.microkernel import MicroKernel
 
 from .agents.requirements_agent import _default_requirements_doc, _extract_module_name
-from .pipeline import run_pipeline
+from .pipeline import stream_pipeline
 from .session_api import create_session_router
 from .session_store import create_session, update_session
 
@@ -57,7 +58,7 @@ def create_agent_router(kernel: MicroKernel) -> APIRouter:
     router.include_router(create_session_router(kernel))
 
     @router.post("/generate")
-    def generate(req: AgentTaskRequest):
+    async def generate(req: AgentTaskRequest):
         """
         接收自然语言任务，由多智能体流水线生成并部署插件模块。
 
@@ -65,7 +66,10 @@ def create_agent_router(kernel: MicroKernel) -> APIRouter:
             {"task": "创建用户模块"}
 
         返回：
-            生成结果、文件列表、静态检查结果、内核重载报告及执行日志。
+            SSE 流（media_type="text/event-stream"）。流中包括：
+            - 大模型输出块（打字机效果）
+            - 工具开始执行的 Markdown 提示
+            - 流水线结束后的 JSON 总结
         """
         if not req.task or not req.task.strip():
             raise HTTPException(status_code=400, detail="task 不能为空")
@@ -85,17 +89,9 @@ def create_agent_router(kernel: MicroKernel) -> APIRouter:
             logs=[f"旧接口直接生成，任务: {task}"],
         )
 
-        result = run_pipeline(kernel, session_id, task, requirements_doc)
-        update_session(
-            session_id,
-            status=result.get("status", "unknown"),
-            generated_files=result.get("files"),
-            written=result.get("written"),
-            checks=result.get("checks"),
-            reload_report=result.get("reload_report"),
-            logs=result.get("logs"),
-            result=result,
+        return StreamingResponse(
+            stream_pipeline(kernel, session_id, task, requirements_doc),
+            media_type="text/event-stream",
         )
-        return result
 
     return router

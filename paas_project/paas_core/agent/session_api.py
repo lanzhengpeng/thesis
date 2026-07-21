@@ -10,12 +10,13 @@ from __future__ import annotations
 from typing import Any, Dict, List
 
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from paas_core.kernel.microkernel import MicroKernel
 
 from .agents.requirements_agent import generate_first_questions, process_answers
-from .pipeline import run_pipeline
+from .pipeline import stream_pipeline
 from .schemas import (
     AnswerRequest,
     ArchitectureDoc,
@@ -148,6 +149,7 @@ def create_session_router(kernel: MicroKernel) -> APIRouter:
         在需求确认后触发代码生成流水线。
 
         流水线依次执行：架构设计 → 代码生成 → 审查部署。
+        返回 SSE 流（media_type="text/event-stream"）。
         """
         session = get_session(session_id)
         if session is None:
@@ -158,24 +160,14 @@ def create_session_router(kernel: MicroKernel) -> APIRouter:
             raise HTTPException(status_code=400, detail="需求尚未确认，无法生成")
 
         update_session(session_id, status="generating")
-        result = run_pipeline(
-            kernel,
-            session_id,
-            session["task"],
-            requirements_doc,
+        return StreamingResponse(
+            stream_pipeline(
+                kernel,
+                session_id,
+                session["task"],
+                requirements_doc,
+            ),
+            media_type="text/event-stream",
         )
-        update_session(
-            session_id,
-            status=result.get("status", "unknown"),
-            architecture_doc=result.get("architecture_doc"),
-            generated_files=result.get("files"),
-            written=result.get("written"),
-            checks=result.get("checks"),
-            reload_report=result.get("reload_report"),
-            logs=result.get("logs"),
-            result=result,
-        )
-
-        return result
 
     return router

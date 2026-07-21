@@ -276,6 +276,8 @@ AI 文件操作工具内置强校验，锁死 `plugins/` 目录，无法通过 `
 5. 执行 `static_check` 静态安全检查。
 6. 调用 `MicroKernel.reload_plugin()` 刷新系统口容器；8001 服务口通过文件监听自动感知变更。
 
+**流式响应**：`/admin/agent/generate` 现在返回 `text/event-stream` SSE 流，前端可实时看到大模型输出（`on_chat_model_stream`）和工具执行提示（`on_tool_start`），无需解析中间 JSON；最终结果以一条 JSON 事件推送。
+
 **LLM 配置**：默认读取环境变量 `OPENAI_API_KEY`、`OPENAI_BASE_URL`、`AGENT_MODEL`；未配置时回退到 `test_api.ipynb` 中记录的本地接口。若 LLM 不可用或返回格式错误，agent 会自动使用内置模板，保证随时可运行。
 
 ---
@@ -429,13 +431,24 @@ curl http://localhost:8000/admin/kernel/cheat-sheet
 curl http://localhost:8000/admin/kernel/modules
 ```
 
-通过 LangGraph Agent 生成模块（自然语言 → 插件）：
+通过 LangGraph Agent 生成模块（自然语言 → 插件），接口以 SSE 流式返回：
 
 ```bash
-curl -X POST http://localhost:8000/admin/agent/generate \
+curl -N -X POST http://localhost:8000/admin/agent/generate \
   -H "Content-Type: application/json" \
+  -H "Accept: text/event-stream" \
   -d '{"task": "创建用户模块"}'
 ```
+
+SSE 事件说明：
+
+| 事件来源 | SSE 数据示例 | 含义 |
+|----------|--------------|------|
+| `on_chat_model_stream` | `data: 正在生成 UserMapper...\n\n` | 大模型实时输出块，前端可直接拼接实现打字机效果 |
+| `on_tool_start` | `data: \n> 🛠️ 正在执行: write_plugin_file...\n\n` | 内部工具开始执行，前端可用 Markdown 引用样式渲染 |
+| 流水线结束 | `data: {"status": "deployed", ...}\n\n` | 最终生成结果 JSON，包含文件列表、静态检查、重载报告等 |
+
+> 工具执行完毕（`on_tool_end`）的冗长 JSON 结果不会推送给前端，仅注入 LangGraph 状态供后续大模型节点使用。
 
 Agent 会根据任务自动创建 `plugins/<module_name>/` 目录、生成 CSM 代码、执行静态检查并重载内核。成功后可在 8001 服务口调用对应的业务接口。
 
@@ -655,7 +668,8 @@ class OrderService:
 | `/admin/kernel/modules` | GET | 列出已加载/失败的模块 |
 | `/admin/kernel/cheat-sheet` | GET | 获取全局调用图、API 映射与结构化组件元数据 |
 | `/admin/kernel/reload/{plugin_name}` | POST | 重新加载指定插件（刷新系统口容器；8001 服务口通过文件监听自动热更新） |
-| `/admin/agent/generate` | POST | LangGraph Agent：自然语言生成并部署插件模块 |
+| `/admin/agent/generate` | POST | LangGraph Agent：自然语言生成并部署插件模块，返回 `text/event-stream` SSE 流 |
+| `/admin/agent/sessions/{session_id}/generate` | POST | 在需求确认后触发代码生成流水线，同样返回 SSE 流 |
 
 > **注意**：
 > 1. `/admin/kernel/reload` 主动刷新 **8000 系统口** 的内存容器，用于前端画布实时展示。
