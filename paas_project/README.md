@@ -150,9 +150,9 @@ from paas_core import (
 | `@Service` | 标记业务逻辑类 |
 | `@Mapper` | 标记数据访问类 |
 | `@Inject` | 标记需要注入的字段（参数注入优先推荐） |
-| `@GET(path, calls=...)` / `@POST(...)` 等 | 标记 Controller 的 HTTP 端点，可声明下游调用 |
-| `@service_method(params, calls)` | 标记 Service 业务方法，记录入参与下游调用 |
-| `@sql_operation(sql, params)` | 标记 Mapper 数据库操作，绑定 SQL 模板 |
+| `@GET(path, calls=..., feature=...)` / `@POST(...)` 等 | 标记 Controller 的 HTTP 端点，可声明下游调用与中文功能名 |
+| `@service_method(params, calls, feature)` | 标记 Service 业务方法，记录入参、下游调用与中文功能名 |
+| `@sql_operation(sql, params, feature)` | 标记 Mapper 数据库操作，绑定 SQL 模板与中文功能名 |
 
 #### 3.2.2 两遍扫描装配法
 
@@ -459,6 +459,7 @@ class UserMapper:
     @sql_operation(
         sql="INSERT INTO users (username, email) VALUES (%s, %s)",
         params=["username", "email"],
+        feature="创建用户",
     )
     def create(self, username: str, email: str) -> dict:
         user_id = self._next_id
@@ -470,11 +471,12 @@ class UserMapper:
     @sql_operation(
         sql="SELECT * FROM users WHERE id = %s",
         params=["user_id"],
+        feature="查询用户",
     )
     def get(self, user_id: int) -> dict | None:
         return self._users.get(user_id)
 
-    @sql_operation(sql="SELECT * FROM users")
+    @sql_operation(sql="SELECT * FROM users", feature="全量列表")
     def list_all(self) -> list:
         return list(self._users.values())
 ```
@@ -491,15 +493,15 @@ class UserService:
     def __init__(self, user_mapper: UserMapper):
         self.user_mapper = user_mapper
 
-    @service_method(params=["username", "email"], calls=["UserMapper.create"])
+    @service_method(params=["username", "email"], calls=["UserMapper.create"], feature="用户注册")
     def register(self, username: str, email: str) -> dict:
         return self.user_mapper.create(username, email)
 
-    @service_method(params=["user_id"], calls=["UserMapper.get"])
+    @service_method(params=["user_id"], calls=["UserMapper.get"], feature="查询用户")
     def get_user(self, user_id: int) -> dict | None:
         return self.user_mapper.get(user_id)
 
-    @service_method(calls=["UserMapper.list_all"])
+    @service_method(calls=["UserMapper.list_all"], feature="全量列表")
     def list_users(self) -> list:
         return self.user_mapper.list_all()
 ```
@@ -516,18 +518,18 @@ class UserController:
     def __init__(self, user_service: UserService):
         self.user_service = user_service
 
-    @GET("/", calls=["UserService.list_users"])
+    @GET("/", calls=["UserService.list_users"], feature="查询列表")
     def list_users(self):
         return self.user_service.list_users()
 
-    @GET("/{user_id}", calls=["UserService.get_user"])
+    @GET("/{user_id}", calls=["UserService.get_user"], feature="查询用户")
     def get_user(self, user_id: str):
         user = self.user_service.get_user(int(user_id))
         if user is None:
             return {"error": "not found"}
         return user
 
-    @POST("/", calls=["UserService.register"])
+    @POST("/", calls=["UserService.register"], feature="创建用户")
     def create_user(self, payload: dict):
         return self.user_service.register(
             payload.get("username", ""),
@@ -537,7 +539,10 @@ class UserController:
 
 ### 6.4 HTTP 方法装饰器
 
-Controller 方法使用标准 HTTP 方法装饰器，所有装饰器都可选地支持 `calls` 参数，用于声明该方法内部调用的下游 Service / Mapper 方法，供前端绘制方法级调用连线。
+Controller 方法使用标准 HTTP 方法装饰器，所有装饰器都可选地支持 `calls` 与 `feature` 参数：
+
+- `calls`：声明该方法内部调用的下游 Service / Mapper 方法，供前端绘制方法级调用连线。
+- `feature`：简短中文功能名（4~8 字动宾短语），用于可视化拓扑展示。
 
 ```python
 from paas_core import GET, POST, PUT, DELETE, PATCH
@@ -552,7 +557,7 @@ class OrderController:
     def __init__(self, order_service: OrderService):
         self.order_service = order_service
 
-    @POST("/", calls=["OrderService.create_order"])
+    @POST("/", calls=["OrderService.create_order"], feature="创建订单")
     def create_order(self, request_data):
         return self.order_service.create_order(request_data)
 ```
@@ -561,9 +566,9 @@ class OrderController:
 
 为了把调用图精确到方法级别，Service 和 Mapper 的方法也可以使用专用装饰器声明元数据。
 
-#### `@service_method(params, calls)`
+#### `@service_method(params, calls, feature)`
 
-用于 Service 业务方法，记录入参和下游调用：
+用于 Service 业务方法，记录入参、下游调用与中文功能名：
 
 ```python
 from paas_core import Service, service_method
@@ -575,14 +580,14 @@ class OrderService:
     def __init__(self, order_mapper: OrderMapper):
         self.order_mapper = order_mapper
 
-    @service_method(params=["data"], calls=["OrderMapper.insert_order"])
+    @service_method(params=["data"], calls=["OrderMapper.insert_order"], feature="创建订单")
     def create_order(self, data):
         return self.order_mapper.insert_order(data['id'], data['amount'])
 ```
 
-#### `@sql_operation(sql, params)`
+#### `@sql_operation(sql, params, feature)`
 
-用于 Mapper 数据库操作方法，绑定 SQL 模板和参数：
+用于 Mapper 数据库操作方法，绑定 SQL 模板、参数与中文功能名：
 
 ```python
 from paas_core import Mapper, sql_operation
@@ -591,11 +596,17 @@ from paas_core import Mapper, sql_operation
 class OrderMapper:
     @sql_operation(
         sql="INSERT INTO orders (id, amount) VALUES (%s, %s)",
-        params=["order_id", "amount"]
+        params=["order_id", "amount"],
+        feature="订单入库"
     )
     def insert_order(self, order_id, amount):
         pass
 ```
+
+> **功能名 `feature` 规范**：
+> - 必须是简短的动宾短语，通常 4~8 个字，例如 `"查询订单"`、`"创建用户"`、`"订单入库"`。
+> - 用于在可视化拓扑中直观展示该方法的业务职能。
+> - ❌ 不要写成冗长逻辑描述，如 `"创建订单之前先去用户模块校验用户ID是否存在"`。
 
 ### 6.6 跨模块调用
 
@@ -675,6 +686,7 @@ class OrderService:
       "methods": [
         {
           "name": "create",
+          "feature": "创建用户",
           "params": ["username", "email"],
           "calls": [],
           "sql": "INSERT INTO users (username, email) VALUES (%s, %s)"
@@ -692,6 +704,7 @@ class OrderService:
       "methods": [
         {
           "name": "register",
+          "feature": "用户注册",
           "params": ["username", "email"],
           "calls": ["UserMapper.create"],
           "sql": null
@@ -709,6 +722,7 @@ class OrderService:
       "methods": [
         {
           "name": "create_user",
+          "feature": "创建用户",
           "http_method": "POST",
           "path": "/api/users/",
           "params": ["payload"],

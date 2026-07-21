@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, type MouseEvent } from "react";
 import {
   Background,
   Controls,
@@ -12,9 +12,10 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 
-import { buildGraph, type ModuleNodeData } from "../lib/graphBuilder";
+import { buildGraph, type MethodNodeData, type ModuleNodeData } from "../lib/graphBuilder";
 import { ComponentNode } from "./ComponentNode";
 import { GatewayNode } from "./GatewayNode";
+import { MethodNode } from "./MethodNode";
 import { ModuleNode } from "./ModuleNode";
 import type { CheatSheetResponse } from "../types/cheatSheet";
 
@@ -23,6 +24,7 @@ const nodeTypes = {
   module: ModuleNode,
   failedModule: ModuleNode,
   component: ComponentNode,
+  method: MethodNode,
 } as NodeTypes;
 
 interface ArchitectureGraphProps {
@@ -46,16 +48,17 @@ export function ArchitectureGraph({ data, onSelectModule, onSelectComponent }: A
     setEdges(initialEdges as Edge[]);
   }, [initialNodes, initialEdges, setNodes, setEdges]);
 
-  // 使用节点选择变化事件替代 onNodeClick，避免拖拽与点击冲突
-  const onSelectionChange = useCallback(
-    ({ nodes: selectedNodes }: { nodes: Node[] }) => {
-      if (selectedNodes.length === 0) return;
-      const selected = selectedNodes[0];
-
-      if (selected.type === "component" && selected.id) {
-        onSelectComponent(selected.id);
-      } else if (selected.data) {
-        onSelectModule(selected.data as ModuleNodeData);
+  // 使用 onNodeClick 处理节点选中，拖拽不会触发点击
+  const onNodeClick = useCallback(
+    (_event: MouseEvent, node: Node) => {
+      if (node.type === "component" && node.id) {
+        onSelectComponent(node.id);
+      } else if (node.type === "method" && node.data) {
+        // 点击方法节点时展示其所属 CSM 组件详情
+        const data = node.data as MethodNodeData;
+        onSelectComponent(data.componentId);
+      } else if (node.data) {
+        onSelectModule(node.data as ModuleNodeData);
       }
     },
     [onSelectModule, onSelectComponent]
@@ -68,7 +71,7 @@ export function ArchitectureGraph({ data, onSelectModule, onSelectComponent }: A
         edges={edges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
-        onSelectionChange={onSelectionChange}
+        onNodeClick={onNodeClick}
         nodeTypes={nodeTypes}
         fitView
         fitViewOptions={{ padding: 0.2 }}

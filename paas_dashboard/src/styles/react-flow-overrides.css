@@ -1,0 +1,8 @@
+/* 强制连线层位于节点层下方，避免边穿过方法卡片时盖住文字 */
+.react-flow__edges {
+  z-index: 1 !important;
+}
+
+.react-flow__nodes {
+  z-index: 2 !important;
+}

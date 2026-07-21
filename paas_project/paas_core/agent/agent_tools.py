@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import os
 import shutil
+import threading
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -19,7 +20,34 @@ from paas_core.sdk import is_component
 
 
 # 插件沙箱根目录，AI 只能在该目录下操作文件
-PLUGINS_DIR = Path(__file__).resolve().parent.parent / "plugins"
+PLUGINS_DIR = Path(__file__).resolve().parent.parent.parent / "plugins"
+
+# 每个插件目录一个线程锁，防止同进程内多线程并发写同一个模块
+_PLUGIN_LOCKS: Dict[str, threading.RLock] = {}
+_PLUGIN_LOCKS_MUTEX = threading.Lock()
+
+
+def _get_plugin_lock(plugin_name: str) -> threading.RLock:
+    """获取指定插件目录的线程锁。"""
+    with _PLUGIN_LOCKS_MUTEX:
+        if plugin_name not in _PLUGIN_LOCKS:
+            _PLUGIN_LOCKS[plugin_name] = threading.RLock()
+        return _PLUGIN_LOCKS[plugin_name]
+
+
+def _atomic_write(file_path: Path, content: str) -> None:
+    """
+    原子写入文件。
+
+    先写入同目录下的 .tmp 临时文件，再通过 os.replace 原子替换目标文件，
+    避免并发读线程读到半写入内容。
+    """
+    tmp_path = file_path.with_suffix(file_path.suffix + ".tmp")
+    with open(tmp_path, "w", encoding="utf-8") as f:
+        f.write(content)
+        f.flush()
+        os.fsync(f.fileno())
+    os.replace(tmp_path, file_path)
 
 
 class AgentSandboxError(Exception):
@@ -122,6 +150,10 @@ def write_plugin_file(plugin_name: str, file_name: str, content: str) -> Dict[st
     - 文件必须以 .py 结尾。
     - 路径不能逃离 plugins 沙箱。
 
+    并发安全：
+    - 同一个插件目录的写操作使用线程锁串行化。
+    - 文件写入采用原子替换，避免读到半写入内容。
+
     参数：
         plugin_name: 插件目录名。
         file_name: 文件名，必须以 .py 结尾。
@@ -141,8 +173,8 @@ def write_plugin_file(plugin_name: str, file_name: str, content: str) -> Dict[st
     if not str(resolved).startswith(str(PLUGINS_DIR.resolve())):
         raise AgentSandboxError(f"文件 '{file_name}' 逃离了 plugins 沙箱")
 
-    with open(file_path, "w", encoding="utf-8") as f:
-        f.write(content)
+    with _get_plugin_lock(plugin_name):
+        _atomic_write(file_path, content)
 
     return {"status": "ok", "plugin": plugin_name, "file": file_name}
 

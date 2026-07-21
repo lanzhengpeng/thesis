@@ -1,4 +1,4 @@
-import type { NodeProps } from "@xyflow/react";
+import { Handle, Position, type NodeProps } from "@xyflow/react";
 import type { ModuleNodeData } from "../lib/graphBuilder";
 
 export const MODULE_HEADER_HEIGHT = 56;
@@ -13,15 +13,34 @@ export function ModuleNode(props: NodeProps) {
       style={{
         width: "100%",
         height: "100%",
-        borderRadius: 12,
-        background: isFailed ? "#fef2f2" : "#ffffff",
-        border: isFailed ? "2px solid #ef4444" : "2px solid #3b82f6",
-        boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
+        borderRadius: 16,
+        background: isFailed ? "rgba(254, 242, 242, 0.85)" : "rgba(255, 255, 255, 0.85)",
+        border: isFailed ? "2px solid #ef4444" : "2px solid #bfdbfe",
+        boxShadow: "0 8px 24px rgba(0, 0, 0, 0.1)",
         display: "flex",
         flexDirection: "column",
         overflow: "hidden",
+        position: "relative",
       }}
     >
+      <Handle
+        type="target"
+        position={Position.Top}
+        id="top"
+        style={{
+          position: "absolute",
+          width: 8,
+          height: 8,
+          borderRadius: "50%",
+          background: "#94a3b8",
+          border: "2px solid #fff",
+          top: -5,
+          left: "50%",
+          transform: "translateX(-50%)",
+          zIndex: 1,
+        }}
+      />
+
       <div
         style={{
           height: MODULE_HEADER_HEIGHT,
@@ -29,9 +48,10 @@ export function ModuleNode(props: NodeProps) {
           alignItems: "center",
           justifyContent: "space-between",
           gap: 12,
-          padding: "0 16px",
+          padding: "0 24px",
           boxSizing: "border-box",
-          borderBottom: isFailed ? "1px solid #fecaca" : "1px solid #bfdbfe",
+          borderBottom: isFailed ? "1px solid rgba(254, 202, 202, 0.8)" : "1px solid rgba(191, 219, 254, 0.8)",
+          background: isFailed ? "rgba(254, 202, 202, 0.6)" : "rgba(219, 234, 254, 0.5)",
           minWidth: 0,
         }}
       >
@@ -75,10 +95,10 @@ export function ModuleNode(props: NodeProps) {
             fontSize: 11,
             color: "#991b1b",
             background: "#fee2e2",
-            padding: 8,
+            padding: 10,
             borderRadius: 6,
             wordBreak: "break-all",
-            margin: "0 16px 12px",
+            margin: "0 24px 16px",
           }}
         >
           {data.error}

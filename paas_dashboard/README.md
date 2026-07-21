@@ -24,14 +24,17 @@
 本前端用于直观展示 PaaS 平台的实时架构：
 
 - 顶部居中展示“网关 / 鉴权”节点，所有业务模块在其下方横向并排铺开。
-- 每个模块卡片内部按 **Controller → Service → Mapper** 三层垂直堆叠；同一层内组件水平并排。
-- **所有 CSM 组件卡片默认完全展开为大尺寸全景卡片，不支持折叠**：
-  - Controller 行展示 HTTP 方法标签 + 路由路径 + 方法签名。
-  - Service 行展示方法签名。
-  - Mapper 行展示方法签名及嵌入式 SQL 代码块。
-- 调用连线精确到**方法级**：根据 `components[].methods[].calls`，从源方法行右侧的 handle 连到目标方法行左侧的 handle；跨模块调用使用橙色虚线流动边。
+- 模块节点为**宽大、方正、内边距充足的容器**，为内部 CSM 组件留出足够呼吸空间。
+- 每个模块卡片内部按 **Controller → Service → Mapper** 三层严格垂直堆叠；同一层内组件水平并排，层与层之间等距分布。
+- 每个 CSM 组件（Controller/Service/Mapper）是一个可拖拽的父容器，内部的方法节点采用**单行水平展开**：所有方法卡片在同一水平行从左到右依次排列，不再换行，彻底避免边穿过无关卡片。
+- **每个方法渲染为独立的 React Flow 子节点**，拥有自己的四向 handle（上/下/左/右），并支持在所属 CSM 容器内部自由拖拽（`extent: 'parent'` 限制不可拖出父容器）。
+- 方法卡片**仅展示功能名**（`feature`），不再展示参数、HTTP 路径或 SQL；这些细节在右侧面板的组件详情中查看。
+- **方法级精确连线**：
+  - 模块内部调用（Controller → Service → Mapper）与跨模块调用均使用**虚线**，颜色与源组件所属层一致（Controller 蓝、Service 绿、Mapper 紫），让“谁调用谁”一目了然。
+  - 模块内部调用使用方法节点**顶部 target + 底部 source** 的 handle，连线垂直向下或带有 smoothstep 折角。
+  - 跨模块调用保留**左侧 target + 右侧 source**，使用虚线流动边。
+  - 所有边使用 `smoothstep` 路由，并通过 `pathOptions: { borderRadius: 16 }` 设置 16px 圆角折线。
 - 以节点画布形式展示所有插件模块（成功模块、失败模块）。
-- 绘制模块间的跨模块依赖关系（如 `order_module → user_module`）。
 - 顶部展示系统整体统计：Controller / Service / Mapper 数量、模块加载情况。
 - 点击画布节点，右侧面板展示该模块的组件、依赖和 API 列表；选中具体 CSM 组件可查看其构造参数、方法入参、下游 `calls` 目标及 Mapper SQL。
 - 每 5 秒自动轮询后端作弊纸，实现近似实时的架构刷新。
@@ -41,7 +44,7 @@
 启动后访问 `http://localhost:5173`，可看到：
 
 - 顶部状态栏：`Controller 2 / Service 2 / Mapper 2 / 模块 3/3`
-- 中央画布：网关节点 + 模块节点 + 依赖连线
+- 中央画布：网关节点 + 宽大模块容器 + CSM 组件卡片 + 仅展示功能名的方法块 + 虚线调用边
 - 右侧详情面板：选中模块的组件统计、调用关系、API 列表
 
 ---
@@ -85,6 +88,8 @@ paas_dashboard/
     │   ├── ArchitectureGraph.tsx   # 画布主组件
     │   ├── GatewayNode.tsx         # 网关节点样式
     │   ├── ModuleNode.tsx          # 模块节点样式
+    │   ├── ComponentNode.tsx       # CSM 组件容器样式
+    │   ├── MethodNode.tsx          # 方法子节点样式
     │   ├── ModuleDetailPanel.tsx   # 右侧详情面板
     │   └── StatusHeader.tsx        # 顶部状态栏
     └── styles/
@@ -156,14 +161,19 @@ const { data, loading, error, refetch } = useCheatSheet();
 核心转换逻辑：
 
 1. 解析 `call_graph` 中的依赖字符串，如 `Service(OrderMapper, UserService)`。
-2. 为每个模块生成一个 React Flow 节点，模块尺寸按内部组件数量与卡片内容自动扩展。
+2. 为每个模块生成一个 React Flow 节点；模块尺寸按内部组件数量与方法块内容自动扩展，容器宽大、内边距充足。
 3. 模块内部组件按 **Controller（顶）→ Service（中）→ Mapper（底）** 三层垂直堆叠，同层组件水平并排。
-4. 每个组件卡片根据方法数量、方法签名、HTTP 路径和 SQL 长度动态计算宽高，默认完全展开为大尺寸全景卡片。
-5. 方法级调用边：
-   - 根据 `components[].methods[].calls`，从源方法行右侧 handle 连到目标方法行左侧 handle。
-   - 模块内部调用使用灰色实线。
-   - 跨模块 Service 调用使用橙色虚线流动边。
-6. 所有业务模块在画布中横向并排，网关节点居中置顶。
+4. 每个组件卡片内部将方法提升为**独立的 React Flow 子节点**（`type: "method"`），采用**单行水平展开**布局：
+   - 方法节点固定宽度，在同一水平行从左到右依次排列，**不再换行**，避免边穿过无关卡片。
+   - 所有方法节点顶部对齐；组件容器高度由最高的方法块决定，保证 Mapper 等高卡片不会侵入下一层。
+   - 每个方法节点设置 `draggable: true` 与 `extent: "parent"`，允许在 CSM 容器内拖拽，且不会拖出父容器边界。
+5. 方法级调用边改为**直接连接方法子节点**：
+   - 根据 `components[].methods[].calls`，从源方法节点连到目标方法节点。
+   - **模块内部调用**与**跨模块调用**均使用虚线，颜色与源组件层一致（Controller 蓝、Service 绿、Mapper 紫）。
+   - 模块内部调用使用 `bottom` → `top`，跨模块调用使用 `right` → `left`（并带动画流动效果）。
+   - 所有边使用 `smoothstep` 类型，并通过 `pathOptions: { borderRadius: 16 }` 设置 16px 圆角折线；边 `zIndex: 5`，配合全局 CSS 让连线层位于节点层下方，从而从方法卡片背后穿过。
+6. 节点层级：模块容器 `zIndex: 0`，CSM 组件 `zIndex: 10`，方法子节点 `zIndex: 11`；同时通过 `src/styles/react-flow-overrides.css` 强制 `.react-flow__edges { z-index: 1 }`、`.react-flow__nodes { z-index: 2 }`，确保连线始终渲染在方法卡片背后，不会遮挡文字。
+7. 所有业务模块在画布中横向并排，网关节点居中置顶。
 
 ### 5.4 `components/ArchitectureGraph.tsx`
 
@@ -172,6 +182,7 @@ const { data, loading, error, refetch } = useCheatSheet();
 - `gateway`：顶部网关节点
 - `module`：正常加载的模块
 - `failedModule`：加载失败的模块（红色边框）
+- `component`：CSM 组件卡片
 
 支持缩放、平移、MiniMap、Controls。
 
@@ -182,8 +193,32 @@ const { data, loading, error, refetch } = useCheatSheet();
 - 模块名称
 - 组件数量徽章：`C: x / S: x / M: x`
 - 失败模块额外展示错误信息
+- 容器采用大圆角、大阴影与充足内边距，营造“宽大方正”的模块外壳
 
-### 5.6 `components/ModuleDetailPanel.tsx`
+### 5.6 `components/ComponentNode.tsx`
+
+CSM 组件容器：
+
+- 顶部标题栏：组件名 + 类型徽章（Controller/Service/Mapper）
+- 容器本身作为 React Flow 父节点，内部不再直接渲染方法块，而是为 `MethodNode` 子节点提供背景与边界
+- 容器宽度根据方法数量单行水平展开自动计算；容器高度由最高的方法块决定，保证各组件底部对齐、不会侵入下一层
+- 底部预留拖拽余量，方便在容器内拖拽方法节点
+
+### 5.7 `components/MethodNode.tsx`
+
+方法子节点：
+
+- 渲染为白色圆角卡片，带细边框与轻微阴影
+- 顶部/底部/左侧/右侧各有一个 handle，用于连接调用边
+- **卡片仅展示方法的功能名（`feature`），无功能名时回退到方法名（`name`）**
+- 不再展示参数标签、HTTP 方法/路径徽章或 Mapper SQL 块
+- 字体加粗，溢出时省略号截断，保持单行紧凑显示
+- 支持在所属 CSM 容器内部拖拽，不可拖出父容器边界
+- **点击方法节点会自动选中其所属的 CSM 组件并在右侧面板展示组件详情，避免方法节点无详情面板导致的白屏**
+
+右侧面板（`ModuleDetailPanel.tsx`）负责展示具体的方法签名、参数、HTTP 路径、下游 `calls` 目标及 SQL。
+
+### 5.8 `components/ModuleDetailPanel.tsx`
 
 点击节点后展示：
 
@@ -193,7 +228,7 @@ const { data, loading, error, refetch } = useCheatSheet();
 - 选中 CSM 组件时展示：构造参数、方法入参、下游 `calls`、Mapper SQL、Controller HTTP 方法
 - API 列表（方法 + 路径）
 
-### 5.7 `components/StatusHeader.tsx`
+### 5.9 `components/StatusHeader.tsx`
 
 顶部状态栏展示：
 
@@ -240,6 +275,8 @@ POST http://localhost:8000/admin/agent/generate
 
 后端返回的关键字段：
 
+> `components[].methods[].feature`（可选）：方法的中文功能名。前端已预留展示位，后端返回该字段后，方法卡片第一行将展示加粗中文功能名。
+
 ```json
 {
   "status": "ok",
@@ -273,6 +310,7 @@ POST http://localhost:8000/admin/agent/generate
       "inject_fields": [],
       "methods": [
         {
+          "feature": "查询用户列表",
           "name": "list_users",
           "http_method": "GET",
           "path": "/api/users/",
@@ -290,11 +328,13 @@ POST http://localhost:8000/admin/agent/generate
 
 ## 7. 构建与部署
 
-### 7.1 类型检查
+### 7.1 类型检查与构建
 
 ```bash
-npm run typecheck
+npm run build
 ```
+
+`npm run build` 会先执行 `tsc -b` 进行类型检查，再通过 Vite 打包。
 
 ### 7.2 生产构建
 
@@ -354,6 +394,25 @@ useEffect(() => {
 }, [initialNodes, initialEdges, setNodes, setEdges]);
 ```
 
+### 8.4 层级与连线防遮挡
+
+为了避免模块边框/背景遮挡内部连线，同时让方法节点盖住连线，节点与边分别设置了 `zIndex`：
+
+| 元素 | zIndex |
+|------|--------|
+| module / failedModule | 0 |
+| edge | 5 |
+| component | 10 |
+| method | 11 |
+
+实现要点：
+- 模块节点只作为背景容器，不拦截鼠标事件。
+- 方法节点作为 component 的子节点，可直接拖拽，并通过 `extent: "parent"` 限制在 CSM 容器内。
+- 边使用 `smoothstep`，`pathOptions: { borderRadius: 16 }` 让折线带有 16px 圆角，视觉上更柔和。
+- 在 `src/styles/react-flow-overrides.css` 中强制 `.react-flow__edges { z-index: 1 }`、`.react-flow__nodes { z-index: 2 }`，确保 SVG 连线始终位于 DOM 节点层下方，从方法卡片背后穿过而不遮挡文字。
+- 方法节点 handle 分别位于上下左右四个方向，内部调用走上下，跨模块调用走左右，水平位移错开锚点，减少边交叉。
+- 为所有生成节点显式写入 `measured: { width, height }` 与 `handles` 数组，避免在预览或某些无 ResizeObserver 的环境下出现 handle 不可见、边无法计算的问题。
+
 ---
 
 ## 9. 常见问题
@@ -376,9 +435,10 @@ useEffect(() => {
 
 - 模块节点横向并排，网关居中置顶。
 - 模块内部组件按 CSM 三层垂直堆叠。
+- 每个组件容器内部的方法节点采用**单行水平展开**：固定宽度、从左到右依次排列、不换行，所有方法顶部对齐，组件高度由最高方法决定。
 - 同层组件过多时模块宽度会自动扩展。
 
-若组件过于密集，可调整 `COMPONENT_H_GAP`、`COMPONENT_V_GAP` 或 `MODULE_H_GAP`。
+若组件过于密集，可调整 `COMPONENT_H_GAP`、`COMPONENT_V_GAP`、`MODULE_H_GAP`、`MODULE_PADDING`、`METHOD_NODE_WIDTH` 或 `METHOD_NODE_GAP`。
 
 ### Q5: 如何添加新的节点样式？
 

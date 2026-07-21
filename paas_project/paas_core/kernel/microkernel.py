@@ -23,7 +23,7 @@ from paas_core.sdk import ComponentType, get_meta, is_component
 from .di_container import AssemblyReport, DIContainer
 
 
-PLUGINS_DIR = Path(__file__).resolve().parent.parent / "plugins"
+PLUGINS_DIR = Path(__file__).resolve().parent.parent.parent / "plugins"
 
 
 @dataclass
@@ -398,6 +398,7 @@ class MicroKernel:
             for method in meta.methods:
                 method_item: Dict[str, Any] = {
                     "name": method.name,
+                    "feature": method.feature,
                     "params": method.params,
                     "calls": method.calls,
                     "sql": method.sql,

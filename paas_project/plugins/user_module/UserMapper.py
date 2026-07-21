@@ -15,6 +15,7 @@ class UserMapper:
     @sql_operation(
         sql="INSERT INTO users (username, email) VALUES (%s, %s)",
         params=["username", "email"],
+        feature="创建用户",
     )
     def create(self, username: str, email: str) -> dict:
         """创建用户。"""
@@ -27,12 +28,13 @@ class UserMapper:
     @sql_operation(
         sql="SELECT * FROM users WHERE id = %s",
         params=["user_id"],
+        feature="查询用户",
     )
     def get(self, user_id: int) -> dict | None:
         """根据 ID 查询用户。"""
         return self._users.get(user_id)
 
-    @sql_operation(sql="SELECT * FROM users")
+    @sql_operation(sql="SELECT * FROM users", feature="全量列表")
     def list_all(self) -> list:
         """查询所有用户。"""
         return list(self._users.values())

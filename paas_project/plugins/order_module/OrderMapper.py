@@ -15,6 +15,7 @@ class OrderMapper:
     @sql_operation(
         sql="INSERT INTO orders (user_id, total) VALUES (%s, %s)",
         params=["user_id", "total"],
+        feature="创建订单",
     )
     def create(self, user_id: int, total: float) -> dict:
         """创建订单。"""
@@ -27,12 +28,13 @@ class OrderMapper:
     @sql_operation(
         sql="SELECT * FROM orders WHERE id = %s",
         params=["order_id"],
+        feature="查询订单",
     )
     def get(self, order_id: int) -> dict | None:
         """根据 ID 查询订单。"""
         return self._orders.get(order_id)
 
-    @sql_operation(sql="SELECT * FROM orders")
+    @sql_operation(sql="SELECT * FROM orders", feature="全量列表")
     def list_all(self) -> list:
         """查询所有订单。"""
         return list(self._orders.values())

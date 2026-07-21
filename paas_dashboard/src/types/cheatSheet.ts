@@ -33,6 +33,7 @@ export interface CheatSheetApiItem {
 }
 
 export interface CheatSheetMethodItem {
+  feature?: string;
   http_method?: string;
   path?: string;
   name: string;

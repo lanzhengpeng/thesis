@@ -1,4 +1,5 @@
-import type { Edge, Node } from "@xyflow/react";
+import { Position } from "@xyflow/react";
+import type { BuiltInEdge, Edge, Node } from "@xyflow/react";
 import type {
   CheatSheetApiItem,
   CheatSheetCallGraph,
@@ -16,8 +17,16 @@ export interface ComponentNodeData {
   componentType: ComponentType;
   module: string;
   componentId: string;
-  methods: CheatSheetMethodItem[];
-  methodHeights: number[];
+}
+
+export interface MethodNodeData {
+  [key: string]: unknown;
+  label: string;
+  name: string;
+  componentType: ComponentType;
+  componentId: string;
+  method: CheatSheetMethodItem;
+  height: number;
 }
 
 export interface ModuleNodeData {
@@ -31,110 +40,138 @@ export interface ModuleNodeData {
 }
 
 export interface GraphResult {
-  nodes: Node<ModuleNodeData | ComponentNodeData>[];
+  nodes: Node<ModuleNodeData | ComponentNodeData | MethodNodeData>[];
   edges: Edge[];
 }
 
-const GATEWAY_WIDTH = 180;
+const GATEWAY_WIDTH = 200;
 
 const MODULE_HEADER_HEIGHT = 56;
-const MODULE_PADDING = 24;
-const MODULE_MIN_WIDTH = 420;
-const MODULE_H_GAP = 80;
-const MODULE_TOP_MARGIN = 140;
+const MODULE_PADDING = 40;
+const MODULE_MIN_WIDTH = 560;
+const MODULE_H_GAP = 100;
+const MODULE_TOP_MARGIN = 160;
 
-const FAILED_MODULE_WIDTH = 340;
-const FAILED_MODULE_HEIGHT = 140;
+const FAILED_MODULE_WIDTH = 360;
+const FAILED_MODULE_HEIGHT = 150;
 
-const MIN_COMPONENT_WIDTH = 360;
-const MAX_COMPONENT_WIDTH = 620;
-const COMPONENT_H_GAP = 28;
-const COMPONENT_V_GAP = 40;
+const MIN_COMPONENT_WIDTH = 520;
+const MAX_COMPONENT_WIDTH = 1600;
+const COMPONENT_H_GAP = 32;
+const COMPONENT_V_GAP = 48;
 
 export const COMPONENT_HEADER_HEIGHT = 48;
 export const COMPONENT_PADDING = 16;
-export const METHOD_ROW_HEIGHT = 52;
-export const MAPPER_METHOD_ROW_HEIGHT = 96;
+export const METHOD_BLOCK_GAP = 16;
+export const METHOD_BLOCK_PADDING = 12;
+
+const METHOD_NODE_WIDTH = 220;
+const METHOD_NODE_GAP = 16;
+const COMPONENT_DRAG_MARGIN = 60;
 
 const COMPONENT_ORDER: ComponentType[] = ["controller", "service", "mapper"];
 
+interface HandleDef {
+  id: string;
+  type: "source" | "target";
+  position: Position;
+  x: number;
+  y: number;
+}
+
+function tbHandles(width: number, height: number): HandleDef[] {
+  const cx = width / 2 - 4;
+  return [
+    { id: "top", type: "target", position: Position.Top, x: cx, y: -4 },
+    { id: "bottom", type: "source", position: Position.Bottom, x: cx, y: height - 4 },
+  ];
+}
+
+function methodHandles(width: number, height: number): HandleDef[] {
+  const cx = width / 2 - 4;
+  const cy = height / 2 - 4;
+  return [
+    { id: "top", type: "target", position: Position.Top, x: cx, y: -4 },
+    { id: "bottom", type: "source", position: Position.Bottom, x: cx, y: height - 4 },
+    { id: "left", type: "target", position: Position.Left, x: -4, y: cy },
+    { id: "right", type: "source", position: Position.Right, x: width - 4, y: cy },
+  ];
+}
+
+const TYPE_EDGE_COLORS: Record<ComponentType, string> = {
+  controller: "#3b82f6",
+  service: "#22c55e",
+  mapper: "#8b5cf6",
+};
+
 /**
- * 估算单个组件卡片的宽度，保证 HTTP 动词、路径、方法签名和 SQL 都能完整展示。
+ * 估算组件容器宽度。
+ * 方法节点单行水平展开，宽度 = 内边距 + 所有方法节点宽度 + 间距。
  */
 function estimateComponentWidth(
-  type: ComponentType,
+  _type: ComponentType,
   methods: CheatSheetMethodItem[]
 ): number {
-  let maxLine = 0;
-
-  for (const method of methods) {
-    const signatureChars = method.name.length + (method.params?.join(", ").length || 0) + 2;
-
-    if (type === "controller") {
-      const verbWidth = method.http_method ? 38 : 0;
-      const pathWidth = (method.path?.length || 0) * 7.5;
-      const signatureWidth = signatureChars * 7.5 + 20;
-      maxLine = Math.max(maxLine, verbWidth + pathWidth + signatureWidth + 36);
-    } else {
-      const signatureWidth = signatureChars * 7.5 + 28;
-      let sqlWidth = 0;
-      if (type === "mapper" && method.sql) {
-        sqlWidth = Math.min(method.sql.length * 6, 420);
-      }
-      maxLine = Math.max(maxLine, Math.max(signatureWidth, sqlWidth) + 36);
-    }
+  if (methods.length === 0) {
+    return MIN_COMPONENT_WIDTH;
   }
-
-  return Math.min(
-    MAX_COMPONENT_WIDTH,
-    Math.max(MIN_COMPONENT_WIDTH, maxLine, 240)
-  );
+  const requiredWidth =
+    COMPONENT_PADDING * 2 +
+    methods.length * METHOD_NODE_WIDTH +
+    Math.max(0, methods.length - 1) * METHOD_NODE_GAP;
+  return Math.min(MAX_COMPONENT_WIDTH, Math.max(MIN_COMPONENT_WIDTH, requiredWidth));
 }
 
 /**
- * 根据内容估算每一行方法的高度。
- * Mapper 的 SQL 会按卡片宽度折行，留出足够的代码块空间。
+ * 估算每个方法块的高度。
+ * 方法块为独立卡片，包含签名、参数标签、HTTP 路径（Controller）和嵌套 SQL（Mapper）。
  */
-function estimateMethodHeights(
-  type: ComponentType,
-  width: number,
+export function estimateMethodHeights(
+  _type: ComponentType,
+  _methodNodeWidth: number,
   methods: CheatSheetMethodItem[]
 ): number[] {
-  const contentWidth = Math.max(1, width - COMPONENT_PADDING * 2 - 16);
-
-  return methods.map((method) => {
-    const signatureChars = method.name.length + (method.params?.join(", ").length || 0) + 2;
-
-    if (type === "mapper") {
-      const base = 48;
-      if (!method.sql) return base;
-      const charsPerLine = Math.max(1, Math.floor(contentWidth / 6));
-      const lines = Math.ceil(method.sql.length / charsPerLine);
-      return Math.min(180, base + lines * 16 + 8);
-    }
-
-    const charsPerLine = Math.max(1, Math.floor(contentWidth / 7.5));
-
-    if (type === "controller") {
-      const pathChars = (method.path?.length || 0) + (method.http_method?.length || 0) + 4;
-      const totalChars = signatureChars + pathChars + 4;
-      const lines = Math.ceil(totalChars / charsPerLine);
-      return Math.min(110, Math.max(METHOD_ROW_HEIGHT, METHOD_ROW_HEIGHT + (lines - 1) * 18));
-    }
-
-    const lines = Math.ceil(signatureChars / charsPerLine);
-    return Math.min(90, Math.max(METHOD_ROW_HEIGHT, METHOD_ROW_HEIGHT + (lines - 1) * 18));
-  });
+  // 方法卡片仅展示功能名，高度保持统一且紧凑
+  return methods.map(() => Math.max(48, METHOD_BLOCK_PADDING * 2 + 22));
 }
 
 function componentHeight(
   type: ComponentType,
-  width: number,
+  _width: number,
   methods: CheatSheetMethodItem[]
 ): number {
-  const heights = estimateMethodHeights(type, width, methods);
-  const rowsHeight = heights.reduce((sum, h) => sum + h, 0);
-  return COMPONENT_HEADER_HEIGHT + COMPONENT_PADDING + rowsHeight + COMPONENT_PADDING;
+  const heights = estimateMethodHeights(type, METHOD_NODE_WIDTH, methods);
+  const maxMethodHeight = heights.length > 0 ? Math.max(...heights) : 0;
+  return (
+    COMPONENT_HEADER_HEIGHT +
+    COMPONENT_PADDING +
+    maxMethodHeight +
+    COMPONENT_PADDING +
+    COMPONENT_DRAG_MARGIN
+  );
+}
+
+/**
+ * 在组件容器内对方法节点做单行水平展开布局。
+ * 所有方法节点在同一水平行（Y 轴一致），X 轴按固定宽度依次排列，不换行。
+ */
+function layoutComponentMethods(
+  _componentWidth: number,
+  methodHeights: number[]
+): {
+  positions: { x: number; y: number }[];
+  totalHeight: number;
+  maxHeight: number;
+} {
+  const positions: { x: number; y: number }[] = [];
+  for (let i = 0; i < methodHeights.length; i++) {
+    positions.push({
+      x: COMPONENT_PADDING + i * (METHOD_NODE_WIDTH + METHOD_NODE_GAP),
+      y: 0,
+    });
+  }
+  const maxHeight = methodHeights.length > 0 ? Math.max(...methodHeights) : 0;
+  return { positions, totalHeight: maxHeight, maxHeight };
 }
 
 /**
@@ -165,6 +202,10 @@ function componentNodeId(module: string, type: ComponentType, name: string): str
   return `${module}::${type}::${name}`;
 }
 
+function methodNodeId(componentId: string, methodName: string): string {
+  return `${componentId}::${methodName}`;
+}
+
 function countComponents(components: Record<string, string[]>): {
   controllers: number;
   services: number;
@@ -192,8 +233,8 @@ interface ComponentInfo {
  * 布局策略：
  * - 按 CSM 三层垂直堆叠：Controller（顶）、Service（中）、Mapper（底）
  * - 同一层内的组件水平并排，整体在模块内水平居中
- * - 模块宽度根据最宽的一层自动扩展
- * - 每个组件高度根据其方法数量动态计算
+ * - 模块宽度根据最宽的一层自动扩展，留出充足内边距
+ * - 每个组件高度根据其方法块数量动态计算
  */
 function layoutModuleComponents(
   moduleName: string,
@@ -263,21 +304,19 @@ function layoutModuleComponents(
   );
   const maxRowWidth = Math.max(0, ...rowWidths);
 
-  // 为标题和右侧 C/S/M 徽章预留足够宽度，避免标题被挤压换行
-  const estimatedTitleWidth = moduleName.length * 10 + 190;
+  const estimatedTitleWidth = moduleName.length * 11 + 200;
   const width = Math.max(
     MODULE_MIN_WIDTH,
     maxRowWidth + MODULE_PADDING * 2,
     estimatedTitleWidth
   );
 
-  // 计算每一层的高度
   const rowHeights = rowInfos.map((infos) =>
     infos.length > 0
       ? Math.max(
           ...infos.map((info) => componentHeight(info.type, info.width, info.methods))
         )
-      : METHOD_ROW_HEIGHT
+      : 64
   );
 
   const contentHeight =
@@ -316,29 +355,30 @@ export function buildGraph(
   apiMap: CheatSheetApiItem[],
   components: CheatSheetComponentItem[]
 ): GraphResult {
-  const okModules = moduleStatus.loaded;
+  const okModules = [...new Set(moduleStatus.loaded)];
   const failedModules = moduleStatus.failed;
 
-  const nodes: Node<ModuleNodeData | ComponentNodeData>[] = [];
-  const edges: Edge[] = [];
+  const nodes: Node<ModuleNodeData | ComponentNodeData | MethodNodeData>[] = [];
+  const edges: BuiltInEdge[] = [];
   const edgeIds = new Set<string>();
 
-  // 组件元数据索引：componentId -> CheatSheetComponentItem
   const componentMeta: Record<string, CheatSheetComponentItem> = {};
-  // 方法索引：ClassName.methodName -> componentId / methodName / module
   const methodIndex: Record<
     string,
-    { componentId: string; methodName: string; module: string }
+    { componentId: string; methodNodeId: string; methodName: string; module: string; type: ComponentType }
   > = {};
 
   for (const comp of components) {
     const componentId = `${comp.module}::${comp.type}::${comp.name}`;
+    if (componentMeta[componentId]) continue;
     componentMeta[componentId] = comp;
     for (const method of comp.methods) {
       methodIndex[`${comp.name}.${method.name}`] = {
         componentId,
+        methodNodeId: methodNodeId(componentId, method.name),
         methodName: method.name,
         module: comp.module,
+        type: comp.type,
       };
     }
   }
@@ -348,6 +388,10 @@ export function buildGraph(
     id: "gateway",
     type: "gateway",
     position: { x: 0, y: 0 },
+    zIndex: 10,
+    style: { width: GATEWAY_WIDTH, height: 80 },
+    measured: { width: GATEWAY_WIDTH, height: 80 },
+    handles: tbHandles(GATEWAY_WIDTH, 80),
     data: {
       label: "网关 / 鉴权",
       status: "ok",
@@ -389,7 +433,10 @@ export function buildGraph(
       id: moduleName,
       type: "module",
       position: { x: 0, y: 0 },
+      zIndex: 0,
       style: { width, height },
+      measured: { width, height },
+      handles: tbHandles(width, height),
       data: {
         label: moduleName,
         status: "ok",
@@ -399,7 +446,6 @@ export function buildGraph(
       },
     });
 
-    // 网关指向模块
     const gatewayEdgeId = `gateway->${moduleName}`;
     if (!edgeIds.has(gatewayEdgeId)) {
       edgeIds.add(gatewayEdgeId);
@@ -409,57 +455,99 @@ export function buildGraph(
         target: moduleName,
         type: "smoothstep",
         animated: true,
+        zIndex: 5,
+        sourceHandle: "bottom",
+        targetHandle: "top",
+        style: { stroke: "#94a3b8", strokeWidth: 2 },
+        pathOptions: { borderRadius: 16 },
       });
     }
 
-    // 组件子节点
     for (const info of componentInfos) {
       const pos = positions[info.id];
       const meta = componentMeta[info.id];
       const width = info.width;
       const height = componentHeight(info.type, width, info.methods);
+
       nodes.push({
         id: info.id,
         type: "component",
         parentId: moduleName,
         position: pos,
+        zIndex: 10,
         style: { width, height },
+        measured: { width, height },
         data: {
           label: info.name,
           name: info.name,
           componentType: info.type,
           module: moduleName,
           componentId: info.id,
-          methods: meta?.methods || [],
-          methodHeights: estimateMethodHeights(info.type, width, meta?.methods || []),
         },
       });
+
+      // 方法子节点：横向流式排列在组件容器内，可拖拽但限制在父容器边界
+      const methodHeights = estimateMethodHeights(info.type, METHOD_NODE_WIDTH, meta?.methods || []);
+      const methodLayout = layoutComponentMethods(width, methodHeights);
+
+      for (let i = 0; i < (meta?.methods || []).length; i++) {
+        const method = meta.methods[i];
+        const methodPos = methodLayout.positions[i];
+        const mId = methodNodeId(info.id, method.name);
+        nodes.push({
+          id: mId,
+          type: "method",
+          parentId: info.id,
+          position: { x: methodPos.x, y: methodPos.y + COMPONENT_HEADER_HEIGHT },
+          zIndex: 11,
+          draggable: true,
+          extent: "parent",
+          style: { width: METHOD_NODE_WIDTH, height: methodHeights[i] },
+          measured: { width: METHOD_NODE_WIDTH, height: methodHeights[i] },
+          handles: methodHandles(METHOD_NODE_WIDTH, methodHeights[i]),
+          data: {
+            label: method.name,
+            name: method.name,
+            componentType: info.type,
+            componentId: info.id,
+            method,
+            height: methodHeights[i],
+          },
+        });
+      }
     }
 
-    // 方法级调用边：根据 methods[].calls 建立从方法行到方法行的精准连线
+    // 方法级调用边：直接连接方法子节点
     for (const info of componentInfos) {
       for (const method of info.methods) {
         for (const call of method.calls) {
           const target = methodIndex[call];
           if (!target) continue;
 
-          const edgeId = `${info.id}::${method.name}->${target.componentId}::${target.methodName}`;
+          const sourceId = methodNodeId(info.id, method.name);
+          const targetId = target.methodNodeId;
+          const edgeId = `${sourceId}->${targetId}`;
           if (edgeIds.has(edgeId)) continue;
           edgeIds.add(edgeId);
 
           const isCrossModule = target.module !== moduleName;
+          const stroke = TYPE_EDGE_COLORS[info.type];
 
           edges.push({
             id: edgeId,
-            source: info.id,
-            target: target.componentId,
+            source: sourceId,
+            target: targetId,
             type: "smoothstep",
             animated: isCrossModule,
-            sourceHandle: `method-${method.name}-right`,
-            targetHandle: `method-${target.methodName}-left`,
-            style: isCrossModule
-              ? { stroke: "#f59e0b", strokeWidth: 2, strokeDasharray: "5,5" }
-              : { stroke: "#94a3b8", strokeWidth: 1.5 },
+            zIndex: 5,
+            sourceHandle: isCrossModule ? "right" : "bottom",
+            targetHandle: isCrossModule ? "left" : "top",
+            style: {
+              stroke,
+              strokeWidth: isCrossModule ? 2 : 1.5,
+              strokeDasharray: "5,5",
+            },
+            pathOptions: { borderRadius: 16 },
           });
         }
       }
@@ -471,7 +559,7 @@ export function buildGraph(
     const failedId = `failed-${failed.module}`;
     const failedWidth = Math.max(
       FAILED_MODULE_WIDTH,
-      failed.module.length * 10 + 190
+      failed.module.length * 11 + 200
     );
     moduleLayouts[failedId] = {
       width: failedWidth,
@@ -483,7 +571,10 @@ export function buildGraph(
       id: failedId,
       type: "failedModule",
       position: { x: 0, y: 0 },
+      zIndex: 0,
       style: { width: failedWidth, height: FAILED_MODULE_HEIGHT },
+      measured: { width: failedWidth, height: FAILED_MODULE_HEIGHT },
+      handles: tbHandles(failedWidth, FAILED_MODULE_HEIGHT),
       data: {
         label: failed.module,
         status: "failed",
@@ -503,6 +594,11 @@ export function buildGraph(
         target: failedId,
         type: "smoothstep",
         animated: true,
+        zIndex: 5,
+        sourceHandle: "bottom",
+        targetHandle: "top",
+        style: { stroke: "#ef4444", strokeWidth: 2, strokeDasharray: "5,5" },
+        pathOptions: { borderRadius: 16 },
       });
     }
   }

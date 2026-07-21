@@ -39,6 +39,7 @@ class MethodMeta:
         http_method: HTTP 方法字符串，例如 "GET"、"POST"；Service/Mapper 方法为空。
         path: 该方法对应的路由路径模板，例如 "/{user_id}"；Service/Mapper 方法为空。
         name: 原始方法名。
+        feature: 简短的中文功能名，例如 "查询订单"、"创建用户"，用于可视化拓扑展示。
         params: 方法入参名称列表，用于前端展示方法签名。
         calls: 当前方法直接调用的下游方法或组件标识列表，用于绘制方法级调用连线。
         sql: Mapper 方法执行的 SQL 模板；非 Mapper 方法为空。
@@ -47,6 +48,7 @@ class MethodMeta:
     http_method: Optional[str] = None   # HTTP 方法，如 GET/POST
     path: Optional[str] = None          # 路由路径
     name: str = ""                      # 方法名
+    feature: str = ""                   # 简短中文功能名
     params: List[str] = field(default_factory=list)  # 方法入参列表
     calls: List[str] = field(default_factory=list)   # 下游调用目标列表
     sql: Optional[str] = None           # Mapper SQL 模板
@@ -184,74 +186,79 @@ def Inject(target: Any) -> Any:
 # ---------------------------------------------------------------------------
 
 
-def GET(path: str, calls: Optional[List[str]] = None):
+def GET(path: str, calls: Optional[List[str]] = None, feature: str = ""):
     """
     标记一个 GET 接口。
 
     参数：
         path: 路由路径模板，例如 "/" 或 "/{user_id}"。
         calls: 该接口内部调用的下游方法或组件标识列表，用于方法级调用图。
+        feature: 简短中文功能名，例如 "查询订单"。
 
     返回：
         装饰器函数，用于修饰 Controller 中的方法。
     """
-    return _http_method("GET", path, calls=calls)
+    return _http_method("GET", path, calls=calls, feature=feature)
 
 
-def POST(path: str, calls: Optional[List[str]] = None):
+def POST(path: str, calls: Optional[List[str]] = None, feature: str = ""):
     """
     标记一个 POST 接口。
 
     参数：
         path: 路由路径模板。
         calls: 该接口内部调用的下游方法或组件标识列表，用于方法级调用图。
+        feature: 简短中文功能名，例如 "创建订单"。
 
     返回：
         装饰器函数。
     """
-    return _http_method("POST", path, calls=calls)
+    return _http_method("POST", path, calls=calls, feature=feature)
 
 
-def PUT(path: str, calls: Optional[List[str]] = None):
+def PUT(path: str, calls: Optional[List[str]] = None, feature: str = ""):
     """
     标记一个 PUT 接口。
 
     参数：
         path: 路由路径模板。
         calls: 该接口内部调用的下游方法或组件标识列表，用于方法级调用图。
+        feature: 简短中文功能名，例如 "更新订单"。
 
     返回：
         装饰器函数。
     """
-    return _http_method("PUT", path, calls=calls)
+    return _http_method("PUT", path, calls=calls, feature=feature)
 
 
-def DELETE(path: str, calls: Optional[List[str]] = None):
+def DELETE(path: str, calls: Optional[List[str]] = None, feature: str = ""):
     """
     标记一个 DELETE 接口。
 
     参数：
         path: 路由路径模板。
         calls: 该接口内部调用的下游方法或组件标识列表，用于方法级调用图。
+        feature: 简短中文功能名，例如 "删除订单"。
 
     返回：
         装饰器函数。
     """
-    return _http_method("DELETE", path, calls=calls)
+    return _http_method("DELETE", path, calls=calls, feature=feature)
 
 
-def PATCH(path: str, calls: Optional[List[str]] = None):
+def PATCH(path: str, calls: Optional[List[str]] = None, feature: str = ""):
     """
     标记一个 PATCH 接口。
 
     参数：
         path: 路由路径模板。
         calls: 该接口内部调用的下游方法或组件标识列表，用于方法级调用图。
+        feature: 简短中文功能名，例如 "部分更新"。
 
     返回：
         装饰器函数。
     """
-    return _http_method("PATCH", path, calls=calls)
+    return _http_method("PATCH", path, calls=calls, feature=feature)
 
 
 # ---------------------------------------------------------------------------
@@ -259,13 +266,16 @@ def PATCH(path: str, calls: Optional[List[str]] = None):
 # ---------------------------------------------------------------------------
 
 
-def service_method(params: Optional[List[str]] = None, calls: Optional[List[str]] = None):
+def service_method(
+    params: Optional[List[str]] = None, calls: Optional[List[str]] = None, feature: str = ""
+):
     """
-    标记 Service 内部方法，记录其入参与下游调用。
+    标记 Service 内部方法，记录其入参、下游调用与核心功能名。
 
     参数：
         params: 方法入参名称列表，用于前端展示方法签名。
         calls: 该方法调用的下游方法或组件标识列表，用于绘制方法级调用连线。
+        feature: 简短中文功能名，例如 "创建订单"。
 
     返回：
         装饰器函数，用于修饰 Service 中的业务方法。
@@ -273,7 +283,7 @@ def service_method(params: Optional[List[str]] = None, calls: Optional[List[str]
     示例：
         @Service
         class OrderService:
-            @service_method(params=["data"], calls=["OrderMapper.insert_order"])
+            @service_method(params=["data"], calls=["OrderMapper.insert_order"], feature="创建订单")
             def create_order(self, data):
                 return self.order_mapper.insert_order(data['id'], data['amount'])
     """
@@ -286,6 +296,7 @@ def service_method(params: Optional[List[str]] = None, calls: Optional[List[str]
                 name=func.__name__,
                 params=params or [],
                 calls=calls or [],
+                feature=feature,
             )
         )
         return func
@@ -293,13 +304,14 @@ def service_method(params: Optional[List[str]] = None, calls: Optional[List[str]
     return decorator
 
 
-def sql_operation(sql: str, params: Optional[List[str]] = None):
+def sql_operation(sql: str, params: Optional[List[str]] = None, feature: str = ""):
     """
-    标记 Mapper 的数据库操作方法，绑定 SQL 模板。
+    标记 Mapper 的数据库操作方法，绑定 SQL 模板与功能名。
 
     参数：
         sql: 该方法执行的 SQL 模板字符串。
         params: SQL 模板中的参数名称列表，用于前端展示与校验。
+        feature: 简短中文功能名，例如 "订单入库"。
 
     返回：
         装饰器函数，用于修饰 Mapper 中的数据库操作方法。
@@ -309,7 +321,8 @@ def sql_operation(sql: str, params: Optional[List[str]] = None):
         class OrderMapper:
             @sql_operation(
                 sql="INSERT INTO orders (id, amount) VALUES (%s, %s)",
-                params=["order_id", "amount"]
+                params=["order_id", "amount"],
+                feature="订单入库"
             )
             def insert_order(self, order_id, amount):
                 pass
@@ -323,6 +336,7 @@ def sql_operation(sql: str, params: Optional[List[str]] = None):
                 name=func.__name__,
                 params=params or [],
                 sql=sql,
+                feature=feature,
             )
         )
         return func
@@ -354,7 +368,9 @@ class _InjectMarker:
         self.field_name = field_name
 
 
-def _http_method(method: str, path: str, calls: Optional[List[str]] = None):
+def _http_method(
+    method: str, path: str, calls: Optional[List[str]] = None, feature: str = ""
+):
     """
     内部：为函数附加 HTTP 方法元数据。
 
@@ -364,6 +380,7 @@ def _http_method(method: str, path: str, calls: Optional[List[str]] = None):
         method: HTTP 方法字符串，例如 "GET"。
         path: 路由路径模板。
         calls: 该方法内部调用的下游方法或组件标识列表，用于方法级调用图。
+        feature: 简短中文功能名，例如 "查询订单"。
 
     返回：
         装饰器函数，负责把 MethodMeta 写入被装饰函数的 __paas_methods__。
@@ -378,6 +395,7 @@ def _http_method(method: str, path: str, calls: Optional[List[str]] = None):
                 path=path,
                 name=func.__name__,
                 calls=calls or [],
+                feature=feature,
             )
         )
         return func
