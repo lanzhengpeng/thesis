@@ -6,13 +6,13 @@ import {
   FileAddOutlined,
   FileTextOutlined,
   FolderAddOutlined,
-  FolderOutlined,
   LoadingOutlined,
   OrderedListOutlined,
   ReloadOutlined,
   SearchOutlined,
   UploadOutlined,
 } from "@ant-design/icons";
+import { Folder, FolderOpen } from "lucide-react";
 import { useEffect, useState } from "react";
 import "../styles/project-files-panel.css";
 import {
@@ -62,7 +62,7 @@ export function ProjectFilesPanel({ isOpen, onOpenFile }: ProjectFilesPanelProps
           <TabButton
             active={activeTab === "files"}
             onClick={() => setActiveTab("files")}
-            icon={<FolderOutlined />}
+            icon={<Folder size={16} />}
             label="文件"
           />
           <TabButton
@@ -229,7 +229,15 @@ function TreeItem({
           <span className="project-files-panel__chevron-placeholder" />
         )}
         <span className="project-files-panel__row-icon">
-          {isFolder ? <FolderOutlined /> : <FileTextOutlined />}
+          {isFolder ? (
+            isExpanded ? (
+              <FolderOpen size={16} />
+            ) : (
+              <Folder size={16} />
+            )
+          ) : (
+            <FileIcon name={node.name} />
+          )}
         </span>
         <span className="project-files-panel__row-name">{node.name}</span>
         {node.loading && (
@@ -251,6 +259,81 @@ function TreeItem({
           />
         ))}
     </div>
+  );
+}
+
+const VSCODE_ICONS_BASE =
+  "https://cdn.jsdelivr.net/gh/vscode-icons/vscode-icons@master/icons";
+
+const FILE_ICON_MAP: Record<string, string> = {
+  py: "file_type_python",
+  md: "file_type_markdown",
+  sh: "file_type_shell",
+  json: "file_type_json",
+  gitignore: "file_type_git",
+  toml: "file_type_toml",
+  yaml: "file_type_yaml",
+  yml: "file_type_yaml",
+  sqlite: "file_type_sqlite",
+  db: "file_type_sqlite",
+  js: "file_type_js",
+  jsx: "file_type_reactjs",
+  ts: "file_type_typescript",
+  tsx: "file_type_reactts",
+  html: "file_type_html",
+  htm: "file_type_html",
+  css: "file_type_css",
+  scss: "file_type_scss",
+  less: "file_type_less",
+  vue: "file_type_vue",
+  svg: "file_type_svg",
+  png: "file_type_image",
+  jpg: "file_type_image",
+  jpeg: "file_type_image",
+  gif: "file_type_image",
+  webp: "file_type_image",
+  ico: "file_type_image",
+  pdf: "file_type_pdf",
+  doc: "file_type_word",
+  docx: "file_type_word",
+  xls: "file_type_excel",
+  xlsx: "file_type_excel",
+  ppt: "file_type_powerpoint",
+  pptx: "file_type_powerpoint",
+  zip: "file_type_zip",
+  rar: "file_type_zip",
+  tar: "file_type_zip",
+  gz: "file_type_zip",
+  log: "file_type_log",
+  txt: "file_type_text",
+};
+
+function getFileIconName(name: string): string | null {
+  const lower = name.toLowerCase();
+  if (lower.startsWith(".git")) {
+    return "file_type_git";
+  }
+  const ext = lower.split(".").pop() ?? "";
+  if (!ext) return null;
+  return FILE_ICON_MAP[ext] ?? null;
+}
+
+function FileIcon({ name }: { name: string }) {
+  const [error, setError] = useState(false);
+  const iconName = getFileIconName(name);
+
+  if (!iconName || error) {
+    return <FileTextOutlined />;
+  }
+
+  return (
+    <img
+      alt=""
+      className="project-files-panel__file-icon"
+      draggable={false}
+      onError={() => setError(true)}
+      src={`${VSCODE_ICONS_BASE}/${iconName}.svg`}
+    />
   );
 }
 

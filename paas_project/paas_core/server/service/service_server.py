@@ -48,6 +48,17 @@ def create_service_app(kernel: MicroKernel) -> Tuple[FastAPI, DynamicDispatcher]
 
     dispatcher = DynamicDispatcher(kernel)
 
+    # 先注册精确路由，避免被后面的通配路由覆盖。
+    @app.get("/health")
+    def health():
+        """
+        服务口健康检查。
+
+        返回：
+            {"status": "ok", "port": 8001}
+        """
+        return {"status": "ok", "port": SERVICE_PORT}
+
     # 注册通配路由：所有请求都交给动态分发器处理。
     # 由于分发器在请求时根据当前内核状态匹配，插件变更后无需重启进程。
     @app.api_route(
@@ -62,16 +73,6 @@ def create_service_app(kernel: MicroKernel) -> Tuple[FastAPI, DynamicDispatcher]
         直接委托给 DynamicDispatcher，由它根据当前内核状态解析并调用控制器方法。
         """
         return await dispatcher.dispatch(request)
-
-    @app.get("/health")
-    def health():
-        """
-        服务口健康检查。
-
-        返回：
-            {"status": "ok", "port": 8001}
-        """
-        return {"status": "ok", "port": SERVICE_PORT}
 
     # 覆盖 OpenAPI schema 生成：把当前内核中的 Controller 元数据动态写入文档。
     # 每次访问 /docs 都会重新生成，因此插件热重载后刷新页面即可看到最新接口。

@@ -1,0 +1,45 @@
+.scalar-panel {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.scalar-panel .scalar-app {
+  position: relative !important;
+  inset: auto !important;
+  width: 100% !important;
+  height: 100% !important;
+  z-index: auto !important;
+}
+
+.scalar-panel .scalar-container {
+  position: relative !important;
+  inset: auto !important;
+  width: 100% !important;
+  height: 100% !important;
+  display: flex !important;
+  justify-content: flex-start !important;
+  align-items: flex-start !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  transition: none !important;
+  overflow: hidden !important;
+}
+
+.scalar-panel .scalar-app-layout {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+  border-radius: 0 !important;
+  border: none !important;
+}
+
+.scalar-panel .scalar-app-exit,
+.scalar-panel .scalar-app-exit:before,
+.scalar-panel .scalar-app-backdrop {
+  display: none !important;
+}

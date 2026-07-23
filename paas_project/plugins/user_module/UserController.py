@@ -2,8 +2,26 @@
 用户模块 HTTP 接口层。
 """
 
+from pydantic import BaseModel
+
 from paas_core import Controller, GET, POST, HTTPException
+
 from .UserService import UserService
+
+
+class UserCreateRequest(BaseModel):
+    """创建用户的 API 请求体。"""
+
+    username: str
+    email: str
+
+
+class UserResponse(BaseModel):
+    """用户的 API 响应体。"""
+
+    id: int
+    username: str
+    email: str
 
 
 @Controller("/api/users")
@@ -22,18 +40,15 @@ class UserController:
         user = self.user_service.get_user(int(user_id))
         if user is None:
             return {"error": "not found"}
-        return user
+        return UserResponse(**user).model_dump()
 
     @POST("/", calls=["UserService.register"], feature="创建用户")
     def create_user(self, payload: dict):
         """POST /api/users/"""
-        username = payload.get("username", "")
-        if not username:
+        req = UserCreateRequest(**payload)
+        if not req.username:
             raise HTTPException(status_code=400, detail="username is required")
-        email = payload.get("email", "")
-        if not email or "@" not in email:
+        if not req.email or "@" not in req.email:
             raise HTTPException(status_code=400, detail="email is required and must contain '@'")
-        return self.user_service.register(
-            username,
-            email,
-        )
+        new_item = self.user_service.register(req.username, req.email)
+        return UserResponse(**new_item).model_dump()

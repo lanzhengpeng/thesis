@@ -2,8 +2,26 @@
 订单模块 HTTP 接口层。
 """
 
+from pydantic import BaseModel
+
 from paas_core import Controller, GET, POST
+
 from .OrderService import OrderService
+
+
+class OrderCreateRequest(BaseModel):
+    """创建订单的 API 请求体。"""
+
+    user_id: int
+    total: float
+
+
+class OrderResponse(BaseModel):
+    """订单的 API 响应体。"""
+
+    id: int
+    user_id: int
+    total: float
 
 
 @Controller("/api/orders")
@@ -22,12 +40,10 @@ class OrderController:
         order = self.order_service.get_order(int(order_id))
         if order is None:
             return {"error": "not found"}
-        return order
+        return OrderResponse(**order).model_dump()
 
     @POST("/", calls=["OrderService.create_order"], feature="创建订单")
     def create_order(self, payload: dict):
         """POST /api/orders/"""
-        return self.order_service.create_order(
-            int(payload.get("user_id", 0)),
-            float(payload.get("total", 0.0)),
-        )
+        req = OrderCreateRequest(**payload)
+        return self.order_service.create_order(req.user_id, req.total)

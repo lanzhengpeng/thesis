@@ -46,7 +46,10 @@ dist-ssr/
 *.log
 
 # 运行时文件
-database/
+database/*
+plugins/database/*.sqlite
+plugins/database/*.sqlite-*
+plugins/database/.plugin_write.lock
 *.pid
 *.db
 *.sqlite

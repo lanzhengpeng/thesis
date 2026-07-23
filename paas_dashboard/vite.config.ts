@@ -10,11 +10,15 @@ const LG_PROXY = {
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  optimizeDeps: {
+    exclude: ["@sqlite.org/sqlite-wasm"],
+  },
   server: {
     proxy: {
       '/admin': 'http://localhost:8000',
-      '/api': 'http://localhost:8000',
-      '/health': 'http://localhost:8000',
+      '/api': 'http://localhost:8001',
+      '/health': 'http://localhost:8001',
+      '/openapi.json': 'http://localhost:8001',
       '/threads': LG_PROXY,
       '/assistants': LG_PROXY,
       '/runs': LG_PROXY,
@@ -25,8 +29,9 @@ export default defineConfig({
   preview: {
     proxy: {
       '/admin': 'http://localhost:8000',
-      '/api': 'http://localhost:8000',
-      '/health': 'http://localhost:8000',
+      '/api': 'http://localhost:8001',
+      '/health': 'http://localhost:8001',
+      '/openapi.json': 'http://localhost:8001',
       '/threads': LG_PROXY,
       '/assistants': LG_PROXY,
       '/runs': LG_PROXY,

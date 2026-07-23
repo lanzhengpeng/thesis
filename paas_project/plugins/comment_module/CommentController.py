@@ -1,23 +1,48 @@
+"""
+CommentController HTTP 接口层。
+"""
+
+from pydantic import BaseModel
+
 from paas_core import Controller, GET, POST
-from .CommentMapper import CommentMapper
+
 from .CommentService import CommentService
+
+
+class CommentCreateRequest(BaseModel):
+    """创建评论的 API 请求体。"""
+
+    name: str
+
+
+class CommentResponse(BaseModel):
+    """评论的 API 响应体。"""
+
+    id: int
+    name: str
 
 
 @Controller("/api/comments")
 class CommentController:
-    def __init__(self, comment_mapper: CommentMapper, comment_service: CommentService):
-        self.comment_mapper = comment_mapper
+    def __init__(self, comment_service: CommentService):
         self.comment_service = comment_service
 
-    @GET("/", calls=["CommentMapper.list"], feature="查询列表")
+    @GET("/", calls=["CommentService.list_comments"], feature="查询列表")
     def list_comments(self):
-        return self.comment_mapper.list()
+        """GET /api/comments/"""
+        return self.comment_service.list_comments()
 
-    @GET("/{id}", calls=["CommentMapper.get_by_id"], feature="查询详情")
+    @GET("/{id}", calls=["CommentService.get_comment"], feature="查询详情")
     def get_comment(self, id: int):
-        return self.comment_mapper.get_by_id(id)
+        """GET /api/comments/{id}"""
+        item = self.comment_service.get_comment(id)
+        if item is None:
+            return {"error": "not found"}
+        return CommentResponse(**item).model_dump()
 
     @POST("/", calls=["CommentService.create_comment"], feature="创建评论")
     def create_comment(self, payload: dict):
-        name = payload.get("name")
-        return self.comment_service.create_comment(name)
+        """POST /api/comments/"""
+        req = CommentCreateRequest(**payload)
+        new_item = self.comment_service.create_comment(req.name)
+        return CommentResponse(**new_item).model_dump()

@@ -1,4 +1,4 @@
-export type TabType = "architecture" | "empty" | "file";
+export type TabType = "architecture" | "empty" | "file" | "scalar";
 
 export interface TabItem {
   id: string;

@@ -175,6 +175,13 @@
   flex-shrink: 0;
 }
 
+.project-files-panel__file-icon {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+  display: block;
+}
+
 .project-files-panel__row-name {
   font-size: 13px;
   color: var(--foreground);

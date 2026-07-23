@@ -142,6 +142,17 @@ class FileService:
         size = target.stat().st_size
         return content, size
 
+    def read_file_bytes(self, relative_path: str) -> tuple[bytes, int]:
+        """读取二进制文件内容。返回 (data, size)。"""
+        target = self._resolve(relative_path)
+        self._require_exists(target)
+        if target.is_dir():
+            raise NotAFileError(f"不能读取目录: {self._relative(target)}")
+
+        data = target.read_bytes()
+        size = target.stat().st_size
+        return data, size
+
     # ------------------------------------------------------------------
     # 写入操作
     # ------------------------------------------------------------------
@@ -161,6 +172,21 @@ class FileService:
 
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(content, encoding=encoding)
+
+    def write_file_bytes(
+        self,
+        relative_path: str,
+        data: bytes,
+        overwrite: bool = True,
+    ) -> None:
+        """写入二进制文件。若父目录不存在则自动创建。"""
+        target = self._resolve(relative_path)
+
+        if target.exists() and not overwrite:
+            raise PathAlreadyExistsError(f"文件已存在: {self._relative(target)}")
+
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(data)
 
     def create_directory(self, relative_path: str) -> None:
         """创建目录（递归）。"""

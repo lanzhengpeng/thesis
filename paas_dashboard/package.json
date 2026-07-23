@@ -26,6 +26,8 @@
     "@langchain/core": "^1.2.3",
     "@langchain/langgraph-sdk": "^1.9.28",
     "@lezer/highlight": "^1.2.3",
+    "@scalar/api-client-react": "^2.0.36",
+    "@sqlite.org/sqlite-wasm": "^3.53.0-build1",
     "@xyflow/react": "^12.11.2",
     "antd": "^6.5.1",
     "antd-style": "^4.1.0",

@@ -1,14 +1,19 @@
 import { useState } from "react";
+import { Network } from "lucide-react";
 import { ModuleDetailPanel } from "./features/architecture";
 import { AgentChatPanel, ConversationSidebar } from "./features/agent";
 import { ProjectFilesPanel } from "./features/project-files";
 import type { ModuleNodeData } from "./features/architecture";
 import { ArchitectureCanvas } from "./components/ArchitectureCanvas";
 import { FileEditor } from "./components/FileEditor";
+import { ScalarPanel } from "./components/ScalarPanel";
+import { SqliteEditor } from "./components/SqliteEditor";
 import { TabBar } from "./components/TabBar";
+import { EmptyTabPanel } from "./components/EmptyTabPanel";
 import { useCheatSheet } from "./hooks/useCheatSheet";
 import type { CheatSheetResponse } from "./types/cheatSheet";
-import { fetchFinderRead } from "./services/api";
+import { fetchFinderRead, fetchFinderReadBinary } from "./services/api";
+import { isSqliteFile } from "./utils/fileTypes";
 import type { TabItem } from "./types/tabs";
 import "./App.css";
 
@@ -52,6 +57,7 @@ function App() {
   ]);
   const [activeTabId, setActiveTabId] = useState("preview");
   const [fileContents, setFileContents] = useState<Record<string, string>>({});
+  const [fileBuffers, setFileBuffers] = useState<Record<string, ArrayBuffer>>({});
 
   const handleAddTab = () => {
     const id = `tab-${Date.now()}`;
@@ -100,6 +106,24 @@ function App() {
     setTabs((prev) => [...prev, newTab]);
     setActiveTabId(id);
 
+    if (isSqliteFile(path)) {
+      try {
+        const { buffer } = await fetchFinderReadBinary(path);
+        setFileBuffers((prev) => ({ ...prev, [path]: buffer }));
+      } catch (err) {
+        setFileBuffers((prev) => ({
+          ...prev,
+          // Placeholder so the tab stops showing "加载中..."
+          [path]: new ArrayBuffer(0),
+        }));
+        setFileContents((prev) => ({
+          ...prev,
+          [path]: `无法读取文件：${err instanceof Error ? err.message : String(err)}`,
+        }));
+      }
+      return;
+    }
+
     try {
       const content = await fetchFinderRead(path);
       setFileContents((prev) => ({ ...prev, [path]: content }));
@@ -109,6 +133,52 @@ function App() {
         [path]: `无法读取文件：${err instanceof Error ? err.message : String(err)}`,
       }));
     }
+  };
+
+  const handleOpenArchitectureTab = () => {
+    const existing = tabs.find((t) => t.type === "architecture");
+    if (existing) {
+      setActiveTabId(existing.id);
+      return;
+    }
+
+    const id = `tab-${Date.now()}`;
+    const newTab: TabItem = {
+      id,
+      type: "architecture",
+      title: "预览",
+      icon: "app-window",
+      closable: true,
+    };
+    setTabs((prev) => [...prev, newTab]);
+    setActiveTabId(id);
+  };
+
+  const handleOpenProjectFiles = () => {
+    setIsProjectFilesOpen(true);
+  };
+
+  const handleOpenScalarTab = () => {
+    const existing = tabs.find((t) => t.type === "scalar");
+    if (existing) {
+      setActiveTabId(existing.id);
+      return;
+    }
+
+    const id = `tab-${Date.now()}`;
+    const newTab: TabItem = {
+      id,
+      type: "scalar",
+      title: "API 客户端",
+      icon: "network",
+      closable: true,
+    };
+    setTabs((prev) => [...prev, newTab]);
+    setActiveTabId(id);
+  };
+
+  const handleReorderTabs = (newTabs: TabItem[]) => {
+    setTabs(newTabs);
   };
 
   const layoutKey = `${isDetailPanelOpen}-${isProjectFilesOpen}`;
@@ -149,7 +219,21 @@ function App() {
           onSelect={setActiveTabId}
           onClose={handleCloseTab}
           onAdd={handleAddTab}
-          rightActions={activeTab?.type === "architecture" ? refreshButton : null}
+          onReorder={handleReorderTabs}
+          rightActions={
+            <>
+              <button
+                type="button"
+                className="tab-bar__action-btn"
+                aria-label="API 客户端"
+                title="API 客户端"
+                onClick={handleOpenScalarTab}
+              >
+                <Network size={16} />
+              </button>
+              {activeTab?.type === "architecture" ? refreshButton : null}
+            </>
+          }
         />
 
         <div className="app__content">
@@ -219,7 +303,17 @@ function App() {
             </>
           ) : activeTab?.type === "file" ? (
             <div className="app__file-viewer">
-              {activeTab.path && activeTab.path in fileContents ? (
+              {activeTab.path && isSqliteFile(activeTab.path) ? (
+                activeTab.path in fileBuffers ? (
+                  <SqliteEditor
+                    key={activeTab.path}
+                    path={activeTab.path}
+                    buffer={fileBuffers[activeTab.path]}
+                  />
+                ) : (
+                  <div className="app__empty-tab">加载中...</div>
+                )
+              ) : activeTab.path && activeTab.path in fileContents ? (
                 <FileEditor
                   key={activeTab.path}
                   path={activeTab.path}
@@ -235,8 +329,14 @@ function App() {
                 <div className="app__empty-tab">加载中...</div>
               )}
             </div>
+          ) : activeTab?.type === "scalar" ? (
+            <ScalarPanel />
           ) : (
-            <div className="app__empty-tab">新标签页</div>
+            <EmptyTabPanel
+              onOpenPreview={handleOpenArchitectureTab}
+              onOpenEditor={handleOpenProjectFiles}
+              onOpenScalar={handleOpenScalarTab}
+            />
           )}
         </div>
       </div>

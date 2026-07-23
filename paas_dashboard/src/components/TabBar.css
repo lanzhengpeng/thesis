@@ -120,6 +120,17 @@
   color: var(--foreground-strong);
 }
 
+.tab-bar__tab--dragging {
+  opacity: 0.4;
+}
+
+.tab-bar__tab--drag-over {
+  background: var(--accent);
+  color: var(--accent-foreground);
+  outline: 2px dashed var(--muted-foreground);
+  outline-offset: -2px;
+}
+
 .tab-bar__add {
   height: 100%;
   flex-shrink: 0;

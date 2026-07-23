@@ -11,6 +11,8 @@ from __future__ import annotations
 from paas_core.finder.file_service import FileService
 from paas_core.finder.schemas import (
     DirectoryEntry,
+    FileBinaryContentOut,
+    FileBinaryWriteIn,
     FileContentOut,
     FileWriteIn,
     MoveIn,
@@ -20,6 +22,8 @@ from paas_core.finder.schemas import (
 
 __all__ = [
     "DirectoryEntry",
+    "FileBinaryContentOut",
+    "FileBinaryWriteIn",
     "FileContentOut",
     "FileService",
     "FileWriteIn",

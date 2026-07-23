@@ -42,6 +42,21 @@ class FileWriteIn(PathIn):
     overwrite: bool = Field(default=True, description="是否覆盖已存在文件")
 
 
+class FileBinaryContentOut(BaseModel):
+    """二进制文件读取响应模型。"""
+
+    path: str
+    content_base64: str
+    size: int
+
+
+class FileBinaryWriteIn(PathIn):
+    """二进制文件写入请求模型。"""
+
+    content_base64: str = Field(..., description="Base64 编码的文件内容")
+    overwrite: bool = Field(default=True, description="是否覆盖已存在文件")
+
+
 class MoveIn(BaseModel):
     """重命名/移动请求模型。"""
 

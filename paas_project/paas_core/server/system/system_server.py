@@ -9,6 +9,7 @@
 
 from __future__ import annotations
 
+import base64
 import os
 import re
 import shutil
@@ -19,6 +20,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from paas_core.finder import (
     DirectoryEntry,
+    FileBinaryContentOut,
+    FileBinaryWriteIn,
     FileContentOut,
     FileService,
     FileWriteIn,
@@ -332,6 +335,53 @@ def create_system_app(kernel: MicroKernel) -> FastAPI:
                 overwrite=payload.overwrite,
             )
             return PathOut(path=payload.path, message="文件写入成功")
+        except PathNotAllowedError as exc:
+            raise _finder_error(exc, 403)
+        except PathAlreadyExistsError as exc:
+            raise _finder_error(exc, 409)
+
+    @app.get("/admin/finder/read-binary", response_model=FileBinaryContentOut)
+    def finder_read_binary(path: str):
+        """
+        读取指定二进制文件内容，以 Base64 返回。
+
+        参数：
+            path: 相对于 plugins/ 的文件路径。
+        """
+        try:
+            data, size = finder.read_file_bytes(path)
+            return FileBinaryContentOut(
+                path=path,
+                content_base64=base64.b64encode(data).decode("ascii"),
+                size=size,
+            )
+        except PathNotAllowedError as exc:
+            raise _finder_error(exc, 403)
+        except PathNotFoundError as exc:
+            raise _finder_error(exc, 404)
+        except NotAFileError as exc:
+            raise _finder_error(exc, 400)
+
+    @app.post("/admin/finder/write-binary", response_model=PathOut)
+    def finder_write_binary(payload: FileBinaryWriteIn):
+        """
+        写入或创建二进制文件。
+
+        说明：
+        - 父目录不存在时会自动创建。
+        - overwrite 为 false 时，若文件已存在则返回 409。
+        """
+        try:
+            data = base64.b64decode(payload.content_base64)
+        except Exception as exc:
+            raise HTTPException(status_code=400, detail=f"无效的 Base64 数据: {exc}")
+        try:
+            finder.write_file_bytes(
+                payload.path,
+                data,
+                overwrite=payload.overwrite,
+            )
+            return PathOut(path=payload.path, message="二进制文件写入成功")
         except PathNotAllowedError as exc:
             raise _finder_error(exc, 403)
         except PathAlreadyExistsError as exc:

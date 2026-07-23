@@ -66,6 +66,62 @@ export async function fetchFinderWrite(
   return response.json() as Promise<{ path: string; message: string }>;
 }
 
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  let binary = "";
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+}
+
+function base64ToArrayBuffer(base64: string): ArrayBuffer {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes.buffer;
+}
+
+export async function fetchFinderReadBinary(path: string): Promise<{ buffer: ArrayBuffer; size: number }> {
+  const response = await fetch(
+    `${BASE_URL}/admin/finder/read-binary?path=${encodeURIComponent(path)}`,
+    {
+      method: "GET",
+      headers: { Accept: "application/json" },
+    }
+  );
+  if (!response.ok) {
+    throw new Error(`请求失败：${response.status} ${response.statusText}`);
+  }
+  const data = await response.json();
+  return {
+    buffer: base64ToArrayBuffer(data.content_base64 as string),
+    size: data.size as number,
+  };
+}
+
+export async function fetchFinderWriteBinary(
+  path: string,
+  buffer: ArrayBuffer,
+  overwrite: boolean = true
+): Promise<{ path: string; message: string }> {
+  const response = await fetch(`${BASE_URL}/admin/finder/write-binary`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      path,
+      content_base64: arrayBufferToBase64(buffer),
+      overwrite,
+    }),
+  });
+  if (!response.ok) {
+    throw new Error(`请求失败：${response.status} ${response.statusText}`);
+  }
+  return response.json() as Promise<{ path: string; message: string }>;
+}
+
 export async function fetchModuleFiles(plugin: string): Promise<string[]> {
   const response = await fetch(
     `${BASE_URL}/admin/kernel/modules/${encodeURIComponent(plugin)}/files`,

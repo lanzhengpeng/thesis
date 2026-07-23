@@ -25,6 +25,10 @@ from .di_container import AssemblyReport, DIContainer
 
 PLUGINS_DIR = Path(__file__).resolve().parent.parent.parent / "plugins"
 
+# 非插件模块目录：这些目录位于 plugins/ 下，但属于共享基础设施，
+# 不应被微内核扫描为业务模块，也不应出现在作弊纸与前端画布中。
+NON_PLUGIN_DIRS = {"database"}
+
 
 @dataclass
 class ModuleLoadReport:
@@ -90,7 +94,8 @@ class MicroKernel:
         """
         遍历 plugins/ 目录下的所有插件模块。
 
-        跳过非目录项与以下划线开头的目录。
+        跳过非目录项、以下划线开头的目录以及共享基础设施目录
+        （如 database）。
         """
         if not self.plugins_dir.exists():
             return
@@ -99,6 +104,8 @@ class MicroKernel:
             if not plugin_dir.is_dir():
                 continue
             if plugin_dir.name.startswith("_"):
+                continue
+            if plugin_dir.name in NON_PLUGIN_DIRS:
                 continue
             self._load_plugin(plugin_dir)
 
