@@ -49,6 +49,23 @@ export async function fetchFinderRead(path: string): Promise<string> {
   return data.content as string;
 }
 
+export async function fetchFinderWrite(
+  path: string,
+  content: string,
+  encoding: string = "utf-8",
+  overwrite: boolean = true
+): Promise<{ path: string; message: string }> {
+  const response = await fetch(`${BASE_URL}/admin/finder/write`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ path, content, encoding, overwrite }),
+  });
+  if (!response.ok) {
+    throw new Error(`请求失败：${response.status} ${response.statusText}`);
+  }
+  return response.json() as Promise<{ path: string; message: string }>;
+}
+
 export async function fetchModuleFiles(plugin: string): Promise<string[]> {
   const response = await fetch(
     `${BASE_URL}/admin/kernel/modules/${encodeURIComponent(plugin)}/files`,

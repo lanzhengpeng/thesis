@@ -4,9 +4,11 @@ import { AgentChatPanel, ConversationSidebar } from "./features/agent";
 import { ProjectFilesPanel } from "./features/project-files";
 import type { ModuleNodeData } from "./features/architecture";
 import { ArchitectureCanvas } from "./components/ArchitectureCanvas";
+import { FileEditor } from "./components/FileEditor";
 import { TabBar } from "./components/TabBar";
 import { useCheatSheet } from "./hooks/useCheatSheet";
 import type { CheatSheetResponse } from "./types/cheatSheet";
+import { fetchFinderRead } from "./services/api";
 import type { TabItem } from "./types/tabs";
 import "./App.css";
 
@@ -41,7 +43,7 @@ function App() {
   const { data, loading, error, refetch } = useCheatSheet();
   const [isDetailPanelOpen, setIsDetailPanelOpen] = useState(false);
   const [isProjectFilesOpen, setIsProjectFilesOpen] = useState(false);
-  const [isConversationSidebarOpen, setIsConversationSidebarOpen] = useState(true);
+  const [isConversationSidebarOpen, setIsConversationSidebarOpen] = useState(false);
   const [selectedNodeData, setSelectedNodeData] = useState<ModuleNodeData | null>(null);
   const [selectedComponentId, setSelectedComponentId] = useState<string | null>(null);
   const [selectedMethod, setSelectedMethod] = useState<SelectedMethod | null>(null);
@@ -49,6 +51,7 @@ function App() {
     { id: "preview", type: "architecture", title: "预览", icon: "app-window", closable: false },
   ]);
   const [activeTabId, setActiveTabId] = useState("preview");
+  const [fileContents, setFileContents] = useState<Record<string, string>>({});
 
   const handleAddTab = () => {
     const id = `tab-${Date.now()}`;
@@ -78,6 +81,36 @@ function App() {
     });
   };
 
+  const handleOpenFile = async (path: string, name: string) => {
+    const existing = tabs.find((t) => t.type === "file" && t.path === path);
+    if (existing) {
+      setActiveTabId(existing.id);
+      return;
+    }
+
+    const id = `tab-${Date.now()}`;
+    const newTab: TabItem = {
+      id,
+      type: "file",
+      title: name,
+      icon: "file-text",
+      closable: true,
+      path,
+    };
+    setTabs((prev) => [...prev, newTab]);
+    setActiveTabId(id);
+
+    try {
+      const content = await fetchFinderRead(path);
+      setFileContents((prev) => ({ ...prev, [path]: content }));
+    } catch (err) {
+      setFileContents((prev) => ({
+        ...prev,
+        [path]: `无法读取文件：${err instanceof Error ? err.message : String(err)}`,
+      }));
+    }
+  };
+
   const layoutKey = `${isDetailPanelOpen}-${isProjectFilesOpen}`;
 
   const activeTab = tabs.find((t) => t.id === activeTabId) ?? tabs[0];
@@ -94,16 +127,20 @@ function App() {
 
   return (
     <div className="app">
-      <ConversationSidebar isOpen={isConversationSidebarOpen} />
+      <ConversationSidebar
+        isOpen={isConversationSidebarOpen}
+        onClose={() => setIsConversationSidebarOpen(false)}
+      />
 
       <AgentChatPanel
+        isConversationSidebarOpen={isConversationSidebarOpen}
         onFolderClick={() => setIsProjectFilesOpen((v) => !v)}
         onConversationToggle={() =>
           setIsConversationSidebarOpen((v) => !v)
         }
       />
 
-      <ProjectFilesPanel isOpen={isProjectFilesOpen} />
+      <ProjectFilesPanel isOpen={isProjectFilesOpen} onOpenFile={handleOpenFile} />
 
       <div className="app__main">
         <TabBar
@@ -180,6 +217,24 @@ function App() {
                 }}
               />
             </>
+          ) : activeTab?.type === "file" ? (
+            <div className="app__file-viewer">
+              {activeTab.path && activeTab.path in fileContents ? (
+                <FileEditor
+                  key={activeTab.path}
+                  path={activeTab.path}
+                  content={fileContents[activeTab.path]}
+                  onChange={(value) =>
+                    setFileContents((prev) => ({
+                      ...prev,
+                      [activeTab.path!]: value,
+                    }))
+                  }
+                />
+              ) : (
+                <div className="app__empty-tab">加载中...</div>
+              )}
+            </div>
           ) : (
             <div className="app__empty-tab">新标签页</div>
           )}

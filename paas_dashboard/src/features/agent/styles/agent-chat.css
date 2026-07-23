@@ -27,18 +27,25 @@
 .agent-panel__header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  height: 48px;
-  padding: 0 12px;
+  height: 56px;
+  padding: 12px 8px 12px 12px;
   background: var(--background);
   flex-shrink: 0;
+}
+
+.agent-panel__header-inner {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
 }
 
 .agent-panel__brand {
   display: flex;
   align-items: center;
   gap: 10px;
+  flex: 1;
   min-width: 0;
 }
 
@@ -68,7 +75,6 @@
   width: 24px;
   height: 24px;
   overflow: hidden;
-  border: 1px solid var(--border);
   border-radius: var(--radius-sm);
 }
 
@@ -101,12 +107,12 @@
   transition: transform 0.2s ease;
 }
 
-.agent-panel__folder-btn {
+.agent-panel__icon-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   padding: 0;
   border: none;
   border-radius: var(--radius-md);
@@ -115,18 +121,19 @@
   cursor: pointer;
   outline: none;
   transition: color 0.15s ease, background 0.15s ease;
+  flex-shrink: 0;
 }
 
-.agent-panel__folder-btn:hover {
+.agent-panel__icon-btn:hover {
   background: var(--accent);
   color: var(--foreground);
 }
 
-.agent-panel__folder-btn:focus-visible {
+.agent-panel__icon-btn:focus-visible {
   box-shadow: 0 0 0 3px var(--ring);
 }
 
-.agent-panel__folder-btn svg {
+.agent-panel__icon-btn svg {
   display: block;
   width: 16px;
   height: 16px;
@@ -256,11 +263,18 @@
   flex-direction: column;
   gap: 0;
   padding: 12px 0 6px;
-  border: none;
+  border: 1px solid var(--border);
   border-radius: var(--radius-xl);
   background: var(--background);
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-lg);
   overflow: hidden;
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.agent-panel__sender:has(:focus),
+.agent-panel__sender:focus-within {
+  border-color: rgba(124, 58, 237, 0.45);
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.25), 0 0 16px rgba(124, 58, 237, 0.35);
 }
 
 .agent-error {

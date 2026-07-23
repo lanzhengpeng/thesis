@@ -27,3 +27,4 @@ class BetaController:
     def create_beta(self, payload: dict):
         """POST /api/betas/"""
         return self.beta_service.create_beta(**payload)
+

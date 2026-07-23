@@ -21,7 +21,7 @@ import {
   ShareAltOutlined,
   ToolOutlined,
 } from "@ant-design/icons";
-import { PanelLeft } from "lucide-react";
+import { ChevronLeft, History, PanelLeft } from "lucide-react";
 import { Sender } from "@ant-design/x";
 import { XMarkdown } from "@ant-design/x-markdown";
 import "@ant-design/x-markdown/dist/x-markdown.css";
@@ -652,11 +652,17 @@ function CheckpointCard() {
 }
 
 export function AgentChatPanel({
+  isConversationSidebarOpen,
   onFolderClick,
   onConversationToggle,
+  onBackClick,
+  onHistoryClick,
 }: {
+  isConversationSidebarOpen?: boolean;
   onFolderClick?: () => void;
   onConversationToggle?: () => void;
+  onBackClick?: () => void;
+  onHistoryClick?: () => void;
 }) {
   const { messages, status, error, send, stop } = useAgentChat();
   const [input, setInput] = useState("");
@@ -706,36 +712,78 @@ export function AgentChatPanel({
   return (
     <div className="agent-panel">
       <div className="agent-panel__header">
-        <button
-          type="button"
-          className="agent-panel__folder-btn"
-          title="对话列表"
-          onClick={() => onConversationToggle?.()}
-        >
-          <PanelLeft size={16} aria-hidden="true" />
-        </button>
-        <div className="agent-panel__brand">
+        <div className="agent-panel__header-inner">
           <button
-            className="agent-panel__brand-trigger"
             type="button"
-            aria-haspopup="dialog"
-            aria-expanded={false}
-            aria-controls="radix-:rd:"
-            data-state="closed"
-            data-slot="popover-trigger"
+            className="agent-panel__icon-btn"
+            title="返回"
+            onClick={() => onBackClick?.()}
           >
-            <span data-slot="avatar" className="agent-panel__brand-avatar">
-              <img
-                data-slot="avatar-image"
-                alt=""
-                src="https://coze-coding-project.tos.coze.site/gen_project_icon/2026-05-28/7644848070408323114_1779957446.png?sign=1784870498-d8a08333e7-0-150f0370ca6423a40dac95769c5fb72637e3dde5c07d679f617ab4817cd9ab3b"
-              />
-            </span>
-            <div className="agent-panel__brand-name">
-              <div className="agent-panel__brand-name-text">
-                接口生成和规范
+            <ChevronLeft size={16} aria-hidden="true" />
+          </button>
+          {!isConversationSidebarOpen && (
+            <button
+              type="button"
+              className="agent-panel__icon-btn"
+              title="对话列表"
+              onClick={() => onConversationToggle?.()}
+            >
+              <PanelLeft size={16} aria-hidden="true" />
+            </button>
+          )}
+          <div className="agent-panel__brand">
+            <button
+              className="agent-panel__brand-trigger"
+              type="button"
+              aria-haspopup="dialog"
+              aria-expanded={false}
+              aria-controls="radix-:rd:"
+              data-state="closed"
+              data-slot="popover-trigger"
+            >
+              <span data-slot="avatar" className="agent-panel__brand-avatar">
+                <img
+                  data-slot="avatar-image"
+                  alt=""
+                  src="https://coze-coding-project.tos.coze.site/gen_project_icon/2026-05-28/7644848070408323114_1779957446.png?sign=1784870498-d8a08333e7-0-150f0370ca6423a40dac95769c5fb72637e3dde5c07d679f617ab4817cd9ab3b"
+                />
+              </span>
+              <div className="agent-panel__brand-name">
+                <div className="agent-panel__brand-name-text">
+                  接口生成和规范
+                </div>
               </div>
-            </div>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="agent-panel__brand-chevron"
+                aria-hidden="true"
+              >
+                <path d="m18 15-6-6-6 6" />
+              </svg>
+            </button>
+          </div>
+          <button
+            type="button"
+            className="agent-panel__icon-btn"
+            title="历史版本"
+            onClick={() => onHistoryClick?.()}
+          >
+            <History size={16} aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            className="agent-panel__icon-btn"
+            title="项目文件"
+            onClick={() => onFolderClick?.()}
+          >
             <svg
               xmlns="http://www.w3.org/2000/svg"
               width="16"
@@ -746,34 +794,12 @@ export function AgentChatPanel({
               strokeWidth="2"
               strokeLinecap="round"
               strokeLinejoin="round"
-              className="agent-panel__brand-chevron"
               aria-hidden="true"
             >
-              <path d="m18 15-6-6-6 6" />
+              <path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z" />
             </svg>
           </button>
         </div>
-        <button
-          type="button"
-          className="agent-panel__folder-btn"
-          title="项目文件"
-          onClick={() => onFolderClick?.()}
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden="true"
-          >
-            <path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z" />
-          </svg>
-        </button>
       </div>
 
       <div className="agent-panel__body">

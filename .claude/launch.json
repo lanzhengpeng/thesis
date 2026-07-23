@@ -43,6 +43,12 @@
       "autoPort": false
     },
     {
+      "name": "paas-dashboard-dev-5176",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "paas_dashboard", "run", "dev", "--", "--host", "--port", "5176"],
+      "port": 5176
+    },
+    {
       "name": "paas-dashboard-dev-auto",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["--prefix", "paas_dashboard", "run", "dev", "--", "--host"],

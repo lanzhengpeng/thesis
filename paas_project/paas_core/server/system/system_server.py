@@ -10,9 +10,13 @@
 from __future__ import annotations
 
 import os
+import re
+import shutil
+from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 from paas_core.finder import (
     DirectoryEntry,
     FileContentOut,
@@ -55,6 +59,33 @@ def _get_cors_origins() -> list[str]:
             if origin and origin not in origins:
                 origins.append(origin)
     return origins
+
+
+class ModuleFileWriteIn(BaseModel):
+    """模块源码写入请求体。"""
+
+    content: str
+
+
+def _plugin_dir(kernel: MicroKernel, plugin_name: str) -> Path:
+    """
+    获取插件目录并校验其存在且位于 plugins/ 根目录下。
+
+    返回插件目录的 Path；不存在或路径非法时抛出 HTTPException。
+    """
+    if not re.match(r"^[A-Za-z0-9_]+$", plugin_name):
+        raise HTTPException(status_code=400, detail=f"非法的插件名: {plugin_name}")
+
+    plugin_dir = kernel.plugins_dir / plugin_name
+    resolved = plugin_dir.resolve()
+    base = kernel.plugins_dir.resolve()
+    if resolved != base and not str(resolved).startswith(str(base) + "/"):
+        raise HTTPException(status_code=400, detail=f"非法的插件名: {plugin_name}")
+    if not resolved.exists():
+        raise HTTPException(status_code=404, detail=f"找不到插件: {plugin_name}")
+    if not resolved.is_dir():
+        raise HTTPException(status_code=400, detail=f"{plugin_name} 不是目录")
+    return resolved
 
 
 def create_system_app(kernel: MicroKernel) -> FastAPI:
@@ -137,6 +168,116 @@ def create_system_app(kernel: MicroKernel) -> FastAPI:
     # Finder：项目文件增删改查（仅允许操作 plugins/ 目录）
     # ------------------------------------------------------------------
     finder = FileService(kernel.plugins_dir)
+
+    # ------------------------------------------------------------------
+    # 模块源码管理：列出、读取、保存、删除模块文件
+    # ------------------------------------------------------------------
+
+    def _validate_module_file_name(file_name: str) -> None:
+        if not re.match(r"^[A-Za-z0-9_][A-Za-z0-9_.-]*$", file_name):
+            raise HTTPException(status_code=400, detail=f"非法的文件名: {file_name}")
+        if ".." in file_name or "/" in file_name or "\\" in file_name:
+            raise HTTPException(status_code=400, detail=f"非法的文件名: {file_name}")
+
+    @app.get("/admin/kernel/modules/{plugin_name}/files")
+    def list_module_files(plugin_name: str):
+        """
+        列出指定模块目录下的所有 Python 文件名。
+
+        返回：
+            {"files": ["AlphaController.py", "AlphaService.py", ...]}
+        """
+        directory = _plugin_dir(kernel, plugin_name)
+        files = sorted(
+            [p.name for p in directory.iterdir() if p.is_file() and p.suffix == ".py"]
+        )
+        return {"files": files}
+
+    @app.get("/admin/kernel/modules/{plugin_name}/files/{file_name}")
+    def read_module_file(plugin_name: str, file_name: str):
+        """
+        读取指定模块中某个源码文件的内容。
+
+        返回：
+            {"content": "..."}
+        """
+        _plugin_dir(kernel, plugin_name)
+        _validate_module_file_name(file_name)
+        try:
+            content, _ = finder.read_file(f"{plugin_name}/{file_name}")
+        except PathNotFoundError as exc:
+            raise _finder_error(exc, 404)
+        return {"content": content}
+
+    @app.put("/admin/kernel/modules/{plugin_name}/files/{file_name}")
+    def write_module_file(plugin_name: str, file_name: str, payload: ModuleFileWriteIn):
+        """
+        保存模块源码文件，进行语法检查，通过后再热重载该模块。
+
+        返回：
+            {
+                "check": {"ok": true, "errors": []},
+                "reload_report": {"success_count": 1, "failed_count": 0, ...}
+            }
+        """
+        _plugin_dir(kernel, plugin_name)
+        _validate_module_file_name(file_name)
+
+        # 先写入文件
+        try:
+            finder.write_file(
+                f"{plugin_name}/{file_name}",
+                payload.content,
+                overwrite=True,
+            )
+        except PathNotAllowedError as exc:
+            raise _finder_error(exc, 403)
+
+        # 语法静态检查
+        check = {"ok": True, "errors": []}
+        try:
+            compile(payload.content, f"{plugin_name}/{file_name}", "exec")
+        except SyntaxError as exc:
+            check = {"ok": False, "errors": [str(exc)]}
+        except Exception as exc:  # pragma: no cover
+            check = {"ok": False, "errors": [str(exc)]}
+
+        # 只有语法检查通过才尝试重载模块
+        reload_report: dict = {}
+        if check["ok"]:
+            try:
+                report = kernel.reload_plugin(plugin_name)
+                reload_report = report.summarize()
+            except Exception as exc:
+                reload_report = {"error": str(exc)}
+
+        return {"check": check, "reload_report": reload_report}
+
+    @app.delete("/admin/kernel/modules/{plugin_name}")
+    def delete_module(plugin_name: str):
+        """
+        删除整个模块目录，并卸载该插件。
+
+        说明：
+        - 先从内核容器中移除该插件的类与实例。
+        - 再删除磁盘上的插件目录。
+        - 服务口（8001）仍需重启才能同步路由变更。
+        """
+        directory = _plugin_dir(kernel, plugin_name)
+
+        # 先卸载再删除目录，避免卸载时读不到目录报错
+        try:
+            kernel.unload_plugin(plugin_name)
+        except Exception:
+            # 目录可能已损坏，允许继续删除
+            pass
+
+        shutil.rmtree(directory)
+
+        return {
+            "message": f"模块 {plugin_name} 已删除",
+            "note": "服务口（8001）需重启才能同步路由变更",
+        }
 
     @app.get("/admin/finder/list", response_model=list[DirectoryEntry])
     def finder_list(path: str = ""):

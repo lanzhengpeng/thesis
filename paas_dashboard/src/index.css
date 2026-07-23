@@ -14,6 +14,7 @@
   --accent: #f1f5f9;
   --accent-hover: #e2e8f0;
   --accent-foreground: #0f172a;
+  --base-sidebar-accent: var(--accent);
   --border: #e2e8f0;
   --border-strong: #cbd5e1;
   --primary: #0f172a;
@@ -47,6 +48,7 @@
   --accent: #334155;
   --accent-hover: #475569;
   --accent-foreground: #f8fafc;
+  --base-sidebar-accent: var(--accent);
   --border: #334155;
   --border-strong: #475569;
   --primary: #f8fafc;

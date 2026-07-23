@@ -23,9 +23,10 @@ import {
 interface ProjectFilesPanelProps {
   isOpen: boolean;
   onClose?: () => void;
+  onOpenFile?: (path: string, name: string) => void;
 }
 
-export function ProjectFilesPanel({ isOpen }: ProjectFilesPanelProps) {
+export function ProjectFilesPanel({ isOpen, onOpenFile }: ProjectFilesPanelProps) {
   const [activeTab, setActiveTab] = useState<"files" | "search" | "git">("files");
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const { tree, loading, error, load, expand } = useProjectFiles();
@@ -123,6 +124,7 @@ export function ProjectFilesPanel({ isOpen }: ProjectFilesPanelProps) {
                   node={node}
                   expanded={expanded}
                   onToggle={toggleFolder}
+                  onOpenFile={onOpenFile}
                   depth={0}
                 />
               ))}
@@ -180,30 +182,42 @@ function TreeItem({
   node,
   expanded,
   onToggle,
+  onOpenFile,
   depth,
 }: {
   node: ProjectFileNode;
   expanded: Set<string>;
   onToggle: (path: string) => void;
+  onOpenFile?: (path: string, name: string) => void;
   depth: number;
 }) {
   const isFolder = node.type === "directory";
   const isExpanded = expanded.has(node.path);
+
+  const handleClick = () => {
+    if (isFolder) {
+      onToggle(node.path);
+    } else {
+      onOpenFile?.(node.path, node.name);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      handleClick();
+    }
+  };
 
   return (
     <div className="project-files-panel__tree-node">
       <div
         className="project-files-panel__tree-row"
         style={{ paddingLeft: 8 + depth * 16 }}
-        onClick={() => isFolder && onToggle(node.path)}
-        role={isFolder ? "button" : undefined}
-        tabIndex={isFolder ? 0 : undefined}
-        onKeyDown={(e) => {
-          if (isFolder && (e.key === "Enter" || e.key === " ")) {
-            e.preventDefault();
-            onToggle(node.path);
-          }
-        }}
+        onClick={handleClick}
+        role="button"
+        tabIndex={0}
+        onKeyDown={handleKeyDown}
       >
         {isFolder ? (
           <CaretRightOutlined
@@ -232,6 +246,7 @@ function TreeItem({
             node={child}
             expanded={expanded}
             onToggle={onToggle}
+            onOpenFile={onOpenFile}
             depth={depth + 1}
           />
         ))}

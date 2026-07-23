@@ -1,11 +1,12 @@
 import type { ReactNode } from "react";
-import { AppWindow, Bookmark, Plus, X } from "lucide-react";
+import { AppWindow, Bookmark, FileText, Plus, X } from "lucide-react";
 import type { TabItem } from "../types/tabs";
 import "./TabBar.css";
 
 const iconMap: Record<string, React.ComponentType<{ size?: number }>> = {
   "app-window": AppWindow,
   bookmark: Bookmark,
+  "file-text": FileText,
 };
 
 interface TabBarProps {
@@ -27,31 +28,34 @@ export function TabBar({
 }: TabBarProps) {
   return (
     <header className="tab-bar">
-      <div className="tab-bar__scroll">
-        <ul className="tab-bar__list" role="tablist" aria-orientation="horizontal">
-          {tabs.map((tab) => (
-            <TabItemView
-              key={tab.id}
-              tab={tab}
-              active={tab.id === activeTabId}
-              onSelect={() => onSelect(tab.id)}
-              onClose={() => onClose(tab.id)}
-            />
-          ))}
-        </ul>
-      </div>
+      <div className="tab-bar__container">
+        <div className="tab-bar__add">
+          <button
+            type="button"
+            className="tab-bar__action-btn"
+            aria-label="新标签页"
+            title="新标签页"
+            onClick={onAdd}
+          >
+            <Plus size={16} />
+          </button>
+        </div>
 
-      <div className="tab-bar__actions">
-        <button
-          type="button"
-          className="tab-bar__action-btn"
-          aria-label="新标签页"
-          title="新标签页"
-          onClick={onAdd}
-        >
-          <Plus size={16} />
-        </button>
-        {rightActions}
+        <div className="tab-bar__scroll">
+          <ul className="tab-bar__list" role="tablist" aria-orientation="horizontal">
+            {tabs.map((tab) => (
+              <TabItemView
+                key={tab.id}
+                tab={tab}
+                active={tab.id === activeTabId}
+                onSelect={() => onSelect(tab.id)}
+                onClose={() => onClose(tab.id)}
+              />
+            ))}
+          </ul>
+        </div>
+
+        <div className="tab-bar__actions">{rightActions}</div>
       </div>
     </header>
   );
