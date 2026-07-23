@@ -1,0 +1,42 @@
+@import "tailwindcss";
+
+.conversation-sidebar {
+  /* Raw CSS variables used via bg-(var) / border-(var) syntax */
+  --base-border: var(--border, #e2e8f0);
+  --base-sidebar-accent: var(--accent, #f1f5f9);
+
+  /* Tailwind v4 theme-mapped variables */
+  --color-sidebar-foreground: var(--foreground, #1e293b);
+  --color-input: var(--accent, #f1f5f9);
+  --color-background: var(--background, #ffffff);
+  --color-accent: var(--accent, #f1f5f9);
+  --color-accent-foreground: var(--accent-foreground, #0f172a);
+  --color-ring: var(--ring, rgba(59, 130, 246, 0.12));
+  --color-outline: rgba(59, 130, 246, 0.5);
+  --color-destructive: #ef4444;
+  --color-muted-foreground: var(--muted-foreground, #64748b);
+  --color-border: var(--border, #e2e8f0);
+  --text-mini: 12px;
+
+  /* Dark theme overrides */
+  @media (prefers-color-scheme: dark) {
+    --base-border: var(--border, #334155);
+    --base-sidebar-accent: var(--accent, #334155);
+    --color-sidebar-foreground: var(--foreground, #e2e8f0);
+    --color-input: var(--accent, #334155);
+    --color-background: var(--background, #0f172a);
+    --color-accent: var(--accent, #334155);
+    --color-accent-foreground: var(--accent-foreground, #f8fafc);
+  }
+}
+
+/* Native scroll container that mimics Radix ScrollArea */
+.conversation-sidebar__scroll {
+  overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.conversation-sidebar__scroll::-webkit-scrollbar {
+  display: none;
+}

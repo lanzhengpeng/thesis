@@ -1,0 +1,25 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "paas-backend",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["main.py"],
+      "port": 8000
+    },
+    {
+      "name": "paas-langgraph",
+      "runtimeExecutable": "langgraph",
+      "runtimeArgs": [
+        "dev",
+        "--config",
+        "langgraph.json",
+        "--port",
+        "8123",
+        "--allow-blocking",
+        "--no-browser"
+      ],
+      "port": 8123
+    }
+  ]
+}

@@ -21,6 +21,7 @@ import {
   ShareAltOutlined,
   ToolOutlined,
 } from "@ant-design/icons";
+import { PanelLeft } from "lucide-react";
 import { Sender } from "@ant-design/x";
 import { XMarkdown } from "@ant-design/x-markdown";
 import "@ant-design/x-markdown/dist/x-markdown.css";
@@ -650,7 +651,13 @@ function CheckpointCard() {
   );
 }
 
-export function AgentChatPanel({ onFolderClick }: { onFolderClick?: () => void }) {
+export function AgentChatPanel({
+  onFolderClick,
+  onConversationToggle,
+}: {
+  onFolderClick?: () => void;
+  onConversationToggle?: () => void;
+}) {
   const { messages, status, error, send, stop } = useAgentChat();
   const [input, setInput] = useState("");
   const isStreaming = status === "streaming";
@@ -699,6 +706,14 @@ export function AgentChatPanel({ onFolderClick }: { onFolderClick?: () => void }
   return (
     <div className="agent-panel">
       <div className="agent-panel__header">
+        <button
+          type="button"
+          className="agent-panel__folder-btn"
+          title="对话列表"
+          onClick={() => onConversationToggle?.()}
+        >
+          <PanelLeft size={16} aria-hidden="true" />
+        </button>
         <div className="agent-panel__brand">
           <button
             className="agent-panel__brand-trigger"

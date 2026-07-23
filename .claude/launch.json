@@ -2,9 +2,16 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "paas-dashboard",
-      "runtimeExecutable": "/Users/lanzhengpeng/develop/thesis/start_dashboard.sh",
+      "name": "paas-backend",
+      "runtimeExecutable": "/Users/lanzhengpeng/develop/thesis/paas_project/start_backend.sh",
       "runtimeArgs": [],
+      "port": 8000,
+      "autoPort": false
+    },
+    {
+      "name": "paas-dashboard",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--prefix", "paas_dashboard", "--", "--host", "--port", "5173"],
       "port": 5173,
       "autoPort": false
     },
@@ -27,6 +34,19 @@
       "runtimeArgs": [],
       "port": 54096,
       "autoPort": false
+    },
+    {
+      "name": "paas-dashboard-dev-5175",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "paas_dashboard", "run", "dev", "--", "--host", "--port", "5175"],
+      "port": 5175,
+      "autoPort": false
+    },
+    {
+      "name": "paas-dashboard-dev-auto",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "paas_dashboard", "run", "dev", "--", "--host"],
+      "autoPort": true
     }
   ]
 }

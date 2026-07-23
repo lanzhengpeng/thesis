@@ -44,7 +44,7 @@ export function TabBar({
       <div className="tab-bar__actions">
         <button
           type="button"
-          className="tab-bar__add"
+          className="tab-bar__action-btn"
           aria-label="新标签页"
           title="新标签页"
           onClick={onAdd}

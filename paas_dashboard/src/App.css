@@ -1,0 +1,58 @@
+.app {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  overflow: hidden;
+  background: var(--background);
+  color: var(--foreground);
+}
+
+.app__main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.app__content {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+.app__empty-tab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted-foreground);
+  font-size: 14px;
+}
+
+.app__primary-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: var(--radius-md);
+  border: none;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background 150ms ease;
+  outline: none;
+}
+
+.app__primary-btn:hover:not(:disabled) {
+  background: var(--primary-hover);
+}
+
+.app__primary-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}

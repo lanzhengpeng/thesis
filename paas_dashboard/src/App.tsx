@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ModuleDetailPanel } from "./features/architecture";
-import { AgentChatPanel } from "./features/agent";
+import { AgentChatPanel, ConversationSidebar } from "./features/agent";
 import { ProjectFilesPanel } from "./features/project-files";
 import type { ModuleNodeData } from "./features/architecture";
 import { ArchitectureCanvas } from "./components/ArchitectureCanvas";
@@ -8,6 +8,7 @@ import { TabBar } from "./components/TabBar";
 import { useCheatSheet } from "./hooks/useCheatSheet";
 import type { CheatSheetResponse } from "./types/cheatSheet";
 import type { TabItem } from "./types/tabs";
+import "./App.css";
 
 export interface SelectedMethod {
   componentId: string;
@@ -40,6 +41,7 @@ function App() {
   const { data, loading, error, refetch } = useCheatSheet();
   const [isDetailPanelOpen, setIsDetailPanelOpen] = useState(false);
   const [isProjectFilesOpen, setIsProjectFilesOpen] = useState(false);
+  const [isConversationSidebarOpen, setIsConversationSidebarOpen] = useState(true);
   const [selectedNodeData, setSelectedNodeData] = useState<ModuleNodeData | null>(null);
   const [selectedComponentId, setSelectedComponentId] = useState<string | null>(null);
   const [selectedMethod, setSelectedMethod] = useState<SelectedMethod | null>(null);
@@ -76,148 +78,112 @@ function App() {
     });
   };
 
-  // 右侧详情面板/项目文件面板展开折叠时触发 React Flow 的 fitView
   const layoutKey = `${isDetailPanelOpen}-${isProjectFilesOpen}`;
 
   const activeTab = tabs.find((t) => t.id === activeTabId) ?? tabs[0];
 
-  return (
-    <div
-      style={{
-        width: "100vw",
-        height: "100vh",
-        display: "flex",
-        flexDirection: "column",
-        overflow: "hidden",
-        background: "#ffffff",
-      }}
+  const refreshButton = (
+    <button
+      onClick={refetch}
+      disabled={loading}
+      className="app__primary-btn"
     >
-      <TabBar
-        tabs={tabs}
-        activeTabId={activeTabId}
-        onSelect={setActiveTabId}
-        onClose={handleCloseTab}
-        onAdd={handleAddTab}
-        rightActions={
-          <button
-            onClick={refetch}
-            disabled={loading}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              whiteSpace: "nowrap",
-              height: 32,
-              padding: "0 12px",
-              borderRadius: 6,
-              border: "none",
-              background: "#0f172a",
-              color: "#ffffff",
-              cursor: loading ? "not-allowed" : "pointer",
-              fontSize: 14,
-              fontWeight: 500,
-              transition: "background 150ms ease",
-              outline: "none",
-            }}
-            onMouseEnter={(e) => {
-              if (!loading) e.currentTarget.style.background = "#000000";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = "#0f172a";
-            }}
-          >
-            立即刷新
-          </button>
+      立即刷新
+    </button>
+  );
+
+  return (
+    <div className="app">
+      <ConversationSidebar isOpen={isConversationSidebarOpen} />
+
+      <AgentChatPanel
+        onFolderClick={() => setIsProjectFilesOpen((v) => !v)}
+        onConversationToggle={() =>
+          setIsConversationSidebarOpen((v) => !v)
         }
       />
 
-      <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
-        {activeTab?.type === "architecture" ? (
-          <>
-            <AgentChatPanel
-              onFolderClick={() => setIsProjectFilesOpen((v) => !v)}
-            />
+      <ProjectFilesPanel isOpen={isProjectFilesOpen} />
 
-            <ProjectFilesPanel isOpen={isProjectFilesOpen} />
+      <div className="app__main">
+        <TabBar
+          tabs={tabs}
+          activeTabId={activeTabId}
+          onSelect={setActiveTabId}
+          onClose={handleCloseTab}
+          onAdd={handleAddTab}
+          rightActions={activeTab?.type === "architecture" ? refreshButton : null}
+        />
 
-            <ArchitectureCanvas
-              data={data}
-              loading={loading}
-              error={error}
-              layoutKey={layoutKey}
-              onRefresh={refetch}
-              onNodeClick={() => {
-                // 点击节点时展开右侧面板，具体数据由 onSelect* 回调填充
-                setIsDetailPanelOpen(true);
-              }}
-              onPaneClick={() => {
-                // 点击画布空白处收起右侧面板
-                setIsDetailPanelOpen(false);
-              }}
-              onSelectModule={(moduleData) => {
-                setSelectedNodeData(moduleData);
-                setSelectedComponentId(null);
-                setSelectedMethod(null);
-                setIsDetailPanelOpen(true);
-              }}
-              onSelectComponent={(componentId) => {
-                const component = data?.components.find(
-                  (c) => `${c.module}::${c.type}::${c.name}` === componentId
-                );
-                if (component && data) {
-                  setSelectedNodeData(buildModuleData(component.module, data));
-                }
-                setSelectedComponentId(componentId);
-                setSelectedMethod(null);
-                setIsDetailPanelOpen(true);
-              }}
-              onSelectMethod={(method) => {
-                if (method === null) {
+        <div className="app__content">
+          {activeTab?.type === "architecture" ? (
+            <>
+              <ArchitectureCanvas
+                data={data}
+                loading={loading}
+                error={error}
+                layoutKey={layoutKey}
+                onRefresh={refetch}
+                onNodeClick={() => {
+                  setIsDetailPanelOpen(true);
+                }}
+                onPaneClick={() => {
+                  setIsDetailPanelOpen(false);
+                }}
+                onSelectModule={(moduleData) => {
+                  setSelectedNodeData(moduleData);
+                  setSelectedComponentId(null);
                   setSelectedMethod(null);
-                } else {
-                  setSelectedMethod({ componentId: method.componentId, methodName: method.methodName });
+                  setIsDetailPanelOpen(true);
+                }}
+                onSelectComponent={(componentId) => {
                   const component = data?.components.find(
-                    (c) => `${c.module}::${c.type}::${c.name}` === method.componentId
+                    (c) => `${c.module}::${c.type}::${c.name}` === componentId
                   );
                   if (component && data) {
                     setSelectedNodeData(buildModuleData(component.module, data));
                   }
-                }
-                setSelectedComponentId(null);
-                setIsDetailPanelOpen(true);
-              }}
-            />
+                  setSelectedComponentId(componentId);
+                  setSelectedMethod(null);
+                  setIsDetailPanelOpen(true);
+                }}
+                onSelectMethod={(method) => {
+                  if (method === null) {
+                    setSelectedMethod(null);
+                  } else {
+                    setSelectedMethod({ componentId: method.componentId, methodName: method.methodName });
+                    const component = data?.components.find(
+                      (c) => `${c.module}::${c.type}::${c.name}` === method.componentId
+                    );
+                    if (component && data) {
+                      setSelectedNodeData(buildModuleData(component.module, data));
+                    }
+                  }
+                  setSelectedComponentId(null);
+                  setIsDetailPanelOpen(true);
+                }}
+              />
 
-            <ModuleDetailPanel
-              isOpen={isDetailPanelOpen}
-              onClose={() => setIsDetailPanelOpen(false)}
-              data={selectedNodeData}
-              components={data?.components ?? []}
-              selectedComponentId={selectedComponentId}
-              selectedMethod={selectedMethod}
-              onSelectComponent={setSelectedComponentId}
-              onSelectMethod={setSelectedMethod}
-              onModuleChanged={() => refetch()}
-              onModuleDeleted={() => {
-                setIsDetailPanelOpen(false);
-                refetch();
-              }}
-            />
-          </>
-        ) : (
-          <div
-            style={{
-              flex: 1,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              color: "#64748b",
-              fontSize: 14,
-            }}
-          >
-            新标签页
-          </div>
-        )}
+              <ModuleDetailPanel
+                isOpen={isDetailPanelOpen}
+                onClose={() => setIsDetailPanelOpen(false)}
+                data={selectedNodeData}
+                components={data?.components ?? []}
+                selectedComponentId={selectedComponentId}
+                selectedMethod={selectedMethod}
+                onSelectComponent={setSelectedComponentId}
+                onSelectMethod={setSelectedMethod}
+                onModuleChanged={() => refetch()}
+                onModuleDeleted={() => {
+                  setIsDetailPanelOpen(false);
+                  refetch();
+                }}
+              />
+            </>
+          ) : (
+            <div className="app__empty-tab">新标签页</div>
+          )}
+        </div>
       </div>
     </div>
   );

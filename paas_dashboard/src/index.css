@@ -2,6 +2,58 @@
   box-sizing: border-box;
 }
 
+:root {
+  /* Coze IDE design tokens (light) */
+  --background: #ffffff;
+  --background-subtle: #fafafa;
+  --foreground: #1e293b;
+  --foreground-strong: #0f172a;
+  --muted: #f8fafc;
+  --muted-foreground: #64748b;
+  --muted-foreground-subtle: #94a3b8;
+  --accent: #f1f5f9;
+  --accent-hover: #e2e8f0;
+  --accent-foreground: #0f172a;
+  --border: #e2e8f0;
+  --border-strong: #cbd5e1;
+  --primary: #0f172a;
+  --primary-hover: #000000;
+  --primary-foreground: #ffffff;
+  --ring: rgba(59, 130, 246, 0.12);
+  --success: #16a34a;
+  --success-bg: #dcfce7;
+  --success-fg: #166534;
+  --error: #dc2626;
+  --error-bg: #fee2e2;
+  --error-fg: #991b1b;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace;
+}
+
+.dark,
+[data-theme="dark"] {
+  --background: #0f172a;
+  --background-subtle: #1e293b;
+  --foreground: #e2e8f0;
+  --foreground-strong: #f8fafc;
+  --muted: #1e293b;
+  --muted-foreground: #94a3b8;
+  --muted-foreground-subtle: #64748b;
+  --accent: #334155;
+  --accent-hover: #475569;
+  --accent-foreground: #f8fafc;
+  --border: #334155;
+  --border-strong: #475569;
+  --primary: #f8fafc;
+  --primary-hover: #ffffff;
+  --primary-foreground: #0f172a;
+}
+
 html,
 body,
 #root {
@@ -23,8 +75,8 @@ body {
     Arial,
     sans-serif;
   font-size: 14px;
-  color: #1e293b;
-  background: #f8fafc;
+  color: var(--foreground);
+  background: var(--background);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
