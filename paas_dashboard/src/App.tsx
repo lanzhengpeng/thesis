@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Network } from "lucide-react";
 import { ModuleDetailPanel } from "./features/architecture";
 import { AgentChatPanel, ConversationSidebar } from "./features/agent";
@@ -58,6 +58,17 @@ function App() {
   const [activeTabId, setActiveTabId] = useState("preview");
   const [fileContents, setFileContents] = useState<Record<string, string>>({});
   const [fileBuffers, setFileBuffers] = useState<Record<string, ArrayBuffer>>({});
+  const [scalarMounted, setScalarMounted] = useState(false);
+
+  useEffect(() => {
+    setTabs((prev) => {
+      const activeTab = prev.find((t) => t.id === activeTabId);
+      if (activeTab?.type === "empty") return prev;
+      const hasEmpty = prev.some((t) => t.type === "empty");
+      if (!hasEmpty) return prev;
+      return prev.filter((t) => t.type !== "empty");
+    });
+  }, [activeTabId]);
 
   const handleAddTab = () => {
     const id = `tab-${Date.now()}`;
@@ -165,6 +176,7 @@ function App() {
       return;
     }
 
+    setScalarMounted(true);
     const id = `tab-${Date.now()}`;
     const newTab: TabItem = {
       id,
@@ -237,6 +249,14 @@ function App() {
         />
 
         <div className="app__content">
+          {scalarMounted && (
+            <div
+              className="app__scalar-wrapper"
+              style={{ display: activeTab?.type === "scalar" ? "flex" : "none" }}
+            >
+              <ScalarPanel />
+            </div>
+          )}
           {activeTab?.type === "architecture" ? (
             <>
               <ArchitectureCanvas
@@ -329,9 +349,7 @@ function App() {
                 <div className="app__empty-tab">加载中...</div>
               )}
             </div>
-          ) : activeTab?.type === "scalar" ? (
-            <ScalarPanel />
-          ) : (
+          ) : activeTab?.type === "scalar" ? null : (
             <EmptyTabPanel
               onOpenPreview={handleOpenArchitectureTab}
               onOpenEditor={handleOpenProjectFiles}

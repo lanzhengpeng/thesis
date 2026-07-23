@@ -185,15 +185,8 @@ export function useAgentChat(): UseAgentChatResult {
           p.cycles.push(p.currentCycle);
           flush();
         } else if (name === "call_model") {
-          if (!p.hasReactNodes) {
-            if (p.currentCycle && p.currentCycle.status === "loading") {
-              p.currentCycle.status = "success";
-            }
-            p.currentCycle = null;
-          }
-
-          // Within a ReAct node each model invocation represents a new reasoning
-          // iteration; give it its own cycle so steps don't collapse together.
+          // 每个 call_model 在当前 ReAct cycle 中追加一个 think step，
+          // 不再为每次模型调用单独开 cycle（cycle 对应 react_ 节点）。
           if (!p.currentCycle || p.currentCycle.status !== "loading") {
             p.currentCycle = {
               id: uid("cycle"),
@@ -206,7 +199,6 @@ export function useAgentChat(): UseAgentChatResult {
           const pendingReflect = p.reflectBuffer;
           p.reflectBuffer = "";
           p.streamingOutput = "";
-          p.finalOutput = "";
 
           const step: ThinkStep = {
             type: "think",
@@ -260,7 +252,6 @@ export function useAgentChat(): UseAgentChatResult {
               if (hasContent) {
                 p.lastModelContent = last.content;
                 p.currentCycle.finalContent = last.content;
-                p.currentCycle.status = "success";
                 if (thinkStep) thinkStep.status = "success";
                 p.streamingOutput = "";
                 p.finalOutput = last.content;

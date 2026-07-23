@@ -39,6 +39,12 @@
   border-radius: 10px;
 }
 
+.app__scalar-wrapper {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
 .app__primary-btn {
   display: inline-flex;
   align-items: center;

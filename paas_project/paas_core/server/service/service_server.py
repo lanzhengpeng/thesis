@@ -15,7 +15,10 @@ from __future__ import annotations
 import re
 from typing import Any, Dict, List, Tuple
 
+import os
+
 from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
 
 from paas_core.kernel.microkernel import MicroKernel
@@ -27,6 +30,21 @@ from .dynamic_dispatcher import DynamicDispatcher
 # 对外开放服务口监听端口，仅暴露业务 API
 SERVICE_PORT = 8001
 
+# 允许前端跨域访问，支持通过环境变量追加来源（多个用逗号分隔）
+DEFAULT_CORS_ORIGINS = ["http://localhost:5173"]
+
+
+def _get_cors_origins() -> list[str]:
+    """从环境变量读取额外 CORS 来源，默认保留开发服务器。"""
+    extra = os.getenv("PAA_DASHBOARD_ORIGINS", "")
+    origins = list(DEFAULT_CORS_ORIGINS)
+    if extra:
+        for origin in extra.split(","):
+            origin = origin.strip()
+            if origin and origin not in origins:
+                origins.append(origin)
+    return origins
+
 
 def create_service_app(kernel: MicroKernel) -> Tuple[FastAPI, DynamicDispatcher]:
     """
@@ -35,7 +53,7 @@ def create_service_app(kernel: MicroKernel) -> Tuple[FastAPI, DynamicDispatcher]
     该应用运行在 8001 端口，职责单一：
     - 通过 DynamicDispatcher 动态匹配插件 Controller 路由（/api/*）。
     - 不暴露 /admin/kernel/* 管理接口。
-    - 不添加前端 CORS，避免管理面暴露在业务口。
+    - 配置有限的 CORS，仅允许平台前端开发服务器跨域访问业务口。
     - 提供独立健康检查。
 
     参数：
@@ -45,6 +63,15 @@ def create_service_app(kernel: MicroKernel) -> Tuple[FastAPI, DynamicDispatcher]
         (app, dispatcher) 元组，便于 main.py 绑定文件监听器。
     """
     app = FastAPI(title="PaaS Exposed Service Server", version="0.1.0")
+
+    # 允许平台前端开发服务器跨域直接访问业务口
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=_get_cors_origins(),
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
     dispatcher = DynamicDispatcher(kernel)
 
