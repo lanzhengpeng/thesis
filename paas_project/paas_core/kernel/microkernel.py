@@ -69,6 +69,7 @@ class MicroKernel:
         self.container = DIContainer()
         self.module_reports: List[ModuleLoadReport] = []
         self._loaded_module_specs: Dict[str, Any] = {}
+        self._tool_registry: Dict[str, Any] = {}
 
     # ------------------------------------------------------------------
     # 启动生命周期
@@ -82,6 +83,7 @@ class MicroKernel:
             DI 容器生成的 AssemblyReport。
         """
         self._scan_plugins()
+        self._register_default_tools()
         return self.container.assemble()
 
     def _scan_plugins(self) -> None:
@@ -180,6 +182,94 @@ class MicroKernel:
         spec.loader.exec_module(module)
         self._loaded_module_specs[module_path] = module
 
+    def _register_default_tools(self) -> None:
+        """
+        启动时将默认 Agent 工具注册到内核工具表。
+
+        延迟导入以避免内核层反向依赖 agent 层。
+        """
+        try:
+            from paas_core.agent.tools import TOOLS
+
+            for tool in TOOLS:
+                name = getattr(tool, "name", None) or getattr(tool, "__name__", None)
+                if name:
+                    self.register_tool(name, tool)
+        except Exception as exc:  # pragma: no cover
+            print(f"[MicroKernel] 默认工具注册失败: {exc}")
+
+    # ------------------------------------------------------------------
+    # 工具注册表
+    # ------------------------------------------------------------------
+
+    def register_tool(self, name: str, tool: Any) -> None:
+        """
+        注册一个可调用工具到内核工具表。
+
+        参数：
+            name: 工具名称，供动态挂载时按名检索。
+            tool: 工具可调用对象（如 @tool 装饰后的函数或 LangChain Tool）。
+        """
+        self._tool_registry[name] = tool
+
+    def register_tools(self, tools: List[Any]) -> None:
+        """
+        批量注册工具。
+
+        参数：
+            tools: 工具可调用对象列表，名称从 tool.name 或 __name__ 推断。
+        """
+        for tool in tools:
+            name = getattr(tool, "name", None) or getattr(tool, "__name__", None)
+            if name:
+                self.register_tool(name, tool)
+
+    def get_tool(self, name: str) -> Any:
+        """
+        按名称获取单个工具。
+
+        参数：
+            name: 工具名。
+
+        返回：
+            工具对象；不存在时返回 None。
+        """
+        return self._tool_registry.get(name)
+
+    def get_tools(self, names: List[str]) -> List[Any]:
+        """
+        按名称列表批量获取工具。
+
+        参数：
+            names: 工具名列表。
+
+        返回：
+            存在的工具对象列表；不存在的名称被静默忽略。
+        """
+        return [self._tool_registry[name] for name in names if name in self._tool_registry]
+
+    def get_default_tools(self) -> List[Any]:
+        """
+        获取当前已注册的全部默认工具。
+
+        返回：
+            所有注册工具对象列表。
+        """
+        return list(self._tool_registry.values())
+
+    def unregister_tool(self, name: str) -> None:
+        """从内核工具表中移除指定工具。"""
+        self._tool_registry.pop(name, None)
+
+    def list_tools(self) -> List[str]:
+        """
+        列出所有已注册工具名称。
+
+        返回：
+            工具名字符串列表。
+        """
+        return list(self._tool_registry.keys())
+
     # ------------------------------------------------------------------
     # 动态操作
     # ------------------------------------------------------------------
@@ -222,6 +312,7 @@ class MicroKernel:
         self.container.reset()
         self.module_reports.clear()
         self._loaded_module_specs.clear()
+        self._tool_registry.clear()
 
         # 清理所有插件模块缓存，确保重新执行最新代码
         for key in list(sys.modules.keys()):
@@ -229,6 +320,7 @@ class MicroKernel:
                 del sys.modules[key]
 
         self._scan_plugins()
+        self._register_default_tools()
         return self.container.assemble()
 
     def reload_plugin(self, plugin_name: str) -> AssemblyReport:

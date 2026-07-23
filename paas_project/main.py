@@ -32,8 +32,8 @@ sys.path.insert(0, str(ROOT))
 
 from paas_core.kernel.microkernel import MicroKernel
 from paas_core.kernel.plugin_watcher import PluginWatcher
-from paas_core.server.service_server import SERVICE_PORT, create_service_app
-from paas_core.server.system_server import SYSTEM_PORT, create_system_app
+from paas_core.server.service.service_server import SERVICE_PORT, create_service_app
+from paas_core.server.system.system_server import SYSTEM_PORT, create_system_app
 
 
 def boot() -> MicroKernel:
@@ -67,18 +67,39 @@ def boot() -> MicroKernel:
     return kernel
 
 
-def run_system_server() -> None:
+def run_system_server(reload: bool = False) -> None:
     """在独立进程中运行系统口（8000）。"""
-    kernel = boot()
-    app = create_system_app(kernel)
     import uvicorn
 
     print(f"\n[系统口] 监听 0.0.0.0:{SYSTEM_PORT}")
-    uvicorn.run(app, host="0.0.0.0", port=SYSTEM_PORT)
+    if reload:
+        # uvicorn --reload 要求通过导入字符串加载 app
+        uvicorn.run(
+            "paas_core.server.system.system_app:app",
+            host="0.0.0.0",
+            port=SYSTEM_PORT,
+            reload=True,
+        )
+    else:
+        kernel = boot()
+        app = create_system_app(kernel)
+        uvicorn.run(app, host="0.0.0.0", port=SYSTEM_PORT, reload=False)
 
 
-def run_service_server() -> None:
+def run_service_server(reload: bool = False) -> None:
     """在独立进程中运行服务口（8001），并监听插件变更实现热更新。"""
+    import uvicorn
+
+    if reload:
+        # uvicorn --reload 要求通过导入字符串加载 app；PluginWatcher 在模块内启动
+        uvicorn.run(
+            "paas_core.server.service.service_app:app",
+            host="0.0.0.0",
+            port=SERVICE_PORT,
+            reload=True,
+        )
+        return
+
     kernel = boot()
     app, dispatcher = create_service_app(kernel)
 
@@ -106,21 +127,48 @@ def run_service_server() -> None:
     )
     watcher.start()
 
-    import uvicorn
-
     print(f"\n[服务口] 监听 0.0.0.0:{SERVICE_PORT}")
     try:
-        uvicorn.run(app, host="0.0.0.0", port=SERVICE_PORT)
+        uvicorn.run(app, host="0.0.0.0", port=SERVICE_PORT, reload=False)
     finally:
         watcher.stop()
 
 
-def _start_processes() -> None:
-    """以 spawn 方式同时启动两个服务进程。"""
+def _start_processes(reload: bool = False) -> None:
+    """同时启动系统口和服务口两个进程。"""
+    if reload:
+        # uvicorn --reload 需要正确的 stdin 继承，multiprocessing spawn 会关闭 stdin 导致报错。
+        # reload 模式下改为用 subprocess 启动两个独立的 main.py 进程。
+        import subprocess
+
+        print("[主进程] reload 模式：将分别启动系统口和服务口两个独立进程")
+        system_cmd = [sys.executable, str(ROOT / "main.py"), "--mode", "system", "--reload"]
+        service_cmd = [sys.executable, str(ROOT / "main.py"), "--mode", "service", "--reload"]
+
+        procs = [
+            subprocess.Popen(system_cmd, cwd=str(ROOT)),
+            subprocess.Popen(service_cmd, cwd=str(ROOT)),
+        ]
+        try:
+            for p in procs:
+                p.wait()
+        except KeyboardInterrupt:
+            print("\n[主进程] 收到中断信号，正在关闭子进程...")
+            for p in procs:
+                p.terminate()
+            for p in procs:
+                p.wait()
+            print("[主进程] 已关闭")
+        return
+
     multiprocessing.set_start_method("spawn", force=True)
 
-    system_proc = multiprocessing.Process(target=run_system_server, name="system-server")
-    service_proc = multiprocessing.Process(target=run_service_server, name="service-server")
+    system_proc = multiprocessing.Process(
+        target=run_system_server, name="system-server", kwargs={"reload": False}
+    )
+    service_proc = multiprocessing.Process(
+        target=run_service_server, name="service-server", kwargs={"reload": False}
+    )
 
     system_proc.start()
     service_proc.start()
@@ -145,14 +193,19 @@ def main() -> None:
         default="all",
         help="启动模式：all（默认，双进程）、system（仅系统口）、service（仅服务口）",
     )
+    parser.add_argument(
+        "--reload",
+        action="store_true",
+        help="开启 uvicorn 代码热重载（开发模式）",
+    )
     args = parser.parse_args()
 
     if args.mode == "all":
-        _start_processes()
+        _start_processes(reload=args.reload)
     elif args.mode == "system":
-        run_system_server()
+        run_system_server(reload=args.reload)
     elif args.mode == "service":
-        run_service_server()
+        run_service_server(reload=args.reload)
 
 
 if __name__ == "__main__":

@@ -78,10 +78,10 @@ npm run dev -- --host
 或直接用 curl：
 
 ```bash
-curl -N -X POST http://localhost:8000/admin/agent/generate \
+curl -N -X POST http://localhost:8000/admin/agent/generate/stream \
   -H "Content-Type: application/json" \
   -H "Accept: text/event-stream" \
-  -d '{"task": "创建用户模块"}'
+  -d '{"input": {"task": "创建用户模块", "requirements_doc": {"module_name": "user_module", "confirmed": true}}}'
 ```
 
 ## 常用接口
@@ -90,7 +90,7 @@ curl -N -X POST http://localhost:8000/admin/agent/generate \
 |------|------|------|
 | 架构作弊纸 | `GET http://localhost:8000/admin/kernel/cheat-sheet` | 模块、组件、调用图、API 映射 |
 | 模块状态 | `GET http://localhost:8000/admin/kernel/modules` | 已加载 / 失败模块 |
-| Agent 生成 | `POST http://localhost:8000/admin/agent/generate` | SSE 流式生成并部署模块 |
+| Agent 生成 | `POST http://localhost:8000/admin/agent/generate/stream` | SSE 流式生成并部署模块 |
 | 健康检查 | `GET http://localhost:8000/health` | 系统口健康状态 |
 
 ## 跨域配置

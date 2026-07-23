@@ -90,6 +90,24 @@ class AssemblyReport:
         """
         return [r for r in self.success if r.component_type == ComponentType.MAPPER]
 
+    def summarize(self) -> Dict[str, Any]:
+        """
+        生成组装报告的简要摘要。
+
+        用于管理接口返回，避免把完整堆栈暴露给前端。
+
+        返回：
+            包含成功数、失败数、失败类名及错误摘要的字典。
+        """
+        return {
+            "success_count": len(self.success),
+            "failed_count": len(self.failed),
+            "failed": [
+                {"class": name, "error": msg.split("\n")[0]}
+                for name, msg, _ in self.failed
+            ],
+        }
+
 
 class DIContainer:
     """

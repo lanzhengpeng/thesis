@@ -172,7 +172,7 @@ class UserService:
 > 依赖解析在类对象被热重载替换后会按类名兜底，确保跨模块调用（如 `OrderService -> UserService`）
 > 在重载 `user_module` 后仍然能被正确组装。
 
-### 3.3 动态 API 双端口桥接（`system_server.py` / `service_server.py`）
+### 3.3 动态 API 双端口桥接（`server/system/system_server.py` / `server/service/service_server.py`）
 
 底座将内存中存活的 Controller 实例动态转换为 FastAPI HTTP 路由，但管理流量与业务流量分别跑在不同端口：
 
@@ -269,7 +269,7 @@ AI 文件操作工具内置强校验，锁死 `plugins/` 目录，无法通过 `
 
 #### 3.5.3 LangGraph Agent 工作流
 
-底座新增基于 LangGraph 的 agent 工作流（`paas_core/agent/agent_module.py`），支持通过自然语言任务自动生成并部署插件模块。
+底座新增基于 LangGraph 的 agent 工作流（`paas_core/agent/stage_2_workflow_langgraph/main_pipeline.py`），支持通过自然语言任务自动生成并部署插件模块。
 
 典型调用链：
 
@@ -284,6 +284,23 @@ AI 文件操作工具内置强校验，锁死 `plugins/` 目录，无法通过 `
 
 **LLM 配置**：默认读取环境变量 `OPENAI_API_KEY`、`OPENAI_BASE_URL`、`AGENT_MODEL`；未配置时回退到 `test_api.ipynb` 中记录的本地接口。若 LLM 不可用或返回格式错误，agent 会自动使用内置模板，保证随时可运行。
 
+#### 3.5.4 ReAct 子图实现
+
+主图 `main_graph.py` 已简化为 ``start → ReAct → END`` 的单一入口：用户消息直接进入 ReAct 子图，不再维护独立的意图识别节点和闲聊节点。
+
+ReAct 子图位于 `paas_core/agent/stage_2_workflow_langgraph/react_subgraph.py`，其系统提示中内置了意图识别规则：
+
+- 闲聊、问候、平台使用咨询等，直接给出自然语言回复，不调用工具。
+- 查询、读取、修改、创建插件文件，或执行语法检查等操作任务，调用 `react_tools.py` 中的对应工具完成。
+
+该子图还做了以下优化：
+
+- **API 规范化**：使用 `langchain.agents.create_agent` 构建 ReAct 循环。
+- **动态工具挂载**：通过微内核 `_tool_registry` 动态获取工具，支持 `state.active_tools` 指定子集或默认加载全部。
+- **链路追踪**：`run_react_node` / `stream_react_node` 接收并透传 `RunnableConfig`，确保 Tool Node 和 LLM 调用共享父级 Trace ID。
+
+ReAct 子图暴露的工具清单见 `paas_core/agent/stage_1_core_langchain/react_tools.py`。
+
 ---
 
 ## 4. 目录结构
@@ -294,11 +311,24 @@ paas_project/
 │   ├── __init__.py            # 公共 API 导出
 │   ├── sdk.py                 # 装饰器契约：@Controller, @Service, @Mapper, @Inject
 │   │
-│   ├── agent/                 # AI 代理模块：大模型交互与工具调用
+│   ├── agent/                 # AI 代理模块：大模型交互、LangGraph 编排与接口暴露
 │   │   ├── __init__.py
-│   │   ├── agent_api.py       # Agent 管理接口路由
-│   │   ├── agent_module.py    # LangGraph 自然语言生成插件工作流
-│   │   └── agent_tools.py     # AI 工具箱：带沙箱校验的文件操作
+│   │   ├── stage_0_shared/              # 共享契约与基础设施
+│   │   │   ├── state_schemas.py         # State / Pydantic 数据契约
+│   │   │   ├── session_store.py         # 会话持久化
+│   │   │   ├── locks.py                 # 并发控制锁
+│   │   │   └── formatting.py            # SSE / Markdown 格式化工具
+│   │   ├── stage_1_core_langchain/      # 底层：原子能力（LLM、工具、提示词、Agent 节点）
+│   │   │   ├── agents/                  # 各角色 LCEL/LangGraph 节点实现
+│   │   │   ├── agent_tools.py           # AI 工具箱：带沙箱校验的文件操作
+│   │   │   ├── llm_utils.py             # LLM 初始化与通用调用
+│   │   │   └── prompts.py               # 统一提示词模板
+│   │   ├── stage_2_workflow_langgraph/  # 中枢：LangGraph 状态图与流水线
+│   │   │   ├── main_pipeline.py         # 需求→架构→生成→审查 主流水线
+│   │   │   └── repair_pipeline.py       # 模块修复/修改子图
+│   │   └── stage_3_api_langserve/       # 顶层：HTTP 接口与 LangServe 路由
+│   │       ├── fast_api_app.py          # FastAPI 路由（chat / sessions）
+│   │       └── langserve_routes.py      # LangServe Runnable 封装
 │   │
 │   ├── kernel/                # 内核基座模块：依赖注入与插件生命周期
 │   │   ├── __init__.py
@@ -308,11 +338,17 @@ paas_project/
 │   │
 │   └── server/                # 网关与路由模块：HTTP 服务、路由桥接与动态分发
 │       ├── __init__.py
-│       ├── web_server.py      # 单端口兼容层（聚合模式）
-│       ├── system_server.py   # 8000 系统管理口
-│       ├── service_server.py  # 8001 对外开放服务口
-│       ├── route_bridge.py    # Controller → FastAPI 路由通用桥接
-│       └── dynamic_dispatcher.py  # 动态路由分发
+│       ├── common/
+│       │   ├── __init__.py
+│       │   └── route_bridge.py    # Controller → FastAPI 路由通用桥接（双方共用）
+│       ├── system/
+│       │   ├── __init__.py
+│       │   ├── system_server.py   # 8000 系统管理口
+│       │   └── module_files_api.py  # 模块源码管理接口
+│       └── service/
+│           ├── __init__.py
+│           ├── service_server.py  # 8001 对外开放服务口
+│           └── dynamic_dispatcher.py  # 动态路由分发
 │
 ├── plugins/                   # 业务沙箱（AI 生成）
 │   ├── user_module/           # 用户模块
@@ -387,12 +423,6 @@ cd paas_project
 
 # 仅服务口
 ./start_backend.sh --mode service
-```
-
-如需回到旧的单端口聚合模式（例如开发调试）：
-
-```bash
-conda run -n thesis uvicorn paas_core.server.web_server:create_app --reload --port 8000
 ```
 
 ### 5.4 测试接口
@@ -677,7 +707,7 @@ class OrderService:
 | `/admin/kernel/modules` | GET | 列出已加载/失败的模块 |
 | `/admin/kernel/cheat-sheet` | GET | 获取全局调用图、API 映射与结构化组件元数据 |
 | `/admin/kernel/reload/{plugin_name}` | POST | 重新加载指定插件（刷新系统口容器；8001 服务口通过文件监听自动热更新） |
-| `/admin/agent/chat` | POST | 通用智能体统一入口：意图识别后分发为通用问答或多轮需求生成流程，返回 SSE 流 |
+| `/admin/agent/chat` | POST | 通用智能体统一入口：用户消息直接进入 ReAct 子图，由系统提示内置的意图识别规则决定闲聊回复或调用工具，返回 SSE 流 |
 | `/admin/agent/generate` | POST | （兼容接口）LangGraph Agent：自然语言生成并部署插件模块，返回 SSE 流 |
 | `/admin/agent/sessions` | POST | 创建需求分析会话 |
 | `/admin/agent/sessions/{session_id}/answers` | POST | 提交需求答案 |
@@ -1165,7 +1195,7 @@ class OrderService:
 
 - [ ] 数据库持久化（SQLAlchemy + Alembic migration）
 - [x] 模块热重载时自动刷新 8001 服务口路由（无需重启服务）
-- [x] AI 对话入口：自然语言 → 意图识别 → 通用问答 / 多轮需求生成 → 自动部署（LangGraph Agent 已接入，支持闲聊与模块生成任务分发）
+- [x] AI 对话入口：自然语言 → ReAct 子图（系统提示内置意图识别，自动选择闲聊回复或工具执行）→ 自动部署（LangGraph Agent 已接入）
 - [ ] Diff 确认机制：AI 修改先生成 Draft，人工确认后应用
 
 ### 9.3 远期
@@ -1182,7 +1212,7 @@ class OrderService:
 
 ### Q1: AI 能修改内核代码吗？
 
-**不能。** AI 只能通过 `paas_core/agent/agent_tools.py` 暴露的工具操作 `plugins/` 目录。`paas_core/` 和 `main.py` 等文件不暴露给 AI。
+**不能。** AI 只能通过 `paas_core/agent/stage_1_core_langchain/agent_tools.py` 暴露的工具操作 `plugins/` 目录。`paas_core/` 和 `main.py` 等文件不暴露给 AI。
 
 ### Q2: 一个模块崩溃了会怎样？
 

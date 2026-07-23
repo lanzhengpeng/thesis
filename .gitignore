@@ -44,3 +44,13 @@ dist-ssr/
 .ipynb_checkpoints/
 *.tmp
 *.log
+
+# 运行时文件
+database/
+*.pid
+*.db
+*.sqlite
+*.sqlite-*
+.plugin_write.lock
+.langgraph_api/
+dump_events.py

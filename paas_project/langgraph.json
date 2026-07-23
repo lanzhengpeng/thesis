@@ -1,0 +1,21 @@
+{
+  "graphs": {
+    "paas-agent": {
+      "path": "./paas_core/agent/langgraph/main_graph.py:graph",
+      "description": "PaaS ReAct agent with react_0 / react_1 loops"
+    }
+  },
+  "checkpointer": {
+    "path": "./paas_core/agent/memory/sqlite_saver.py:create_sqlite_saver"
+  },
+  "dependencies": [
+    "fastapi>=0.110.0",
+    "uvicorn[standard]>=0.29.0",
+    "watchdog>=4.0.0",
+    "langgraph>=0.2.0",
+    "langgraph-checkpoint-sqlite>=2.0.0",
+    "aiosqlite>=0.20.0",
+    "langchain>=0.2.0",
+    "langchain-openai>=0.2.0"
+  ]
+}
