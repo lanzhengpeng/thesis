@@ -70,10 +70,11 @@
 | @xyflow/react | ^12.11.2 | 节点画布（React Flow v12） |
 | @ant-design/x | ^2.8.0 | 智能体聊天原子组件（Bubble、Sender） |
 | @ant-design/x-markdown | ^2.8.0 | AI 消息 Markdown 渲染与代码高亮 |
-| ai | ^3.4.33 | Vercel AI SDK React Hook（useChat） |
+| antd | ^6.5.1 | 折叠面板等基础组件 |
+| @langchain/core | ^0.3.80 | RemoteRunnable + LangServe 事件流消费 |
+| LangServe | - | 后端通过 `langserve.add_routes` 暴露 `/admin/agent` Runnable |
 | highlight.js | ^11.11.1 | 代码块语法高亮 |
 | marked-highlight | ^2.2.4 | marked 高亮扩展 |
-| 原生 fetch | - | HTTP 请求 |
 
 ---
 
@@ -119,6 +120,8 @@ paas_dashboard/
             ├── index.ts       # 对外导出 AgentChatPanel
             ├── components/
             │   └── AgentChatPanel.tsx      # 左侧智能体聊天面板
+            ├── hooks/
+            │   └── useAgentStream.ts       # LangChain 事件流解析 Hook
             └── styles/
                 └── agent-chat.css          # 聊天消息 Markdown 样式
 ```
@@ -353,70 +356,63 @@ CSM 组件容器：
 左侧可折叠 AI 智能体聊天面板，展开时固定宽度 `320px`，收起时宽度为 `0`，采用 Flex 列布局：
 
 - **顶部标题区**：展示面板标题与副标题；右侧提供收起/展开箭头按钮，点击后通过 `onToggle` 通知父组件切换状态。
-- **中间消息列表**：可滚动，使用 Ant Design X 的 `Bubble.List` 渲染对话。
-  - 用户消息居右（`placement: "end"`），保持填充气泡样式，与 AI 消息形成区分。
-  - AI 消息居左（`placement: "start"`），使用 `variant: "borderless"` 去除背景、边框与阴影，文本直接与面板背景融合，呈现类似 Coze 的文档化排版。
-  - AI 消息使用 `@ant-design/x-markdown` 渲染，支持 Markdown、行内代码、代码块语法高亮（`highlight.js` + `marked-highlight`）。
-  - 流式输出时自动追加内容并滚动到底部；当前正在生成的 AI 消息启用 `streaming={{ hasNextChunk: true, tail: true }}`，实现逐字打字机效果与尾部光标。
-  - 后端在模块生成/修复过程中会持续推送 Markdown 进度文案与最终摘要的字符对分块流，前端将其实时渲染在 borderless AI 气泡中；收到 `pipeline_result` 后自动固化为一条正式聊天记录。
-  - 若检测到 AI 消息内容为未经格式化的原生 JSON（仅针对 `role === "assistant"`），会自动包裹在 ````json` 代码块中渲染，防止直接暴露给用户。
+- **中间消息展示区**：可滚动。
+  - 空消息时展示欢迎提示。
+  - 当后端推送 `on_chain_start` / `on_tool_start` 等事件时，顶部渲染 Ant Design `Collapse` 折叠面板，展示思考/执行步骤列表；生成过程中自动展开，生成结束后自动折叠。
+  - AI 回复使用 Ant Design X 的 `Bubble` 组件，设置 `variant: "borderless"` 去除背景、边框与阴影，文本直接与面板背景融合，呈现类似 Coze 的文档化排版。
+  - 使用 `@ant-design/x-markdown` 渲染 Markdown，支持行内代码、代码块语法高亮（`highlight.js` + `marked-highlight`）。
+  - 流式输出时自动追加内容并滚动到底部；当前正在生成的消息启用 `streaming={{ hasNextChunk: true, tail: true }}`，实现逐字打字机效果与尾部光标。
 - **底部输入区**：
-  - 通用问答模式下使用 Ant Design X 的 `Sender` 组件，`Enter` 发送，`Shift + Enter` 换行。
-  - 模块生成模式下底部替换为需求确认卡片，展示问题列表与输入框，用户填写后点击「提交答案」。
-  - 请求中显示加载状态，支持点击停止生成；模块生成过程中同样支持取消。
-  - 空消息列表时展示欢迎提示。
+  - 使用 Ant Design X 的 `Sender` 组件，`Enter` 发送，`Shift + Enter` 换行。
+  - 请求中显示加载状态，支持点击取消按钮中止流式消费。
+  - 请求失败会在消息列表下方展示红色错误提示。
+
+**数据层与 UI 层分离**：
+
+- 所有流式解析逻辑封装在 `features/agent/hooks/useAgentStream.ts` 中。
+- `useAgentStream` 通过 `@langchain/core` 的 `RemoteRunnable` 连接后端 LangServe 端点 `/admin/agent`，调用 `streamEvents({ messages: [...] }, { version: "v2" })` 获取标准 LangChain 事件流。
+- Hook 只暴露 `text`（打字机文本）、`thoughts`（思考步骤）、`isLoading`、`error`、`sendMessage`、`stop`，完全不涉及 UI。
+- `AgentChatPanel` 只负责把 Hook 暴露的数据映射为 `Collapse`、`Bubble`、`Sender` 等 Ant Design X 组件。
+
+**事件映射**：
+
+`useAgentStream` 将后端事件解析为 UI 状态：
+
+| LangChain 事件 | UI 行为 |
+|----------------|---------|
+| `on_chat_model_stream` | 追加 `data.chunk.content` 到 `text`，驱动打字机效果 |
+| `on_chain_start` / `on_tool_start` | 向 `thoughts` 添加一条 `loading` 步骤 |
+| `on_chain_end` / `on_tool_end` | 将最近一条 `loading` 步骤标记为 `success` |
 
 **统一入口**：
 
-- 面板统一请求 `/admin/agent/chat`，请求体为 `{ message: "..." }`。
-- 后端先做意图识别：
-  - 通用问答：返回普通文本 SSE 流。
-  - 模块生成任务：返回带标记的自定义事件 `<<<AGENT_EVENT|{"type": "requirements_gathering", ...}|AGENT_EVENT>>>`。
-  - 模块修复任务：返回带标记的自定义事件 `<<<AGENT_EVENT|{"type": "agent_step", ...}|AGENT_EVENT>>>` 与最终的 `<<<AGENT_EVENT|{"type": "pipeline_result", ...}|AGENT_EVENT>>>`。
-- 组件通过 `useEffect` 监听 `useChat` 的 `messages` 数组，解析最后一条 AI 消息中的标记，安全触发模式切换，避免在 `customFetch` 中截断数据流导致 SDK 状态错乱。
+前端不再分别请求 `/admin/agent/chat` 和 `/admin/agent/sessions/{session_id}/generate`，所有对话通过单一 LangServe Runnable 完成：
 
-**无边框 AI 消息**：
-
-AI 角色气泡通过 `variant: "borderless"` 与自定义 CSS 类 `agent-chat-ai-borderless` 移除背景、边框、阴影与内边距，使生成内容像直接“打印”在聊天区域；用户消息保留原有填充气泡样式，便于区分对话双方。
-
-**执行步骤面板（可折叠）**：
-
-- 当后端推送 `agent_step` 事件时，前端维护一个 `thinkingSteps` 状态数组，按 `id` 去重/更新。
-- 在当前最后一条 AI 消息的 `header` 插槽中渲染灰色圆角折叠面板，顶部 toggle 显示「展开/收起 执行步骤 (已完成数/总数)」。
-- 面板列出每个步骤的图标（⏳/✅/❌）、标题与可选补充信息；用户可随时手动展开/收起。
-- 收到 `pipeline_result` 后，面板自动收起，最终答案已经成为一条 borderless AI 聊天记录。
-
-**模块生成实时流（打字机效果）**：
-
-- 需求确认后，前端调用 `/admin/agent/sessions/{session_id}/generate`。
-- 不再一次性缓冲完整响应，而是使用 `ReadableStream` + `TextDecoder` 逐帧解析 SSE。
-- 后端现在会混合输出两类帧：
-  - `agent_step` 自定义事件：更新执行步骤面板。
-  - 普通 Markdown 文本帧：问候语、步骤完成文案、以及按字符对分块推送的最终 Markdown 摘要。
-- 普通文本帧追加到 `generatingText`，由 key 为 `"generating"` 的 AI 气泡通过 `XMarkdown` 的 `streaming` 能力实时渲染，产生真正的打字机效果。
-- 当 `pipeline_result` 事件到达时，前端把已渲染的 `generatingText` 固化为一条正式 assistant 消息，清空生成状态，避免与聊天内容重复。
-- 通过 `AbortController` 支持用户在生成过程中点击取消按钮中止流式消费。
-
-**请求体适配**：
-
-`useChat` 默认发送 `{ messages: [...] }`，但后端期望 `{ message: "..." }`。通过 `experimental_prepareRequestBody` 将最后一条用户消息内容映射为 `message` 字段：
-
-```typescript
-experimental_prepareRequestBody: ({ messages: chatMessages }) => {
-  const lastMessage = chatMessages[chatMessages.length - 1];
-  return { message: lastMessage?.content || "" };
-},
+```text
+POST http://localhost:8000/admin/agent/stream_events
 ```
 
-**SSE 适配**：
+请求体示例：
 
-后端 Agent 接口返回 `data: <文本片段>\n\n` 格式的 SSE 流，而非 Vercel AI SDK 的标准数据流协议。`AgentChatPanel.tsx` 通过自定义 `fetch` 将 SSE 转换为纯文本流，再交给 `useChat` 在 `streamMode: "text"` 下消费。`agent_step` 等自定义事件标记会透传到 `messages` 中，由组件统一解析并路由到执行步骤面板，不会直接渲染在 Markdown 内容里。
+```json
+{
+  "input": { "messages": [{ "role": "user", "content": "创建用户模块" }] },
+  "config": {},
+  "kwargs": {}
+}
+```
+
+后端 `UnifiedAgentRunnable` 识别意图：
+
+- **通用问答**：通过聊天模型链返回 `on_chat_model_stream` 文本事件。
+- **模块生成**：自动确认需求并调用生成流水线，返回 `on_chain_start` / `on_tool_start` / `on_chain_end` 等事件；流水线结束后以 `on_chat_model_stream` 事件分块推送最终 Markdown 摘要。
+- **模块修复**：调用修复流水线并返回对应事件。
 
 **错误处理**：
 
 - 后端不可用时，聊天面板仍可正常显示与输入（`App.tsx` 已将聊天面板与架构画布解耦）。
 - 请求失败会在消息列表下方展示红色错误提示。
-- 通过 `keepLastMessageOnError: true` 保留用户输入，便于重试。
+- 通过 `AbortController` 支持用户点击取消按钮中止流式消费。
 
 ---
 
@@ -444,35 +440,39 @@ PAA_DASHBOARD_ORIGINS="http://localhost:5173,http://localhost:59615" python main
 
 ### 6.3 Agent 接口（智能体聊天面板）
 
-左侧 `AgentChatPanel` 通过统一入口与后端 LangGraph Agent 交互：
+左侧 `AgentChatPanel` 通过 `@langchain/core` 的 `RemoteRunnable` 连接后端 LangServe 统一入口：
 
 ```text
-POST http://localhost:8000/admin/agent/chat
+POST http://localhost:8000/admin/agent/stream_events
 ```
 
 请求体示例：
 
 ```json
-{"message": "创建用户模块"}
+{
+  "input": {
+    "messages": [{ "role": "user", "content": "创建用户模块" }]
+  },
+  "config": {},
+  "kwargs": {}
+}
 ```
 
-响应为 SSE 流，每帧格式为 `data: <文本>\n\n`。前端将其转换为纯文本流，供 Vercel AI SDK `useChat` 消费，实现逐字显示。
+响应为标准 LangChain v2 事件流（`text/event-stream`），前端按事件类型渲染：
 
-根据后端意图识别结果，面板会自动切换为两种模式：
+| 事件 | 字段示例 | 含义 |
+|------|----------|------|
+| `on_chat_model_stream` | `data.chunk.content` | 通用问答回复或模块生成最终摘要的文本片段，驱动打字机效果 |
+| `on_chain_start` | `name` | 流水线节点开始执行 |
+| `on_chain_end` | `name` | 流水线节点执行完成 |
+| `on_tool_start` | `name` | 工具调用开始 |
+| `on_tool_end` | `name` | 工具调用结束 |
 
-1. **通用问答模式**：后端返回自然语言文本流，直接渲染为 Markdown 气泡。
-2. **模块生成模式**：后端返回自定义事件 `<<<AGENT_EVENT|{"type": "requirements_gathering", ...}|AGENT_EVENT>>>`，前端识别后展示需求收集卡片，引导用户回答澄清问题。需求确认后再调用 `/admin/agent/sessions/{session_id}/generate` 触发代码生成流水线。流水线执行过程中会不断返回 `<<<AGENT_EVENT|{"type": "agent_step", ...}|AGENT_EVENT>>>` 事件，前端将其渲染为可折叠的“执行步骤”面板；同时后端会以字符对分块流式推送 Markdown 进度文案与最终摘要，前端在 borderless AI 气泡中实时渲染出打字机效果。最终通过 `<<<AGENT_EVENT|{"type": "pipeline_result", ...}|AGENT_EVENT>>>` 事件固化为一条正式聊天记录。
+后端 `UnifiedAgentRunnable` 挂载在 `/admin/agent`，会根据最后一条用户消息自动识别意图并分发：
 
-SSE 事件说明：
-
-| 事件来源 | SSE 数据示例 | 含义 |
-|----------|--------------|------|
-| 通用问答 | `data: 你好！有什么可以帮你的吗？\n\n` | `/admin/agent/chat` 识别为闲聊时，直接返回自然语言文本 |
-| 需求收集 | `data: <<<AGENT_EVENT|{"type": "requirements_gathering", "payload": {"session_id": "...", "questions": [...]}}|AGENT_EVENT>>>\n\n` | `/admin/agent/chat` 识别为模块生成任务时，返回自定义事件，前端切换为需求收集模式 |
-| 执行步骤 | `data: <<<AGENT_EVENT|{"type": "agent_step", "payload": {"id": "step-architect", "status": "running", "title": "设计模块架构", "detail": "..."}}|AGENT_EVENT>>>\n\n` | 流水线执行到某节点或工具调用时推送，前端渲染为可折叠执行步骤面板 |
-| 进度文案 | `data: ✅ **设计模块架构完成** — 模块名 user_module，API 前缀 /api/users\n\n` | 每个步骤完成后以 Markdown 文本帧推送，实时出现在 AI 消息中 |
-| 最终摘要 | `data: ## 模块生成完成\n\n- **模块名**：user_module\n...` | 最终结果以字符对分块流式推送，形成打字机效果 |
-| 流水线结束 | `data: <<<AGENT_EVENT|{"type": "pipeline_result", "payload": {"status": "deployed", ...}}|AGENT_EVENT>>>\n\n` | 结构化结果事件，前端收到后固化为聊天记录并收起步骤面板，不直接渲染 JSON |
+- **通用问答**：调用聊天模型链，只产生 `on_chat_model_stream` 事件。
+- **模块生成**：自动确认需求，调用生成流水线，产生节点/工具事件；结束后以 `on_chat_model_stream` 推送最终 Markdown 摘要。
+- **模块修复**：调用修复流水线，产生对应事件并推送修复结果摘要。
 
 该接口会根据自然语言任务自动生成 CSM 插件代码、执行安全检查并重载内核。成功后可在 8001 服务口调用对应的业务接口。
 
@@ -654,14 +654,14 @@ useEffect(() => {
 
 ### Q6: 智能体聊天面板没有响应或报错
 
-1. 确认后端 `/admin/agent/chat` 接口已启动：
+1. 确认后端 `/admin/agent` LangServe 端点已启动：
    ```bash
-   curl -N -X POST http://localhost:8000/admin/agent/chat \
+   curl -N -X POST http://localhost:8000/admin/agent/stream_events \
      -H "Content-Type: application/json" \
-     -d '{"message":"你好"}'
+     -d '{"input":{"messages":[{"role":"user","content":"你好"}]}}'
    ```
 2. 检查浏览器控制台是否有 CORS 错误，确认后端 `allow_origins` 包含前端地址。
-3. 该接口返回 SSE 流，通用文本格式为 `data: <文本>\n\n`；模块生成任务会返回带标记的自定义事件 `<<<AGENT_EVENT|...|AGENT_EVENT>>>`。若后端输出格式变更，需同步调整 `AgentChatPanel.tsx` 中的标记解析逻辑。
+3. 前端通过 `@langchain/core` 的 `RemoteRunnable` 消费事件流，事件类型为 `on_chat_model_stream`、`on_chain_start`、`on_chain_end`、`on_tool_start`、`on_tool_end`。若后端输出格式变更，需同步调整 `src/features/agent/hooks/useAgentStream.ts` 中的事件解析逻辑。
 4. 即使架构画布加载失败，聊天面板仍可独立使用（`App.tsx` 中两者已解耦）。
 5. 若控制台持续报 `/admin/kernel/cheat-sheet` 连接错误，说明后端未启动或网络不通；`useCheatSheet` 已做静默退避处理，不会刷屏。
 

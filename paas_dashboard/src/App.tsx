@@ -1,10 +1,13 @@
 import { useState } from "react";
-import { ArchitectureGraph, ModuleDetailPanel } from "./features/architecture";
+import { ModuleDetailPanel } from "./features/architecture";
 import { AgentChatPanel } from "./features/agent";
+import { ProjectFilesPanel } from "./features/project-files";
 import type { ModuleNodeData } from "./features/architecture";
-import { StatusHeader } from "./components/StatusHeader";
+import { ArchitectureCanvas } from "./components/ArchitectureCanvas";
+import { TabBar } from "./components/TabBar";
 import { useCheatSheet } from "./hooks/useCheatSheet";
 import type { CheatSheetResponse } from "./types/cheatSheet";
+import type { TabItem } from "./types/tabs";
 
 export interface SelectedMethod {
   componentId: string;
@@ -35,14 +38,48 @@ function buildModuleData(moduleName: string, response: CheatSheetResponse): Modu
 
 function App() {
   const { data, loading, error, refetch } = useCheatSheet();
-  const [isChatOpen, setIsChatOpen] = useState(true);
   const [isDetailPanelOpen, setIsDetailPanelOpen] = useState(false);
+  const [isProjectFilesOpen, setIsProjectFilesOpen] = useState(false);
   const [selectedNodeData, setSelectedNodeData] = useState<ModuleNodeData | null>(null);
   const [selectedComponentId, setSelectedComponentId] = useState<string | null>(null);
   const [selectedMethod, setSelectedMethod] = useState<SelectedMethod | null>(null);
+  const [tabs, setTabs] = useState<TabItem[]>([
+    { id: "preview", type: "architecture", title: "预览", icon: "app-window", closable: false },
+  ]);
+  const [activeTabId, setActiveTabId] = useState("preview");
 
-  // 只要任意侧边栏的展开/折叠状态变化，就触发 React Flow 的 fitView
-  const layoutKey = `${isChatOpen}-${isDetailPanelOpen}`;
+  const handleAddTab = () => {
+    const id = `tab-${Date.now()}`;
+    const newTab: TabItem = {
+      id,
+      type: "empty",
+      title: "新标签页",
+      icon: "bookmark",
+      closable: true,
+    };
+    setTabs((prev) => [...prev, newTab]);
+    setActiveTabId(id);
+  };
+
+  const handleCloseTab = (id: string) => {
+    setTabs((prev) => {
+      const index = prev.findIndex((t) => t.id === id);
+      if (index === -1) return prev;
+      const next = prev.filter((t) => t.id !== id);
+      if (activeTabId === id) {
+        const nextActive = prev[index - 1] ?? next[0];
+        if (nextActive) {
+          setActiveTabId(nextActive.id);
+        }
+      }
+      return next;
+    });
+  };
+
+  // 右侧详情面板/项目文件面板展开折叠时触发 React Flow 的 fitView
+  const layoutKey = `${isDetailPanelOpen}-${isProjectFilesOpen}`;
+
+  const activeTab = tabs.find((t) => t.id === activeTabId) ?? tabs[0];
 
   return (
     <div
@@ -52,67 +89,63 @@ function App() {
         display: "flex",
         flexDirection: "column",
         overflow: "hidden",
-        background: "#F4F5F7",
+        background: "#ffffff",
       }}
     >
-      <StatusHeader
-        counts={data?.counts ?? { controllers: 0, services: 0, mappers: 0 }}
-        modules={data?.modules ?? { loaded: [], failed: [] }}
-        loading={loading}
-        error={error}
-        onRefresh={refetch}
-        isChatOpen={isChatOpen}
-        onToggleChat={() => setIsChatOpen((open) => !open)}
+      <TabBar
+        tabs={tabs}
+        activeTabId={activeTabId}
+        onSelect={setActiveTabId}
+        onClose={handleCloseTab}
+        onAdd={handleAddTab}
+        rightActions={
+          <button
+            onClick={refetch}
+            disabled={loading}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              whiteSpace: "nowrap",
+              height: 32,
+              padding: "0 12px",
+              borderRadius: 6,
+              border: "none",
+              background: "#0f172a",
+              color: "#ffffff",
+              cursor: loading ? "not-allowed" : "pointer",
+              fontSize: 14,
+              fontWeight: 500,
+              transition: "background 150ms ease",
+              outline: "none",
+            }}
+            onMouseEnter={(e) => {
+              if (!loading) e.currentTarget.style.background = "#000000";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = "#0f172a";
+            }}
+          >
+            立即刷新
+          </button>
+        }
       />
 
       <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
-        <AgentChatPanel
-          isOpen={isChatOpen}
-          onToggle={() => setIsChatOpen((open) => !open)}
-        />
+        {activeTab?.type === "architecture" ? (
+          <>
+            <AgentChatPanel
+              onFolderClick={() => setIsProjectFilesOpen((v) => !v)}
+            />
 
-        <div
-          style={{
-            flex: 1,
-            minWidth: 0,
-            margin: 16,
-            background: "#ffffff",
-            borderRadius: 16,
-            border: "1px solid #e2e8f0",
-            boxShadow: "0 1px 3px rgba(0, 0, 0, 0.08)",
-            overflow: "hidden",
-            display: "flex",
-          }}
-        >
-          {!data ? (
-            <div
-              style={{
-                flex: 1,
-                height: "100%",
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "#64748b",
-                gap: 12,
-              }}
-            >
-              {loading ? (
-                <div>正在加载系统架构...</div>
-              ) : (
-                <>
-                  <div>无法加载系统架构</div>
-                  {error && <div style={{ color: "#ef4444" }}>{error}</div>}
-                  <button onClick={refetch} style={{ padding: "8px 16px" }}>
-                    重试
-                  </button>
-                </>
-              )}
-            </div>
-          ) : (
-            <ArchitectureGraph
+            <ProjectFilesPanel isOpen={isProjectFilesOpen} />
+
+            <ArchitectureCanvas
               data={data}
+              loading={loading}
+              error={error}
               layoutKey={layoutKey}
+              onRefresh={refetch}
               onNodeClick={() => {
                 // 点击节点时展开右侧面板，具体数据由 onSelect* 回调填充
                 setIsDetailPanelOpen(true);
@@ -128,10 +161,10 @@ function App() {
                 setIsDetailPanelOpen(true);
               }}
               onSelectComponent={(componentId) => {
-                const component = data.components.find(
+                const component = data?.components.find(
                   (c) => `${c.module}::${c.type}::${c.name}` === componentId
                 );
-                if (component) {
+                if (component && data) {
                   setSelectedNodeData(buildModuleData(component.module, data));
                 }
                 setSelectedComponentId(componentId);
@@ -143,10 +176,10 @@ function App() {
                   setSelectedMethod(null);
                 } else {
                   setSelectedMethod({ componentId: method.componentId, methodName: method.methodName });
-                  const component = data.components.find(
+                  const component = data?.components.find(
                     (c) => `${c.module}::${c.type}::${c.name}` === method.componentId
                   );
-                  if (component) {
+                  if (component && data) {
                     setSelectedNodeData(buildModuleData(component.module, data));
                   }
                 }
@@ -154,24 +187,37 @@ function App() {
                 setIsDetailPanelOpen(true);
               }}
             />
-          )}
-        </div>
 
-        <ModuleDetailPanel
-          isOpen={isDetailPanelOpen}
-          onClose={() => setIsDetailPanelOpen(false)}
-          data={selectedNodeData}
-          components={data?.components ?? []}
-          selectedComponentId={selectedComponentId}
-          selectedMethod={selectedMethod}
-          onSelectComponent={setSelectedComponentId}
-          onSelectMethod={setSelectedMethod}
-          onModuleChanged={() => refetch()}
-          onModuleDeleted={() => {
-            setIsDetailPanelOpen(false);
-            refetch();
-          }}
-        />
+            <ModuleDetailPanel
+              isOpen={isDetailPanelOpen}
+              onClose={() => setIsDetailPanelOpen(false)}
+              data={selectedNodeData}
+              components={data?.components ?? []}
+              selectedComponentId={selectedComponentId}
+              selectedMethod={selectedMethod}
+              onSelectComponent={setSelectedComponentId}
+              onSelectMethod={setSelectedMethod}
+              onModuleChanged={() => refetch()}
+              onModuleDeleted={() => {
+                setIsDetailPanelOpen(false);
+                refetch();
+              }}
+            />
+          </>
+        ) : (
+          <div
+            style={{
+              flex: 1,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "#64748b",
+              fontSize: 14,
+            }}
+          >
+            新标签页
+          </div>
+        )}
       </div>
     </div>
   );

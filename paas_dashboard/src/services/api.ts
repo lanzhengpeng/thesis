@@ -13,6 +13,42 @@ export async function fetchCheatSheet(): Promise<CheatSheetResponse> {
   return response.json() as Promise<CheatSheetResponse>;
 }
 
+export interface DirectoryEntry {
+  name: string;
+  type: "file" | "directory";
+  path: string;
+  size?: number;
+}
+
+export async function fetchFinderList(path: string = ""): Promise<DirectoryEntry[]> {
+  const response = await fetch(
+    `${BASE_URL}/admin/finder/list?path=${encodeURIComponent(path)}`,
+    {
+      method: "GET",
+      headers: { Accept: "application/json" },
+    }
+  );
+  if (!response.ok) {
+    throw new Error(`请求失败：${response.status} ${response.statusText}`);
+  }
+  return response.json() as Promise<DirectoryEntry[]>;
+}
+
+export async function fetchFinderRead(path: string): Promise<string> {
+  const response = await fetch(
+    `${BASE_URL}/admin/finder/read?path=${encodeURIComponent(path)}`,
+    {
+      method: "GET",
+      headers: { Accept: "application/json" },
+    }
+  );
+  if (!response.ok) {
+    throw new Error(`请求失败：${response.status} ${response.statusText}`);
+  }
+  const data = await response.json();
+  return data.content as string;
+}
+
 export async function fetchModuleFiles(plugin: string): Promise<string[]> {
   const response = await fetch(
     `${BASE_URL}/admin/kernel/modules/${encodeURIComponent(plugin)}/files`,

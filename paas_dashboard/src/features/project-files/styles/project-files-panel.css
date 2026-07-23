@@ -1,0 +1,265 @@
+.project-files-panel {
+  width: 260px;
+  height: 100%;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 12px 8px;
+  box-sizing: border-box;
+}
+
+.project-files-panel__card {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.project-files-panel__tabs {
+  display: flex;
+  padding: 6px;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.project-files-panel__tab {
+  flex: 1;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: #64748b;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.project-files-panel__tab:hover {
+  background: #f1f5f9;
+  color: #334155;
+}
+
+.project-files-panel__tab--active {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.project-files-panel__body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.project-files-panel__header {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  margin-bottom: 8px;
+  flex-shrink: 0;
+}
+
+.project-files-panel__title {
+  flex: 1;
+  font-size: 12px;
+  color: #334155;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.project-files-panel__actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.project-files-panel__action-group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.project-files-panel__icon-btn {
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: #64748b;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.project-files-panel__icon-btn:hover:not(:disabled) {
+  background: #f1f5f9;
+  color: #334155;
+}
+
+.project-files-panel__icon-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.project-files-panel__tree {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-bottom: 8px;
+}
+
+.project-files-panel__tree-row {
+  display: flex;
+  align-items: center;
+  height: 32px;
+  padding: 0 8px;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.1s ease;
+}
+
+.project-files-panel__tree-row:hover {
+  background: #f8fafc;
+}
+
+.project-files-panel__chevron,
+.project-files-panel__chevron-placeholder {
+  width: 16px;
+  height: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 4px;
+  flex-shrink: 0;
+  font-size: 10px;
+  color: #94a3b8;
+  transition: transform 0.15s ease;
+}
+
+.project-files-panel__chevron--open {
+  transform: rotate(90deg);
+}
+
+.project-files-panel__row-icon {
+  width: 16px;
+  height: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 8px;
+  font-size: 14px;
+  color: #94a3b8;
+  flex-shrink: 0;
+}
+
+.project-files-panel__row-name {
+  font-size: 13px;
+  color: #334155;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.project-files-panel__search-fields,
+.project-files-panel__git-form {
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.project-files-panel__field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.project-files-panel__field label,
+.project-files-panel__git-form label {
+  font-size: 11px;
+  color: #64748b;
+}
+
+.project-files-panel__input {
+  height: 28px;
+  padding: 0 8px;
+  font-size: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  background: #ffffff;
+  color: #334155;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.project-files-panel__input:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.12);
+}
+
+.project-files-panel__commit-btn {
+  height: 28px;
+  border: none;
+  border-radius: 4px;
+  background: #3b82f6;
+  color: #ffffff;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.project-files-panel__commit-btn:hover:not(:disabled) {
+  background: #2563eb;
+}
+
+.project-files-panel__commit-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.project-files-panel__row-loading {
+  margin-left: auto;
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+.project-files-panel__error,
+.project-files-panel__empty {
+  padding: 12px;
+  font-size: 12px;
+  color: #64748b;
+  text-align: center;
+}
+
+.project-files-panel__error {
+  color: #ef4444;
+  background: #fef2f2;
+  border-radius: 4px;
+  margin: 0 12px 8px;
+}
+
+.project-files-panel__git-empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  color: #94a3b8;
+  padding: 16px;
+  text-align: center;
+}

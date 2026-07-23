@@ -8,6 +8,7 @@ import {
 } from "react";
 import {
   Background,
+  BackgroundVariant,
   Controls,
   MiniMap,
   Panel,
@@ -36,6 +37,7 @@ import { GatewayNode } from "../nodes/GatewayNode";
 import { MethodNode } from "../nodes/MethodNode";
 import { ModuleNode } from "../nodes/ModuleNode";
 import type { CheatSheetResponse } from "../../../types/cheatSheet";
+import { GraphStatsPanel } from "./GraphStatsPanel";
 
 const nodeTypes: NodeTypes = {
   gateway: GatewayNode,
@@ -47,6 +49,8 @@ const nodeTypes: NodeTypes = {
 
 interface ArchitectureGraphProps {
   data: CheatSheetResponse;
+  loading?: boolean;
+  error?: string | null;
   onSelectModule: (data: ModuleNodeData) => void;
   onSelectComponent: (componentId: string) => void;
   onSelectMethod?: (method: { componentId: string; methodName: string } | null) => void;
@@ -111,32 +115,115 @@ function InteractionModePanel({
 
   const current = modes.find((m) => m.key === mode) ?? modes[0];
 
+  const iconSize = 16;
+
   return (
     <Panel position="bottom-right" style={{ margin: 0 }}>
       <div style={{ position: "relative" }}>
-        <button
-          onClick={() => setOpen((v) => !v)}
+        <div
           style={{
             display: "flex",
             alignItems: "center",
-            gap: 8,
-            padding: "8px 12px",
+            gap: 2,
+            padding: 4,
             borderRadius: 8,
             border: "1px solid #e2e8f0",
             background: "#ffffff",
             boxShadow: "0 2px 8px rgba(0, 0, 0, 0.08)",
-            cursor: "pointer",
-            fontSize: 13,
-            color: "#0f172a",
           }}
         >
-          <span>{current.icon}</span>
-          <span>{current.label}</span>
-          <span style={{ color: "#64748b", marginLeft: 4 }}>
+          <button
+            onClick={() => setOpen((v) => !v)}
+            title={current.label}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 4,
+              height: 32,
+              padding: "0 12px",
+              borderRadius: 6,
+              border: "none",
+              background: "transparent",
+              cursor: "pointer",
+              fontSize: 13,
+              color: "#0f172a",
+              transition: "background 150ms, color 150ms",
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = "#f1f5f9")}
+            onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width={iconSize}
+              height={iconSize}
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <rect x="2" y="4" width="20" height="16" rx="2" />
+              <path d="M2 14h20" />
+              <path d="M12 20v-6" />
+            </svg>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width={14}
+              height={14}
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="m6 9 6 6 6-6" />
+            </svg>
+          </button>
+
+          <div style={{ width: 1, height: 16, background: "#e2e8f0" }} />
+
+          <button
+            onClick={() => setOpen((v) => !v)}
+            title={`缩放 ${Math.round(zoom * 100)}%`}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 4,
+              height: 32,
+              minWidth: 64,
+              padding: "0 12px",
+              borderRadius: 6,
+              border: "none",
+              background: "transparent",
+              cursor: "pointer",
+              fontSize: 13,
+              fontWeight: 400,
+              color: "#0f172a",
+              transition: "background 150ms, color 150ms",
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = "#f1f5f9")}
+            onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+          >
             {Math.round(zoom * 100)}%
-          </span>
-          <span style={{ color: "#94a3b8", fontSize: 10 }}>▾</span>
-        </button>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width={14}
+              height={14}
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="m6 9 6 6 6-6" />
+            </svg>
+          </button>
+        </div>
 
         {open && (
           <>
@@ -200,6 +287,8 @@ function InteractionModePanel({
 
 export function ArchitectureGraph({
   data,
+  loading,
+  error,
   onSelectModule,
   onSelectComponent,
   onSelectMethod,
@@ -582,6 +671,7 @@ export function ArchitectureGraph({
   return (
     <div style={{ flex: 1, position: "relative" }}>
       <ReactFlow
+          style={{ background: "transparent" }}
           nodes={nodes}
           edges={edges}
           onNodesChange={onNodesChange}
@@ -608,7 +698,7 @@ export function ArchitectureGraph({
           panOnScroll={!isMouseMode}
           selectionOnDrag={false}
         >
-          <Background color="#cbd5e1" gap={16} />
+          <Background variant={BackgroundVariant.Dots} color="#d4d0cf" gap={6.75} size={1.2} />
           <Controls />
           <MiniMap
             nodeStrokeWidth={3}
@@ -623,6 +713,12 @@ export function ArchitectureGraph({
               }
               return "#3b82f6";
             }}
+          />
+          <GraphStatsPanel
+            counts={data.counts}
+            modules={data.modules}
+            loading={loading}
+            error={error}
           />
           <InteractionModePanel mode={interactMode} onChange={setInteractMode} />
           <FitViewHandler layoutKey={layoutKey} />
