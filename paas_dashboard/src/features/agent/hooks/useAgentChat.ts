@@ -81,6 +81,52 @@ function formatToolOutput(output: unknown): string {
   return JSON.stringify(output, null, 2);
 }
 
+/** 从 judge（react_1）的输出中提取真正的最终回答，用于流式展示。 */
+function extractFinalAnswer(judgeOutput: string): string {
+  const useful = judgeOutput
+    .split("\n")
+    .filter(
+      (line) =>
+        !line.trim().startsWith("任务状态：") &&
+        !line.trim().startsWith("任务状态:")
+    )
+    .join("\n")
+    .trim();
+  const marker = "最终回答：";
+  const idx = useful.lastIndexOf(marker);
+  if (idx >= 0) {
+    return useful.slice(idx + marker.length).trim();
+  }
+  return "";
+}
+
+function cleanFinalAnswer(content: string): string {
+  const lines = content.split("\n");
+  const useful = lines.filter(
+    (line) =>
+      !line.trim().startsWith("任务状态：") && !line.trim().startsWith("任务状态:")
+  );
+  const joined = useful.join("\n").trim();
+  const marker = "最终回答：";
+  const idx = joined.lastIndexOf(marker);
+  if (idx >= 0) {
+    return joined.slice(idx + marker.length).trim();
+  }
+  return joined;
+}
+
+/** 从 LangGraph chunk 中安全提取字符串 content。 */
+function getChunkContent(chunk: unknown): string {
+  const raw = (chunk as any)?.content;
+  if (typeof raw === "string") return raw;
+  if (raw === null || raw === undefined) return "";
+  // 某些模型/后端会把 content 包装成对象或数组，这里兜底转成字符串避免 [object Object]
+  if (typeof raw === "object") {
+    return JSON.stringify(raw);
+  }
+  return String(raw);
+}
+
 function updateAssistantMessage(
   messages: ChatMessage[],
   updater: (msg: ChatMessage) => ChatMessage
@@ -104,6 +150,12 @@ interface ParserState {
   processedChainEvents: Set<string>;
   hasReactNodes: boolean;
   streamingOutput: string;
+  /** 当前所在的 react_* 子图节点名称；react_1 为 judge，其输出应作为最终答案直接展示 */
+  currentReactNode: string | null;
+  /** react_1（judge）的原始输出缓存，用于流式提取最终回答 */
+  judgeBuffer: string;
+  /** 上次 flush 的状态快照，用于去重减少无效渲染 */
+  lastSnapshot: string;
 }
 
 function createParserState(): ParserState {
@@ -119,6 +171,9 @@ function createParserState(): ParserState {
     processedChainEvents: new Set<string>(),
     hasReactNodes: false,
     streamingOutput: "",
+    currentReactNode: null,
+    judgeBuffer: "",
+    lastSnapshot: "",
   };
 }
 
@@ -135,6 +190,12 @@ export function useAgentChat(): UseAgentChatResult {
 
   const flush = useCallback(() => {
     const { cycles, finalOutput, rootActive } = parserRef.current;
+    // 用轻量快照避免完全相同的状态重复触发 setMessages，减少无效重渲染
+    const snapshot = `${rootActive}|${finalOutput.length}|${cycles.length}|${cycles
+      .map((c) => `${c.status}:${c.steps.length}:${c.steps.map((s) => s.status).join(",")}`)
+      .join(";")}`;
+    if (snapshot === parserRef.current.lastSnapshot) return;
+    parserRef.current.lastSnapshot = snapshot;
     setMessages((prev) =>
       updateAssistantMessage(prev, (msg) => ({
         ...msg,
@@ -177,6 +238,21 @@ export function useAgentChat(): UseAgentChatResult {
           flush();
         } else if (isReactNode) {
           p.hasReactNodes = true;
+          p.currentReactNode = name;
+          // react_1 是 judge 节点，其输出应作为消息级最终答案直接展示，
+          // 不再为其创建可见的 ReAct cycle / think step，避免最终回答重复渲染。
+          if (name === "react_1") {
+            // 防止上个 react 节点的 cycle 未关闭
+            if (p.currentCycle) {
+              p.currentCycle.status = "success";
+              p.currentCycle = null;
+            }
+            p.finalOutput = "";
+            p.streamingOutput = "";
+            p.judgeBuffer = "";
+            flush();
+            return;
+          }
           p.currentCycle = {
             id: uid("cycle"),
             steps: [],
@@ -187,6 +263,10 @@ export function useAgentChat(): UseAgentChatResult {
         } else if (name === "call_model") {
           // 每个 call_model 在当前 ReAct cycle 中追加一个 think step，
           // 不再为每次模型调用单独开 cycle（cycle 对应 react_ 节点）。
+          // react_1（judge）内部的 call_model 不创建可见 think step。
+          if (p.currentReactNode === "react_1") {
+            return;
+          }
           if (!p.currentCycle || p.currentCycle.status !== "loading") {
             p.currentCycle = {
               id: uid("cycle"),
@@ -220,18 +300,20 @@ export function useAgentChat(): UseAgentChatResult {
       if (event === "on_chain_end") {
         if (isRoot) {
           p.rootActive = false;
-          const outMessages = data?.output?.messages;
-          if (Array.isArray(outMessages) && outMessages.length > 0) {
-            const last = outMessages[outMessages.length - 1];
-            p.finalOutput = last?.content ?? "";
-          }
-          removeEmptyCycles();
-          flush();
+      const outMessages = data?.output?.messages;
+      if (Array.isArray(outMessages) && outMessages.length > 0) {
+        const last = outMessages[outMessages.length - 1];
+        // 根节点结束时也要清理元信息，避免把"任务状态：已完成"等显示给用户
+        p.finalOutput = cleanFinalAnswer(String(last?.content ?? ""));
+      }
+      removeEmptyCycles();
+      flush();
         } else if (isReactNode) {
           if (p.currentCycle) {
             p.currentCycle.status = "success";
             p.currentCycle = null;
           }
+          p.currentReactNode = null;
           removeEmptyCycles();
           flush();
         } else if (name === "call_model") {
@@ -241,23 +323,22 @@ export function useAgentChat(): UseAgentChatResult {
               .filter((s): s is ThinkStep => s.type === "think")
               .find((s) => s.status === "loading");
 
-            if (Array.isArray(outMessages) && outMessages.length > 0) {
-              const last = outMessages[outMessages.length - 1];
-              const hasToolCalls =
-                Array.isArray(last?.tool_calls) && last.tool_calls.length > 0;
-              const hasContent =
-                typeof last?.content === "string" &&
-                last.content.trim().length > 0;
+      if (Array.isArray(outMessages) && outMessages.length > 0) {
+        const last = outMessages[outMessages.length - 1];
+        const hasToolCalls =
+          Array.isArray(last?.tool_calls) && last.tool_calls.length > 0;
+        const lastContent = getChunkContent(last);
+        const hasContent = lastContent.trim().length > 0;
 
-              if (hasContent) {
-                p.lastModelContent = last.content;
-                p.currentCycle.finalContent = last.content;
-                if (thinkStep) thinkStep.status = "success";
-                p.streamingOutput = "";
-                p.finalOutput = last.content;
-                flush();
-                return;
-              }
+        if (hasContent) {
+          p.lastModelContent = lastContent;
+          p.currentCycle.finalContent = lastContent;
+          if (thinkStep) thinkStep.status = "success";
+          p.streamingOutput = "";
+          p.finalOutput = lastContent;
+          flush();
+          return;
+        }
 
               if (thinkStep && hasToolCalls && !thinkStep.content.trim()) {
                 const idx = p.currentCycle.steps.indexOf(thinkStep);
@@ -283,11 +364,18 @@ export function useAgentChat(): UseAgentChatResult {
         return;
       }
 
-      if (event === "on_chat_model_stream") {
-        const content: string = data?.chunk?.content ?? "";
-        if (!content) return;
-        if (p.reflectActive) {
-          p.reflectBuffer += content;
+    if (event === "on_chat_model_stream") {
+      const content = getChunkContent(data?.chunk);
+      if (!content) return;
+      if (p.reflectActive) {
+        p.reflectBuffer += content;
+          flush();
+        } else if (p.currentReactNode === "react_1") {
+          // judge 节点（react_1）的输出即为最终回答，直接作为消息级答案展示，
+          // 避免再生成一个可见的 think step 导致最终回答重复渲染。
+          // 这里实时提取“最终回答：”之后的内容，避免把“任务状态：”等元信息也展示出来。
+          p.judgeBuffer += content;
+          p.finalOutput = extractFinalAnswer(p.judgeBuffer);
           flush();
         } else if (p.currentCycle) {
           const thinkStep = p.currentCycle.steps
@@ -353,7 +441,7 @@ export function useAgentChat(): UseAgentChatResult {
     p.rootActive = false;
     removeEmptyCycles();
     if (!p.finalOutput && p.lastModelContent) {
-      p.finalOutput = p.lastModelContent;
+      p.finalOutput = cleanFinalAnswer(p.lastModelContent);
     }
     flush();
     setMessages((prev) =>
@@ -375,20 +463,22 @@ export function useAgentChat(): UseAgentChatResult {
               typeof input === "string" &&
               input.includes("/runs/stream")
             ) {
-              // Log without awaiting the full body so the SDK can process
-              // the stream incrementally.
-              const clone = response.clone();
-              void clone
-                .text()
-                .then((text) => console.log("[SDK RESPONSE]", text.slice(0, 2000)))
-                .catch(() => {});
+              // 仅在开发环境记录 SDK 响应的前 2000 字符，便于调试流式接口。
+              if (import.meta.env.DEV) {
+                const clone = response.clone();
+                void clone
+                  .text()
+                  .then((text) => console.debug("[SDK RESPONSE]", text.slice(0, 2000)))
+                  .catch(() => {});
+              }
             }
             return response;
           },
         },
         onRequest: (url, init) => {
-          if (url.toString().includes("/runs/stream")) {
-            console.log("[SDK REQUEST BODY]", init.body);
+          if (import.meta.env.DEV && url.toString().includes("/runs/stream")) {
+            // eslint-disable-next-line no-console
+            console.debug("[SDK REQUEST BODY]", init.body);
           }
           return init;
         },
