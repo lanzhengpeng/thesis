@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
-import { Network } from "lucide-react";
+import { Network, Package } from "lucide-react";
 import { ModuleDetailPanel } from "./features/architecture";
 import { AgentChatPanel, ConversationSidebar } from "./features/agent";
 import { ProjectFilesPanel } from "./features/project-files";
 import type { ModuleNodeData } from "./features/architecture";
 import { ArchitectureCanvas } from "./components/ArchitectureCanvas";
 import { FileEditor } from "./components/FileEditor";
+import { PackagePanel } from "./components/PackagePanel";
 import { ScalarPanel } from "./components/ScalarPanel";
 import { SqliteEditor } from "./components/SqliteEditor";
 import { TabBar } from "./components/TabBar";
@@ -189,6 +190,25 @@ function App() {
     setActiveTabId(id);
   };
 
+  const handleOpenPackageTab = () => {
+    const existing = tabs.find((t) => t.type === "package");
+    if (existing) {
+      setActiveTabId(existing.id);
+      return;
+    }
+
+    const id = `tab-${Date.now()}`;
+    const newTab: TabItem = {
+      id,
+      type: "package",
+      title: "打包",
+      icon: "package",
+      closable: true,
+    };
+    setTabs((prev) => [...prev, newTab]);
+    setActiveTabId(id);
+  };
+
   const handleReorderTabs = (newTabs: TabItem[]) => {
     setTabs(newTabs);
   };
@@ -237,6 +257,15 @@ function App() {
               <button
                 type="button"
                 className="tab-bar__action-btn"
+                aria-label="打包服务口"
+                title="打包服务口"
+                onClick={handleOpenPackageTab}
+              >
+                <Package size={16} />
+              </button>
+              <button
+                type="button"
+                className="tab-bar__action-btn"
                 aria-label="API 客户端"
                 title="API 客户端"
                 onClick={handleOpenScalarTab}
@@ -254,7 +283,7 @@ function App() {
               className="app__scalar-wrapper"
               style={{ display: activeTab?.type === "scalar" ? "flex" : "none" }}
             >
-              <ScalarPanel />
+              <ScalarPanel active={activeTab?.type === "scalar"} />
             </div>
           )}
           {activeTab?.type === "architecture" ? (
@@ -349,6 +378,8 @@ function App() {
                 <div className="app__empty-tab">加载中...</div>
               )}
             </div>
+          ) : activeTab?.type === "package" ? (
+            <PackagePanel />
           ) : activeTab?.type === "scalar" ? null : (
             <EmptyTabPanel
               onOpenPreview={handleOpenArchitectureTab}

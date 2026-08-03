@@ -201,3 +201,52 @@ export async function reloadModule(plugin: string): Promise<void> {
     throw new Error(`请求失败：${response.status} ${response.statusText}`);
   }
 }
+
+export interface PackageBuildResponse {
+  job_id: string;
+  status: string;
+  artifact_path: string;
+  message: string;
+}
+
+export interface PackageJobResponse {
+  job_id: string;
+  target: string;
+  status: string;
+  artifact_path: string | null;
+  created_at: string;
+  completed_at: string | null;
+  error: string | null;
+  log: string[];
+}
+
+export async function triggerPackageBuild(target: string = "current"): Promise<PackageBuildResponse> {
+  const response = await fetch(`${BASE_URL}/admin/kernel/package/service`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ target }),
+  });
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.detail || `请求失败：${response.status} ${response.statusText}`);
+  }
+  return response.json() as Promise<PackageBuildResponse>;
+}
+
+export async function fetchPackageJob(jobId: string): Promise<PackageJobResponse> {
+  const response = await fetch(
+    `${BASE_URL}/admin/kernel/package/service/jobs/${encodeURIComponent(jobId)}`,
+    {
+      method: "GET",
+      headers: { Accept: "application/json" },
+    }
+  );
+  if (!response.ok) {
+    throw new Error(`请求失败：${response.status} ${response.statusText}`);
+  }
+  return response.json() as Promise<PackageJobResponse>;
+}
+
+export function getPackageDownloadUrl(jobId: string): string {
+  return `${BASE_URL}/admin/kernel/package/service/jobs/${encodeURIComponent(jobId)}/download`;
+}

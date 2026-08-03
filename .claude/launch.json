@@ -51,7 +51,7 @@
     {
       "name": "paas-dashboard-dev-auto",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["--prefix", "paas_dashboard", "run", "dev", "--", "--host"],
+      "runtimeArgs": ["--prefix", "paas_dashboard", "run", "dev", "--", "--host", "--port", "${PORT}"],
       "autoPort": true
     }
   ]

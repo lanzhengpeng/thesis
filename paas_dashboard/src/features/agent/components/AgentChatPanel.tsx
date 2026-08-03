@@ -492,11 +492,9 @@ function UserMessage({ content }: { content: string }) {
         <div className="agent-message--user__actions">
           <button
             type="button"
-            className="agent-message__action"
-            title="编辑"
-            onClick={() => {
-              // TODO: wire edit flow
-            }}
+            className="agent-message__action agent-message__action--disabled"
+            title="编辑（暂未实现）"
+            disabled
           >
             <EditOutlined />
           </button>
@@ -510,11 +508,9 @@ function UserMessage({ content }: { content: string }) {
           </button>
           <button
             type="button"
-            className="agent-message__action"
-            title="重新发送"
-            onClick={() => {
-              // TODO: wire resend flow
-            }}
+            className="agent-message__action agent-message__action--disabled"
+            title="重新发送（暂未实现）"
+            disabled
           >
             <RedoOutlined />
           </button>
@@ -832,6 +828,19 @@ export function AgentChatPanel({
             value={input}
             onChange={(value) => setInput(value)}
             onSubmit={handleSend}
+            onKeyDown={(e) => {
+              if (
+                e.key === "Enter" &&
+                !e.shiftKey &&
+                !e.ctrlKey &&
+                !e.metaKey &&
+                !e.altKey
+              ) {
+                e.preventDefault();
+                handleSend();
+                return false;
+              }
+            }}
             loading={isStreaming}
             onCancel={stop}
             submitType="enter"

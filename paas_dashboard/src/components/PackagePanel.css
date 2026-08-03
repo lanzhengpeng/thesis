@@ -1,0 +1,208 @@
+.package-panel {
+  flex: 1;
+  min-width: 0;
+  overflow: auto;
+  background: var(--background);
+  color: var(--foreground);
+}
+
+.package-panel__content {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 64px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  text-align: center;
+}
+
+.package-panel__header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.package-panel__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  border-radius: var(--radius-lg, 12px);
+  background: var(--primary-foreground, #eff6ff);
+  color: var(--primary, #2563eb);
+}
+
+.package-panel__title {
+  font-size: 22px;
+  font-weight: 600;
+  margin: 0;
+  color: var(--foreground);
+}
+
+.package-panel__desc {
+  font-size: 14px;
+  line-height: 1.6;
+  margin: 0;
+  color: var(--muted-foreground);
+  max-width: 480px;
+}
+
+.package-panel__build-btn,
+.package-panel__download-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 28px;
+  border: none;
+  border-radius: var(--radius-md, 8px);
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 150ms ease, opacity 150ms ease, transform 150ms ease;
+}
+
+.package-panel__build-btn {
+  background: var(--primary, #2563eb);
+  color: var(--primary-foreground, #ffffff);
+}
+
+.package-panel__build-btn:hover:not(:disabled) {
+  background: var(--primary-hover, #1d4ed8);
+}
+
+.package-panel__build-btn:disabled {
+  opacity: 0.8;
+  cursor: not-allowed;
+}
+
+.package-panel__download-btn {
+  background: var(--success, #16a34a);
+  color: #ffffff;
+  text-decoration: none;
+}
+
+.package-panel__download-btn:hover {
+  background: var(--success-hover, #15803d);
+}
+
+.package-panel__spin {
+  animation: package-panel-spin 1s linear infinite;
+}
+
+@keyframes package-panel-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.package-panel__alert {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: var(--radius-md, 8px);
+  font-size: 14px;
+}
+
+.package-panel__alert--error {
+  background: var(--destructive-foreground, #fef2f2);
+  color: var(--destructive, #dc2626);
+  border: 1px solid var(--destructive-border, #fecaca);
+}
+
+.package-panel__status {
+  width: 100%;
+  max-width: 480px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+  border-radius: var(--radius-md, 8px);
+  border: 1px solid var(--border, #e2e8f0);
+  background: var(--card, #ffffff);
+  text-align: left;
+}
+
+.package-panel__status-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
+}
+
+.package-panel__status-label {
+  color: var(--muted-foreground);
+}
+
+.package-panel__status-value {
+  color: var(--foreground);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  word-break: break-all;
+}
+
+.package-panel__status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: capitalize;
+}
+
+.package-panel__status-badge--pending,
+.package-panel__status-badge--building {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.package-panel__status-badge--completed {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.package-panel__status-badge--failed {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.package-panel__log {
+  width: 100%;
+  max-width: 640px;
+  border-radius: var(--radius-md, 8px);
+  border: 1px solid var(--border, #e2e8f0);
+  background: var(--card, #ffffff);
+  overflow: hidden;
+  text-align: left;
+}
+
+.package-panel__log-header {
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--foreground);
+  background: var(--muted, #f1f5f9);
+  border-bottom: 1px solid var(--border, #e2e8f0);
+}
+
+.package-panel__log-body {
+  max-height: 320px;
+  overflow: auto;
+  padding: 12px 14px;
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  color: var(--foreground);
+  white-space: pre-wrap;
+  word-break: break-all;
+}

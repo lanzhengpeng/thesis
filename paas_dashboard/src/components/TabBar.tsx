@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { AppWindow, Bookmark, FileText, Network, Plus, X } from "lucide-react";
+import { AppWindow, Bookmark, FileText, Network, Package, Plus, X } from "lucide-react";
 import { useState } from "react";
 import type { TabItem } from "../types/tabs";
 import "./TabBar.css";
@@ -9,6 +9,7 @@ const iconMap: Record<string, React.ComponentType<{ size?: number }>> = {
   bookmark: Bookmark,
   "file-text": FileText,
   network: Network,
+  package: Package,
 };
 
 interface TabBarProps {

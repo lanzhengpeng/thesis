@@ -7,7 +7,11 @@ const SERVICE_BASE_URL =
   (import.meta.env.VITE_SERVICE_BASE_URL as string | undefined) ||
   "http://localhost:8001";
 
-export function ScalarPanel() {
+interface ScalarPanelProps {
+  active?: boolean;
+}
+
+export function ScalarPanel({ active = false }: ScalarPanelProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const movedRef = useRef(false);
 
@@ -18,10 +22,9 @@ export function ScalarPanel() {
     },
   });
 
+  // 将 Scalar 创建的 DOM 节点移入本组件容器
   useEffect(() => {
     if (!client || movedRef.current) return;
-
-    client.open({ path: "/health", method: "get" });
 
     const moveScalarApp = () => {
       const app = document.querySelector<HTMLElement>(".scalar-app");
@@ -45,7 +48,7 @@ export function ScalarPanel() {
       clearTimeout(timeout);
       observer.disconnect();
 
-      // 卸载时把 scalar app 还回 body 并隐藏，这样下次打开可以再次移入容器
+      // 组件真正卸载时把 scalar app 还回 body 并隐藏
       const app = document.querySelector<HTMLElement>(".scalar-app");
       if (app) {
         app.style.display = "none";
@@ -54,6 +57,16 @@ export function ScalarPanel() {
       movedRef.current = false;
     };
   }, [client]);
+
+  // 根据标签页激活状态打开/关闭 Scalar 客户端
+  useEffect(() => {
+    if (!client) return;
+    if (active) {
+      client.open({ path: "/health", method: "get" });
+    } else {
+      client.modalState.open = false;
+    }
+  }, [client, active]);
 
   return <div ref={containerRef} className="scalar-panel" />;
 }

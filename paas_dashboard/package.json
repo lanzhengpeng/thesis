@@ -36,7 +36,8 @@
     "lucide-react": "^1.26.0",
     "marked-highlight": "^2.2.4",
     "react": "^19.2.7",
-    "react-dom": "^19.2.7"
+    "react-dom": "^19.2.7",
+    "zustand": "^5.0.14"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",
