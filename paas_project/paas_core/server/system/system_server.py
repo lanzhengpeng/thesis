@@ -119,6 +119,10 @@ def create_system_app(kernel: MicroKernel) -> FastAPI:
         allow_headers=["*"],
     )
 
+    from paas_core.server.system.package_api import build_package_router
+
+    app.include_router(build_package_router(kernel))
+
     @app.get("/admin/kernel/cheat-sheet")
     def cheat_sheet():
         """

@@ -1,0 +1,6 @@
+# PyInstaller 构建产物
+build/
+dist/
+
+# 单文件可执行程序运行时生成的可写数据目录
+paas_runtime/

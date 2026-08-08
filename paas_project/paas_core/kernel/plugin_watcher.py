@@ -39,6 +39,7 @@ class PluginEventHandler(FileSystemEventHandler):
     def __init__(
         self,
         callback: Callable[[str, str], None],
+        plugins_dir: Path,
         debounce_seconds: float = DEFAULT_DEBOUNCE_SECONDS,
     ):
         """
@@ -46,10 +47,12 @@ class PluginEventHandler(FileSystemEventHandler):
 
         参数：
             callback: 回调函数，接收 (plugin_name, event_type)。
+            plugins_dir: 插件根目录，用于从绝对路径中解析插件名。
             debounce_seconds: 去抖间隔，单位秒。
         """
         super().__init__()
         self.callback = callback
+        self.plugins_dir = Path(plugins_dir).resolve()
         self.debounce_seconds = debounce_seconds
         self._pending_plugins: Set[str] = set()
         self._timer: Optional[threading.Timer] = None
@@ -88,21 +91,19 @@ class PluginEventHandler(FileSystemEventHandler):
         """
         从文件路径提取插件目录名。
 
-        plugins/<plugin_name>/<file>.py -> plugin_name
+        以初始化时传入的 plugins_dir 为基准，取相对路径的第一段作为插件名。
 
         参数：
             file_path: 发生变更的 .py 文件路径。
 
         返回：
-            插件目录名；若不在 plugins 下则返回 None。
+            插件目录名；若不在 plugins_dir 下则返回 None。
         """
         try:
-            # 找到 plugins 之后的第二段目录名
-            parts = file_path.parts
-            idx = parts.index("plugins")
-            if len(parts) <= idx + 1:
+            rel = Path(file_path).resolve().relative_to(self.plugins_dir)
+            if len(rel.parts) < 2:
                 return None
-            return parts[idx + 1]
+            return rel.parts[0]
         except ValueError:
             return None
 
@@ -146,7 +147,7 @@ class PluginWatcher:
             debounce_seconds: 去抖间隔。
         """
         self.plugins_dir = Path(plugins_dir)
-        self._handler = PluginEventHandler(callback, debounce_seconds)
+        self._handler = PluginEventHandler(callback, self.plugins_dir, debounce_seconds)
         self._observer = Observer()
 
     def start(self) -> None:

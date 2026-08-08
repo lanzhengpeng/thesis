@@ -1,0 +1,2871 @@
+% 面向线索数据感知的多智能体SQL生成方法研究
+% 作者：张念龙
+% 本文件由PDF自动转换生成，公式、图表、代码块可能需要人工复核
+\documentclass[12pt,a4paper,openright,UTF8]{ctexbook}
+
+\usepackage{geometry}
+\geometry{left=2.5cm,right=2.5cm,top=2.5cm,bottom=2.5cm}
+\usepackage{xeCJK}
+\usepackage{amsmath,amssymb,amsfonts,amsthm}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{multirow}
+\usepackage{array}
+\usepackage{float}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{enumitem}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{cleveref}
+\usepackage{setspace}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{tocloft}
+\usepackage[numbers,sort&compress]{natbib}
+\bibliographystyle{gbt7714-numerical}
+
+\setlength{\headheight}{14pt}
+\addtolength{\topmargin}{-2pt}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[C]{\small \leftmark}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+\ctexset{
+    chapter = {
+        format = \zihao{-3}\bfseries\centering,
+        beforeskip = 20pt,
+        afterskip = 20pt
+    },
+    section = {
+        format = \zihao{4}\bfseries,
+        beforeskip = 12pt,
+        afterskip = 6pt
+    },
+    subsection = {
+        format = \zihao{-4}\bfseries,
+        beforeskip = 8pt,
+        afterskip = 4pt
+    }
+}
+
+\onehalfspacing
+
+\lstset{
+    language=SQL,
+    basicstyle=\small\ttfamily,
+    keywordstyle=\color{blue},
+    commentstyle=\color{gray},
+    stringstyle=\color{orange},
+    numbers=left,
+    numberstyle=\tiny\color{gray},
+    stepnumber=1,
+    frame=single,
+    breaklines=true,
+    showstringspaces=false
+}
+
+\graphicspath{{figures/}}
+
+\begin{document}
+\hypersetup{pageanchor=false}
+
+% ==================== 封面 ====================
+\begin{titlepage}
+    \centering
+    \vspace*{2cm}
+    {\zihao{2}\bfseries 浙江师范大学}\\[0.8cm]
+    {\zihao{-1}\bfseries 硕士学位论文}\\[2.5cm]
+    {\zihao{2}\bfseries 面向线索数据感知的多智能体\\SQL生成方法研究}\\[0.8cm]
+    {\zihao{3} Research on a Clue Data-Aware SQL Generation Method\\Based on Multi-Agent Collaboration}\\[3cm]
+    \begin{tabular}{rl}
+        \zihao{4}\textbf{作\quad 者：} & \zihao{4}张念龙 \\[0.5cm]
+        \zihao{4}\textbf{学\quad 号：} & \zihao{4}202320701127 \\[0.5cm]
+        \zihao{4}\textbf{专\quad 业：} & \zihao{4}软件工程 \\[0.5cm]
+        \zihao{4}\textbf{导\quad 师：} & \zihao{4}叶荣华教授 \\[0.5cm]
+        \zihao{4}\textbf{学\quad 院：} & \zihao{4}计算机科学与技术学院 \\
+    \end{tabular}
+    \vfill
+    {\zihao{4} 2026年5月}
+\end{titlepage}
+
+\newpage
+\thispagestyle{empty}
+\begin{center}
+    {\zihao{3}\bfseries 学位论文原创性声明}
+\end{center}
+\vspace{1cm}
+\zihao{-4}
+本人郑重声明：所呈交的学位论文，是本人在导师的指导下，独立进行研究工作所取得的成果。除文中已经注明引用的内容外，本论文不包含任何其他个人或集体已经发表或撰写过的作品成果。对本文的研究做出重要贡献的个人和集体，均已在文中以明确方式标明。本人完全意识到本声明的法律结果由本人承担。
+\vspace{2cm}
+\begin{flushright}
+    学位论文作者签名：\underline{\hspace{4cm}} \quad 日期：\underline{\hspace{3cm}}
+\end{flushright}
+
+\newpage
+\thispagestyle{empty}
+\begin{center}
+    {\zihao{3}\bfseries 学位论文独创性声明}
+\end{center}
+\vspace{1cm}
+\zihao{-4}
+本人声明所呈交的学位论文是本人在导师指导下进行的研究工作及取得的研究成果。除了文中特别加以标注和致谢的地方外，论文中不包含其他人已经发表或撰写过的研究成果，也不包含为获得浙江师范大学或其他教育机构的学位或证书而使用过的材料。与我一同工作的同志对本研究所做的任何贡献均已在论文中作了明确的说明并表示谢意。
+\vspace{2cm}
+\begin{flushright}
+    学位论文作者签名：\underline{\hspace{4cm}} \quad 日期：\underline{\hspace{3cm}}
+\end{flushright}
+
+\newpage
+\thispagestyle{empty}
+\begin{center}
+    {\zihao{3}\bfseries 学位论文使用授权声明}
+\end{center}
+\vspace{1cm}
+\zihao{-4}
+本人完全了解浙江师范大学关于保留、使用学位论文的规定，即：学校有权保留送交论文的复印件和电子文档，允许论文被查阅和借阅，可以采用影印、缩印或扫描等手段保存、汇编学位论文。同意学校用不同方式在不同媒体上发表、传播论文的全部或部分内容。保密的学位论文在解密后遵守此协议。
+\vspace{2cm}
+\begin{flushright}
+    学位论文作者签名：\underline{\hspace{4cm}} \quad 日期：\underline{\hspace{3cm}} \\[1cm]
+    导师签名：\underline{\hspace{4.6cm}} \quad 日期：\underline{\hspace{3cm}}
+\end{flushright}
+
+\newpage
+\pagenumbering{Roman}
+\setcounter{page}{1}
+
+
+\chapter*{摘\quad 要}
+\addcontentsline{toc}{chapter}{摘要}
+\zihao{-4}
+
+在当前数据驱动的信息化时代，随着各行业数字化转型进程的不断深入，数据日益成为决策制定中的关键要素。关系型数据库凭借强大的数据组织能力，构成现代数据系统的基础。然而，作为与数据库交互的核心语言，SQL（Structured QueryLanguage）对非技术用户构成使用门槛，限制了数据访问的广泛性与便捷性。
+
+
+NL2SQL（Natural Language to SQL）技术正是在此背景下应运而生，旨在通过将用户自然语言转化为SQL 查询，实现智能化数据访问，简化查询过程。
+
+
+近年来，通用大语言模型凭借卓越的自然语言处理能力，在多种下游任务中表现出色，但在 NL2SQL 任务中仍面临一些挑战：（I）自然语言语义歧义导致意图理解偏差；（II）传统方法在知识注入与推理优化环节存在静态性局限，容易产生幻觉问题；（III）工业级数据库模式复杂性导致 SQL 生成准确率低。基于上述NL2SQL 技术遇到的问题，本文研究内容如下：
+
+\begin{enumerate}[label=(\arabic*)]
+\item 针对自然语言语义模糊歧义性问题，本研究提出认知对齐推理（CognitiveAligned Reasoning, CAR）方法。该方法旨在弥合用户问题表述与模型内部认知框架之间的差异，其框架首先通过问题重述生成多样化的语义等效表达，以实现认知对齐；随后利用多视角共识推理机制，集成多条推理路径的输出以形成稳健的最终答案。实验表明，CAR 在常识推理任务和 BIRD Mini-Dev 数据集中显著提升性能，在CommonsenseQA数据集上准确率达到79.65\%，在StrategyQA上提升至70.02\%，在BIRDMini-Dev上逻辑正确性显著优于其他方法（零样本、思维链和自洽性），有效缓解了语义歧义带来的理解偏差，为最终生成语法与语义正确的SQL查询提供了关键保证。
+\item 为解决传统检索增强生成（RAG）系统的静态性局限，提出动态强化学习RAG（DynamicReinforcementLearningRAG,DRL-RAG）框架。该框架构建了一个基于强化学习的闭环优化系统，其核心在于利用交叉编码器提供的细粒度相关性信号作为奖励，动态优化检索策略，以实现相关性、多样性与效率的平衡；同时，框架设计了基于置信度的文档处理流程与多维度生成评估机制，以提升整体输出任务的专项评估中，DRL-RAG 在 BIRD 数据集上相较于静态 RAG 基线取得了显著提升，验证了其能为SQL 生成任务检索出更相关、排序更优的上下文知识。
+\item 面对工业级数据库的复杂模式，提出CLUE-SQL（ClueData-AwareLogic Understanding for Efficient SQL Generation）多智能体框架。该框架集成线索数据检索代理、数据库模式剪枝代理和查询生成优化代理，通过线索数据感知、动态模式剪枝和迭代优化策略处理复杂查询。在 BIRD 和 Spider 数据集上的评估中，CLUE-SQL 执行准确率（EX）分别达到 75.11\% 和 88.40\%。消融实验验证了各组件贡献，在复杂查询场景中有效提升SQL 生成准确率。 本研究通过引入认知对齐推理增强语义理解，利用动态强化学习RAG优化知识检索，并构建多智能体协作框架集成上下文线索数据，系统性地解决了NL2SQL任务中的意图歧义、知识幻觉和模式复杂性问题，提升了 NL2SQL 技术在复杂查询场景下的综合性能。
+\end{enumerate}
+
+
+关键词：大语言模型；SQL查询；认知对齐推理；动态强化学习RAG；多智能体框架；线索数据
+
+\chapter*{Abstract}
+\addcontentsline{toc}{chapter}{Abstract}
+\zihao{-4}
+
+In the current era of data-driven informatization, as digital transformation deepens across industries, data have become a critical element in decision-making. Relational databases,withtheirpowerfuldataorganizationcapabilities,formthefoundationofmodern data systems. However, SQL (Structured Query Language), as the core language for interacting with databases, poses a usage barrier for non-technical users, restricting widespreadandconvenientaccesstodata. NL2SQL(NaturalLanguagetoSQL)technology emerges in this context, aiming to enable intelligent data access and simplify query processesbytranslatingnaturallanguageintoSQLqueries.
+
+
+Recent advances in general-purpose large language models (LLMs) have demonstrated exceptional performance in downstream natural language processing tasks. However, challenges persist in NL2SQL: (I) semantic ambiguity in natural language leads to misinterpretation of user intent; (II) traditional methods suffer from static limitations in knowledge injection and reasoning optimization, prone to hallucination problems; (III) complex industrial database schemas result in low accuracy in SQL generation. To addresstheseissues,thisstudyproposesthefollowingcontributions:(1) To address the issue of semantic ambiguity in natural language, this study proposes the Cognitive-Aligned Reasoning (CAR) method. This method aims to bridge the gap between user problem formulations and the model’s internal cognitive framework.
+
+
+Itsframeworkfirstemploysproblemparaphrasingtogeneratediversesemanticallyequivalentexpressions,therebyachievingcognitivealignment. Subsequently,itutilizesamultiperspectiveconsensusreasoningmechanismtointegrateoutputsfrommultiplereasoning paths, forming a robust final answer. Experiments demonstrate that CAR significantly enhancesperformanceoncommonsensereasoningtasksandtheBIRDMini-Devdataset.
+
+
+Specifically,itachievesanaccuracyof79.65\%onCommonsenseQA,improvesto70.02\% onStrategyQA,andsignificantlyoutperformsothermethods(zero-shot,chain-of-thought,(2) To overcome the static limitations of traditional Retrieval-Augmented Generation (RAG) systems, we propose a Dynamic Reinforcement Learning RAG (DRL-RAG) framework. It establishes a reinforcement learning-based closed-loop optimization system, which leverages fine-grained relevance signals from a cross-encoder as rewards to dynamically optimize retrieval strategies, balancing relevance, diversity, and efficiency.
+
+
+Additionally,theframeworkintegratesaconfidence-baseddocumentprocessingpipeline and a multi-dimensional generation assessment mechanism to enhance output reliability.
+
+
+ExperimentsonthePopQA,PubHealth,andArc-ChallengedatasetsshowthatDRL-RAG achievesaccuraciesof60.9\%,76.8\%,and69.9\%,respectively,outperformingtheoriginal RAG method by at least 8\%, and demonstrating its effectiveness in reducing hallucinations and improving robustness. Moreover, in a specialized evaluation on the NL2SQL schemalinkingtaskusingtheBIRDdataset,DRL-RAGsignificantlysurpassesthestatic RAGbaseline,validatingitsabilitytoretrievemorerelevantandbetter-rankedcontextual knowledgeforSQLgeneration.(3)Forcomplexindustrialdatabaseschemas,wedesigntheCLUE-SQLmulti-agent framework. It integrates a Clue Data Retrieval Agent, a Database Schema Pruner agent,andaQuerygenerator-Refiner. Throughclue-awaredataretrieval,dynamicschemapruning,anditerativeoptimization,CLUE-SQLhandlescomplexquerieseffectively. EvaluationsonBIRDandSpiderdatasetsshowexecutionaccuracies(EX)of75.11\%and88.40\%,respectively. Ablation studies confirm the contribution of each component, highlighting itsefficacyinboostingaccuracyforcomplexqueryscenarios.
+
+
+By incorporating CAR for semantic understanding, DRL-RAG for knowledge retrieval, and CLUE-SQL for contextual integration, this work systematically addresses intent ambiguity, knowledge hallucination, and schema complexity in NL2SQL, significantlyenhancingitsperformanceinreal-worldapplications.
+
+
+Keywords: Large Language Models; SQL Query; Cognitive-Alignment Reasoning; DynamicReinforcementLearningRAG;Multi-agentFramework;ClueData
+
+\tableofcontents
+
+\_（目录页内容省略，详见PDF原文）\_
+
+\chapter{绪论}
+\zihao{-4}
+
+
+\section{选题背景与研究意义}
+
+在信息技术高速发展的推动下，数据化信息量急剧增长，数据资源已上升为现代企业组织的重要战略资产。伴随着数字化转型浪潮推动，企业数据规模呈现指数级增长，其中大量业务数据以结构化形式存储在各类数据库系统中。这种数据存储模式的演变不仅重构了企业运营范式，更催生了基于数据驱动的科学决策体系，使数据库系统的访问需求呈现持续增长态势[1-3]。
+
+
+特别是在制造业领域，企业通过部署企业资源计划（ERP）、制造执行系统（MES）、产品生命周期管理系统（PLM）及供应链管理系统（SCM）等传统信息化系统，构建了涵盖生产、销售、采购、库存、财务等全业务流程的数据生态系统。这些系统每日产生大量业务数据，构成了企业战略决策的重要依据。然而现有数据访问机制存在着局限性：一方面，报表系统作为主要查询方式存在可扩展性缺陷，当用户需求超出预设模板范围时，需要依赖技术人员编写定制化 SQL 查询；另一方面，技术人员需在理解业务需求后，针对复杂数据库模式设计多表关联查询，这一过程往往耗时且存在语义理解偏差风险。另外，数据库权限管理体系的复杂性导致非技术人员难以直接获取所需数据，这严重制约了数据价值的有效获取。因此，研究自然语言到 SQL 的自动转换技术，实现非技术人员通过自然语言直接访问数据库，已成为破解数据利用困境、提升决策效率的关键技术突破口。
+
+
+与此同时，随着深度学习技术的飞速进步，特别是基于 Transformer[4] 架构的大规模预训练语言模型（如BERT[5] 等）的涌现和持续优化，自然语言处理领域取得了突破性进展。大模型凭借其强大的语义理解与生成能力，在多项自然语言任务中展现出卓越成效，极大地推动了相关领域的技术进步。
+
+
+NL2SQL（NaturalLanguagetoSQL）技术，又称Text-to-SQL技术，正是在此背景下作为关键使能技术应运而生，其核心目标是通过将用户自然语言输入映射为符合数据库模式的 SQL 查询语句，为关系型数据库构建了低门槛的交互范式。这项技术的核心在于精准识别用户的查询意图，并结合数据库的模式信息，以生成语法正确、有效的 SQL 查询语句。图1.1展示了基于大语言模型（Large Language Models，LLMs）的NL2SQL示例。该技术通过多层语义解析机制，包括意图识别和模式匹配等，实现从自然语言到结构化查询的精准转换，从而有效实现数据访
+
+\begin{lstlisting}
+TABLE Country
+\end{lstlisting}
+
+
+\begin{lstlisting}
+TABLE League
+\end{lstlisting}
+
+Match League
+
+\begin{lstlisting}
+TABLE Match
+\end{lstlisting}
+
+
+\chapter{Spain LIGA BBVA}
+\zihao{-4}
+
+\{"league\_id" integer,"id" integer, primary key,
+
+\chapter{France Ligue 1}
+\zihao{-4}
+
+"match\_api\_id" integer,"date" text,"country\_id" integer, 2000 England Premier League"season" text,"stage" integer, 2018 Italy Serie A"away\_player\_1" integer,"possession" text, 2026 Netherlands Eredivisie"goal" text,
+
+\begin{lstlisting}
+primary key("id") }
+\end{lstlisting}
+
+Generated SQL Query
+
+\begin{lstlisting}
+SELECT League.name, count(Match.id) FROM Match INNER JOIN League ON
+\end{lstlisting}
+
+Match.league\_id = league.id GROUP BY League.name ORDER BY count(Match.id) DESC LIMIT 5
+
+\begin{figure}[htbp]
+\centering
+\fbox{\parbox{0.8\textwidth}{\centering \zihao{5}图1.1BIRD[9] 数据集中选取的一个基于LLM的NL2SQL示例}}
+\caption{图1.1BIRD[9] 数据集中选取的一个基于LLM的NL2SQL示例}
+\end{figure}
+
+问的便捷性[6-9]。其核心价值在于通过将专业 SQL 语法认知门槛转化为直观的自然语言交互界面，使非技术用户能够通过问答式交互完成复杂的数据检索任务。具体而言，用户可通过对话界面输入自然语言查询需求（如“你能告诉我有史以来比赛次数最多的5个联赛的名字吗？”），系统首先通过上下文感知模块解析用户意图，继而利用语义逻辑推理引擎生成可执行的 SQL 语句，最终以可视化报表、结构化数据集或语言描述形式反馈查询结果。这种“自然语言输入-语义解析-SQL生成-结果呈现”的技术路径，已在商业智能决策支持系统中展现出显著的应用价值，特别是在制造业多源异构数据整合场景中，有效解决了传统报表系统在灵活性和实时性方面的固有缺陷。
+
+
+早期针对NL2SQL问题解决方案主要依赖人工设计的规则与模板系统[10]，这类方法在简单数据库场景中表现效果良好，但存在明显局限性。随着现代工业级数据库环境复杂度的指数级增长[11-12]，以及规则构建所需的人工标注成本持续攀升[13]，传统方法逐渐暴露出可扩展性不足的根本性缺陷。深度神经网络的兴起推动了该领域的技术革新[4,14]，通过端到端学习实现了NL2SQL语句的自动映射[15]，其中预训练语言模型（Pre-trainedLanguageModels,PLMs）凭借其卓越的语义解析能力、领域自适应预训练和结构化知识注入等创新方法，将系统性能提升至新高尽管大语言模型在各类下游任务中表现卓越，尤其在 NL2SQL 领域取得突破性进展[20]，但是在研发和实施过程中仍面临若干关键挑战：（1）查询歧义。该挑战仍然是基于 LLMs 的 NL2SQL 系统中的一个关键错误源，导致用户的实际意图和生成的 SQL 查询之间不一致。给定一个模糊的查询，这些系统可能会生成语法上有效但语义上不准确的 SQL 查询，这些查询不符合用户的期望。这给 NL2SQL系统开发（难以将自然语言问题链接到正确的数据库元素）、评估（查询可能有多个有效的解释，而基准只能提供一个基本事实答案）和现实世界部署（系统在没有额外上下文的情况下难以准确解析和理解用户意图）带来了挑战。因此，精确识别用户意图至关重要。（2）传统方法在知识注入与推理优化环节存在静态性局限，易导致模型产生幻觉问题。这主要是由于其通常依赖于静态知识库或一次性注入的数据库模式信息，难以适应实际应用中持续变化的数据环境。同时，此类方法缺乏对业务上下文和数据库实时状态的感知能力，无法动态响应业务规则更新或数据模式演变，致使生成的 SQL 语句可能包含模型虚构的字段、表名或错误的业务逻辑关系。因此，实现动态、自适应的知识注入与推理优化，对提升 NL2SQL 系统的准确性、可靠性及实际应用价值至关重要。（3）现代数据库通过复杂的关联结构、海量数据规模以及富含元信息的上下文环境这三个维度加剧了任务复杂度。
+
+
+现在工业级大规模数据库系统普遍包含数百至数千张关联表及字段，直接将完整数据库模式信息作为提示输入将导致上下文长度溢出、计算资源消耗激增，更关键的是会引入大量噪声干扰[21-22]。研究发现，冗余的模式元素会显著降低 LLMs性能，因为实际查询通常仅涉及模式中的小部分结构。为此，模式链接（Schema Linking）技术通过筛选与查询相关的模式组件[21,23]，有效降低输入复杂度，使大模型聚焦于关键语义信息。这种选择性注意机制在保持语义完整性的同时，显著提升了系统效率。
+
+
+为解决上述问题，本文提出了面向线索数据感知的多智能体 SQL 生成方法，基于认知对齐、动态强化学习RAG和多智能体协作的NL2SQL技术，一种通过改写原始问题增强后融合动态强化学习 RAG 检索线索数据帮助大模型从多视角推理以提升 SQL 生成性能的框架。该框架先通过认知对齐推理模块对用户问题进行多样性重述，以消除模型认知偏差，增强对用户真实意图的理解。随后，多智能体框架 CLUE-SQL 借助基于动态强化学习的 RAG 机制，从多源数据中检索相关线据库交互、企业级智能决策等实际应用场景具有深远意义，构成了本研究的核心问题导向。
+
+\section{国内外研究现状}
+
+
+\subsection{基于提示的大模型推理}
+
+提示（Prompting）是一种直接且有效的技术，用于激发大语言模型的逻辑推理能力，其方法大致可分为两类。
+
+
+第一类是在回答问题时显式建模逻辑链。例如，思维链（Chain-of-Thought,CoT）[24] 提示策略使大语言模型能够逐步输出推理过程。这种方法明确显示中间推理步骤，可以显著提高解决问题的能力。即使是像“让我们一步一步思考”这样的简单提示也可以有效地指导推理过程[25]。多路径探索方法通过同时考虑多个潜在的解决方案路径，超越了线性推理。研究者提出了思维树（Tree-of-Thought,ToT）[26]，以树形结构组织替代推理路径，从而能够系统地探索不同的解决方案策略，让大语言模型在多个推理路径中进行自我评估和选择。思维图（Graph-ofThought, GoT）[27] 进一步将其推广为图结构，允许更灵活的推理模式和回溯功能，通过网络化推理增强大语言模型的能力，将大语言模型的思维建模为顶点，并通过边表示这些思维之间的依赖关系。ReAct[28] 通过将推理与行动步骤交织在一起，丰富了这一范式，使其能够与外部环境进行更动态的交互。对于复杂的问题，基于分解的方法已被证明特别有效。为了更好地模拟人类推理过程，最少到最多提示（Least-to-Most Prompting）和算法思维（Algorithm of Thoughts）[29] 系统地将复杂问题分解为可管理的组成部分，而 Plan-and-Solve[30] 将任务划分子任务并添加详细指令，为解决这些子问题提供了精细指导。累积推理（Cumulative Reasoning,CR）[31] 将复杂问题分解为小型可管理的组件，并将逻辑推导过程建模为这些组件之间的有向无环图（DAG），其中先前提出的命题被用于有效组合。当处理需要多个步骤或不同层次分析的任务时，这些方法尤其有价值。
+
+
+第二类方法旨在通过精心设计的大语言模型提示，来充分利用符号表达式的优势。例如，SymbCoT[32] 提示大语言模型首先将自然语言（NL）问题转换为符号逻辑（SL）表述，然后使用逻辑推理规则（如假言推理 MP 规则）生成逐步解Thought）[34] 基于逻辑规则翻译和扩展隐含的逻辑表达式指导大语言模型，将这些扩展的逻辑信息添加到输入提示中以推导最终答案。ChatLogic[35] 通过交互式提示集成符号逻辑编程（例如pyDatalog），纠正编程中的语义和句法错误，从而提高演绎准确性。
+
+
+基于提示的方法虽然具有透明性和可解释性，但更依赖大语言模型自身的推理能力，往往无法在复杂的逻辑问题中生成正确答案，该问题需要在给定一系列前提的情况下进行复杂的演绎、归纳或归纳推理，导致在面对复杂推理任务时性能不佳。
+
+\subsection{检索增强生成}
+
+检索增强生成（Retrieval-Augmented Generation, RAG）自 2020 年由 Lewis 等人[36] 提出后，已成为缓解大语言模型幻觉问题、弥补知识滞后性与领域适应性不足的关键技术[37-38]。其核心思想是将外部检索机制与生成模型相结合，通过从大规模知识库中动态获取实时信息，增强生成文本的事实准确性与上下文相关性。
+
+
+RAG 的基本流程涉及检索、整合和生成步骤，其中检索到的文档被输入生成器，通过注意力机制进行信息融合，从而减少幻觉并提高输出质量[39]。根据检索器与生成器的交互方式，RAG 方法主要存在四种范式：
+
+
+基于查询的 RAG，也称为提示增强，在 RAG 应用中被广泛采用。该方法将用户查询与检索到的内容结合，形成生成模型的复合输入序列，常与提示工程和少样本学习结合使用。在文本生成中，REALM[40] 使用双 BERT 来增强知识整合，而 Lewis 等人[36] 利用密集段落检索（Dense Passage Retrieval，DPR）[41] 和双向自回归Transformer（BidirectionalandAuto-RegressiveTransformer，BART）[36] 改进信息检索生成。Self-RAG[42] 通过学习何时检索、评估相关性以及使用反思标记评估结果，提高了回答质量。In-Context RALM[43] 使用 BM25 进行文档检索，并通过重排序优化过程，从而更高效地整合相关性文档。在代码生成中，CEDAR[42] 通过精心设计的模板将代码演示、查询和自然语言指令组织到提示中。APICoder[44] 使用Python文件以及API 名称、签名和描述对检索器进行微调。
+
+
+基于潜在空间表示的 RAG 涉及检索内容与生成模型之间使用潜在表征进行的内部交互。这种方法允许并发生成与交互，显著提升了模型的理解能力和生成意力将检索内容与每个子查询标记整合。
+
+
+基于概率表示的RAG方法在解码阶段使用概率方法来融合检索到的信息。模型通过结合检索结果的概率分布，权衡不同检索信息的相关性和可信度，逐步计算生成文本的概率。KNN-LM[48] 在每一步解码时，将语言模型生成的概率与基于相似前缀检索距离得到的概率相结合。TRIME[49] 和 NPM[50] 是对 KNN-LM 方法的改进，它们利用本地数据库中紧密对齐的词块来提升在长尾分布场景下的性能。
+
+
+推测式 RAG 方法通过检索来替代部分或全部生成过程。当检索成本低于生成成本时，这种方法非常有益。例如，检索到的内容可以替代小模型的生成工作，而在像 ChatGPT 这样的接口使用场景中，减少调用次数可以降低成本。REST[51]在推测解码中用检索来替代小模型以生成草稿。GPTCache[52] 通过实施一个存档LLM响应的语义缓存，提高了访问LLMAPI的效率。COG[53] 将文本创建简化为一系列复制粘贴操作，选择直接获取特定的词或短语而非重新生成。Cao 等人[54]从生成机制转向直接利用检索到的短语级内容，从而降低对初始阶段检索内容质量的依赖。
+
+
+RAG 不仅弥补了纯生成模型在知识更新方面的局限，还在开放域问答、摘要及对话系统等任务中显著提升了性能[40,47,55]。RAG 的演进反映了 NLP 领域从孤立模型到集成系统的转变，其发展得益于检索技术和生成模型的共同进步。
+
+\subsection{Natural Language to SQL}
+
+将自然语言翻译成结构化查询语言（NL2SQL）的研究可追溯至20世纪70年代。经过数十年的发展演进，该领域经历了从早期基于规则的方法到基于神经网络模型的范式转变，特别是近年来融合了预训练语言模型和大语言模型等先进技术。这种技术范式的迭代显著提升了系统的整体性能，不仅增强了模型对自然语言的语义理解能力，更在复杂 SQL 查询生成和跨数据库泛化等关键指标上实现了突破性进展。
+
+
+1、基于规则、神经网络和预训练模型的方法（1）基于规则的方法。早期研究主要依赖预定义的规则或语义解析器来将自然语言转化为查询语句[13,20,56-59]，这类方法基于 SQL 语言的强结构性特征，通过预设不同查询问题对应的模板框架，依据输入问题选择匹配模板并填充具体参数以询时扩展性差，难以适应多变的自然语言表述，跨域的泛化能力十分有限。
+
+\begin{enumerate}[label=(\arabic*)]
+\item 基于神经网络的方法。为克服基于规则方法的局限性，研究者开始采用深度学习技术实现自然语言到 SQL 查询的转化。该阶段涌现出多个大规模基准数据集，如 Spider[11]，为模型训练与评估提供了标准化基准。序列到序列（Seq2Seq）框架[60] 在 NL2SQL 任务中得到广泛应用，典型代表 IRNet[61] 通过编码器-解码器架构实现语义映射：先将自然语言问句与数据库模式共同编码，再借助中间逻辑形式逐步生成 SQL，从而显著提升了对多表连接与嵌套子查询的处理能力。后续RAT-SQL[8] 通过关系感知编码增强模式链接能力，显式地模拟了数据库表和列之间的关系，从而提高了处理复杂查询的能力。曹合心等人[62] 提出了一种基于图神经网络和自适应图构建的方法，结合 IRNet 框架与关系扩充技术，有效提升了多表SQL查询的准确率。RGA-T5[63] 通过引入关系感知异构图神经网络和空间门控适配器来增强预训练模型 T5[64]。SELSQL[65] 模型通过引入双曲空间的距离度量、图正则化优化和改良的图注意力网络来增强模式链接与语义编码。
+\item 基于预训练模型的方法。以 BERT[5] 和 T5 为代表的预训练语言模型通过大规模预训练显著提升语义理解能力，已成为了 NL2SQL 任务中的标准组件，在各类基准数据集上取得了领先性能。诸如 REDSQL[17] 采用两阶段框架：首先从自然语言查询中识别出相关的数据库模式元素，再基于这些信息逐步构建 SQL 查询，同时其模块化设计将模式链接与查询生成过程解耦，显著提升了生成准确率。 PICARD[66] 在解码过程中引入 SQL 语法约束，有效减少了语法错误，进一步增强了模型的鲁棒性。GRAPHIX-T5模型[18] 在继承T5模型上下文编码优势的同时，通过图结构学习机制强化了关系型结构信息的捕获能力。
+\end{enumerate}
+
+
+2、基于大语言模型的方法近期研究聚焦于运用大语言模型处理 NL2SQL 任务，主要探索包括预处理、上下文学习、微调和后处理，这些工作都在实现准确的SQL生成中起着关键作用。
+
+\begin{enumerate}[label=(\arabic*)]
+\item 预处理范式模式链接。数据库与数据结构的复杂性给 SQL 生成带来了显著挑战，尤其是在准确识别相关表和列方面。模式链接技术旨在将用户查询中的词语或短语映射到数据库模式元素（如表、列及其关联关系），已成为文本到 SQL 系统中的研究重点。学术界已提出多种模式链接方法。例如，DIN-SQL[67] 采用思维链[24] 推理据库分解为若干子数据库，从而筛选出与查询相关的表和列；MCS-SQL[70] 通过设计多个提示策略，增强了模式链接能力，能够更全面地探索潜在的相关表与列； PURPLE[71] 采用训练好的分类器将问题与数据库模式进行匹配，并通过模式剪枝技术去除无关信息，从而简化模式链接过程，提升SQL 生成的效率。
+\end{enumerate}
+
+
+单元格值获取。与侧重于识别相关表和列的模式链接不同，单元格值获取更强调从数据库中高效提取相关的单元格值。它能够直接为大语言模型提供丰富的上下文信息，这在自然语言查询缺乏足够细节、难以准确生成 SQL 语句时尤为重要。为了提升 NL2SQL 任务中的单元格值获取效果，研究者已提出多种方法。例如，SQL-PaLM[72] 采用最长连续匹配子序列的方法[73]，计算自然语言查询与数据库值之间的关键词相似度，并通过设定相似度阈值过滤掉不相关的匹配项，从而提高所检索单元格值的相关性；DART-SQL[74] 利用 GloVe 词向量计算问题与包含单元格值的数据库行之间的余弦相似度，进而选择最相关的若干行以及一部分随机行，为模型提供更充分的上下文支持；CodeS[75] 则通过基于数据库内容构建BM25索引，从每个相关列中检索出 top-𝑘 个最匹配的值，以增强 SQL 生成过程中的语义表征能力。
+
+
+问题改写增强。针对自然语言问题中存在的语义歧义现象以及自然语言查询与数据库内容之间的语义不对齐问题，众多研究工作聚焦于问题重写技术以提升SQL生成的准确性。Guo等人[76] 通过人工设计的指令引导大语言模型对自然语言查询进行简化处理，使问题表述更加清晰易懂；ReBoostSQL[77] 通过识别问题中的歧义术语并将其转化为明确表达式来提升表述清晰度；DART-SQL[74] 创新性地将自然语言问题与数据库元信息作为联合输入，指导大语言模型生成既符合数据库规范又具备良好可读性的重写结果；E-SQL[78] 则强调通过数据库模式信息的引导，优化原始自然语言查询的表述方式，使其在保持语义完整性的同时去除冗余信息；
+
+
+这些方法均通过不同技术路径实现了自然语言到结构化查询的高效转换，为提升数据库交互系统的智能化水平提供了理论支撑和技术方案。
+
+
+数据增强。数据增强技术在提升大语言模型性能方面具有关键作用，其效果直接受训练数据的数量和质量影响[79]，这凸显了数据增强在文本到SQL任务优化中的重要地位。近年来，研究者开发了多种创新性的半自动化与全自动化数据增强方法，充分利用大语言模型的生成能力来构建合成数据集，既可用于训练其他生成具有更高真实性和多样性的自然语言问题，同时确保对应的 SQL 语句和数据库模式保持一致；CodeS[75] 创新性地设计了双向数据增强框架，能够自动生成多样化的 < 自然语言，SQL> 语对集合；Symbol-LLM[32] 采用分阶段注入与融合的双阶段增强策略，显著提升了模型处理自然语言中心任务（如SQL生成）的能力。
+
+
+这些方法通过不同的技术路径构建了高质量的训练数据空间，为提升文本到 SQL转换系统的鲁棒性和泛化能力提供了重要的方法支撑。
+
+\begin{enumerate}[label=(\arabic*)]
+\item 上下文学习基于上下文学习（In-Context Learning, ICL）的方法主要侧重于提示词工程技术，通过消除对额外训练数据的需求来降低计算成本。同时，这些方法允许通过修改手工制作的提示来适应不同的场景。然而，不同的提示设计会显著影响 LLM在NL2SQL任务中的性能[81]。因此，在ICL框架内开发NL2SQL方法对于实现重大进步至关重要[82-83]。 知识补充整合策略。为提升大语言模型性能，诸多研究将外部知识整合至提示策略中，从而提升生成 SQL 的准确性。这类知识主要包括以下三类。（a）SQL语法规则知识。作为关系型数据库的标准编程语言，SQL 具有高度结构化和规则驱动的特性。为增强LLM对SQL语法的理解能力，已有研究引入特定规则或模板作为先验知识。DIN-SQL[67] 和ML-Prompt[84] 通过分析LLM生成的错误SQL，构建针对性修正准则库以优化生成效果；Nan 等人[85] 创新性地根据 SQL 复杂度对标注样本进行分层，并采用 𝑘-均值聚类算法实现分层抽样，提升示例选择的针对性。（b）问题结构知识。针对自然语言问题的深层挖掘，多篇研究[76,86] 探索了从问题中提取结构化知识的方法。Guo等人[76] 通过去除问题中的模式相关词汇，提取核心问题骨架并构建检索库，有效强化模型对问题本质意图的理解。（c）领域扩展知识。在NL2SQL任务中，研究者还整合了多种扩展性知识源，包括数据库元知识及任务领域知识。KE[87] 提出数据库知识注入方法，通过设计针对性训练目标将模式信息嵌入LLM；Li等人[9] 则针对客户购买场景中的“单价计算”等特定任务知识进行显式编码，使LLM能够生成更精确的领域定制化SQL语句；RAG-SRR[88]采用分序检索重排序方法，通过优化领域知识库构建、检索策略和提示词设计，显著提升了 RAG 技术在 NL2SQL 任务中的执行准确率。这些知识整合策略通过多维度信息增强，显著提升了模型在复杂数据库环境下的泛化能力。
+\end{enumerate}
+
+
+法划分为零样本与少样本两类范式：（a）零样本提示策略。多篇研究[68,77] 探索无需显式示例的零样本方法，其核心在于挖掘LLM的先验知识而非依赖具体训练样本。这类方法主要聚焦数据库模式理解或任务分解策略。ReBoostSQL[77] 通过模式解析与多阶段分解引导生成过程。零样本方法在缺乏领域数据或评估模型跨域泛化能力时展现独特优势，其有效性依赖于 LLM 的内部知识储备与推理能力。（b）少样本提示策略。当前主流优化方向聚焦于筛选有限但高效的示例集，已形成多种创新性方法：随机选择作为基线方法，LEVER[89] 通过随机抽样建立性能基准相似度驱动选择利用语义匹配机制；DAIL-SQL[86] 采用文本嵌入模型进行语义检索；
+
+
+ACT-SQL[90] 采用训练集固定示例确保基础引导，同时结合相似度选择动态示例实现个性化提示定制跨域融合选择探索领域内外示例的协同效应；ODIS[91] 将跨域数据与领域数据结合实现任务-领域双重覆盖。这些策略通过不同维度优化示例选择机制，在保证提示效率的同时显著提升了模型的泛化性能与鲁棒性。
+
+
+推理增强策略。得益于大语言模型在符号推理、常识推理和数值计算等场景中的显著优势[92]，研究者通过优化推理增强机制显著提升了 SQL 生成的准确性。
+
+
+其中，分解技术作为关键策略，通过将复杂任务拆解为可管理的子任务，逐步构建 SQL 查询，从而增强模型的推理能力。现有方法主要分为任务分解与问题分解两类：（a）任务分解方法。将NL2SQL的全流程划分为多个子模块，使每个阶段聚焦特定技术挑战。典型方法包括模式关联、类型分类、SQL生成与自修正等环节。
+
+
+DIN-SQL[67] 创新性地设计四阶段流程：模式链接、分类分解、SQL生成和自校正；
+
+
+C3[68]提出三模块架构，包含清晰提示、偏差校准提示和一致性验证；DEA-SQL[93]构建结构化工作流，涵盖数据库信息收集、查询类型识别、策略制定、语法生成、自查验证及错误回顾等环节。（b）问题分解技术。通过将复杂查询拆解为多个子问题，增强模型的多步推理能力[69,90,94]。ACT-SQL[90] 采用思维链（CoT）方法，将复杂自然语言问题自动分解为对应的 SQL 组件，确保输入与输出的精准映射；
+
+
+MAG-SQL[94] 基于Least-to-Most提示策略，提出目标-条件分解法，通过递增式添加条件生成子问题，并配备子 SQL 优化器进行阶段优化。这些方法通过分而治之的策略，显著提升了模型处理复杂语义关联和多表连接等场景的能力。
+
+\begin{enumerate}[label=(\arabic*)]
+\item 微调近年来，研究者逐步提出了多种先进的微调（Fine-Tuning,FT）技术。在微调时提升生成性能；KID[98] 针对轻量化部署需求，设计知识蒸馏框架将教师模型知识迁移至紧凑型学生模型。 在模型训练策略方面，当前主流方法包括全参数微调（Full Fine-Tuning，FFT）[99]与参数高效微调（Parameter-EffcientFine-Tuning，PEFT）[100]两类范式。FFT通过调整LLM全部参数实现任务适配，适用于需要深度领域适配的场景，能够学习更精细的 SQL 生成表征[75]；PEFT 则通过局部参数更新提升训练效率，显著降低计算与存储开销，特别适合资源受限环境。其中，低秩适配（LoRA）[101] 通过引入低秩矩阵更新模型权重，量化低秩适配（QLoRA）[102] 进一步将其扩展至量化模型。研究[98] 表明，LoRA与QLoRA在NL2SQL任务中展现出显著训练效率优势，成为当前参数高效微调的主流方案。
+\end{enumerate}
+
+\begin{enumerate}[label=(\arabic*)]
+\item 后处理方法研究在基于大语言模型的NL2SQL任务中，生成的SQL查询通常需要通过后处理进一步优化以提升用户满意度。 直接 SQL 修正。针对 LLM 生成结果中常见的语法错误问题，研究者提出了多种修正机制。DIN-SQL[67] 和 E-SQL[78] 通过内置自修正准则实现语法错误检测与修复；PURPLE[71] 系统性地归纳了 LLM 易犯的六类 SQL 错误并提供针对性修正方案，其数据库适配模块通过分析LLM输出，针对每种错误类型，设计了启发式算法进行修复。例如，将列映射到正确表、为歧义列随机分配表、添加缺失表、屏蔽不支持函数、替换不存在的列或调整聚合函数等。随着 LLM 本身能力提升，自主识别与修正语法错误的策略仍具重要应用价值。
+\end{enumerate}
+
+
+反馈引导修正。通过引入执行反馈优化 SQL 生成效果已成为提升准确率的关键手段。MAC-SQL[69] 设计了包含执行验证、错误检测、迭代修正的修正代理模块；SELF-DEBUGGING[103] 通过小样本学习使 LLM 自主分析执行结果并生成自然语言修正解释；Knowledge-to-SQL[104] 引入直接偏好优化（DPO）[105] 融合执行反馈优化 SQL；DESEM[106] 构建了基于执行错误的回退修正机制，并设计终止条件防止过度修正。
+
+
+输出一致性优化。现有研究主要从自洽性与跨模型一致性两个维度提升结果稳定性：自洽性策略包含（a）单模型多路径推理择优而选[21,68,71,86,107]，如C3[68]、DAIL-SQL[86]通过多候选SQL选择最优解（；b）多候选重排序机制[70,89]，LEVER[89]了NL2SQL 系统的实用化水平。
+
+\section{论文主要研究内容}
+
+本文的研究目标：针对自然语言固有的歧义性、大模型在 SQL 生成推理中存在幻觉以及难以解决工业级数据库复杂性的问题，本文提出了面向线索数据感知的多智能体 SQL 生成方法，一种基于认知对齐、动态强化学习 RAG 和多智能体协作的NL2SQL方法框架，旨在提升自然语言到SQL翻译的准确性。本文主要工作如下：
+
+\begin{enumerate}[label=(\arabic*)]
+\item 认知对齐增强和多视角共识推理方法针对自然语言语义存在的模糊性与歧义性问题，本文提出了一种通过问题改写增强认知对齐与多路径共识推理的方法（Cognitive-Aligned Reasoning, CAR）。 该框架面向大语言模型的复杂推理任务，采用双阶段优化机制，以弥合原始问题与模型内部认知表征之间的差距。与传统方法（如思维链 CoT 或自洽性 SC 推理）仅侧重于优化推理路径生成不同，CAR同时从问题侧（输入）和答案侧（输出）进行协同优化，在提升大语言模型复杂推理能力方面表现出显著效果，为从问题理解层面优化推理性能提供了新范式。
+\end{enumerate}
+
+\begin{enumerate}[label=(\arabic*)]
+\item 基于动态强化学习的RAG 方法为解决传统检索增强生成 RAG 框架中因检索文档相关性不足导致的生成内容不准确（即“幻觉”）问题，本文提出了一种基于动态强化学习的检索增强生成方法 DRL-RAG（Dynamic Reinforcement Learning RAG），DRL-RAG 通过构建闭环优化框架提升RAG 系统的鲁棒性。 在检索优化层，利用交叉编码器（Cross-Encoder）的细粒度相关性分数作为奖励信号，通过近端策略优化（ProximalPolicyOptimization，PPO）算法训练策略网络，动态平衡相关性、多样性和效率。在知识处理层，基于预设置信度阈值对检索文档进行动态分级处理：高置信相关文档直接利用；低置信无关文档触发规模性网络搜索以补充知识；中置信不确定文档则融合互补知识。该机制有效过滤噪声并在本地检索失效时主动寻求外部知识扩展。在生成控制层，采用结合 QA 一致性评估和零样本分类置信度的多维置信模型评估生成内容可靠性，并引入动态去重机制过滤冗余输出，共同确保最终生成结果的准确性和可靠性。
+\end{enumerate}
+
+
+数据驱动逻辑理解，将线索数据认知融入多智能体 SQL 生成框架全过程，引入外部知识内容弥补数据库模式信息的局限，增强模型对实际数据库环境的认知能力。
+
+
+从检索相关数据，到模式剪枝，再到 SQL 生成与优化，全过程利用线索数据感知辅助大语言模型以驱动生成的逻辑理解，实现复杂查询中精确高效的自然语言到SQL 的翻译。
+
+\section{论文组织结构}
+
+本文内容共分六个章节进行系统阐述，各章节的逻辑结构与核心内容如下：
+
+
+第一章，绪论。本章介绍了 NL2SQL 技术的研究背景与意义，梳理列举了国内外研究现状和相关工作，并分析了与本课题相关的现有方法存在的问题。以此为基础，明确论文的主要研究内容和组织结构，为后续章节奠定问题导向基础。
+
+
+第二章，相关理论与技术。概述检索增强生成、强化学习及双编码器/交叉编码器等核心理论与技术，为本文提出的方法奠定理论基础。
+
+
+第三章，认知对齐增强和多视角共识推理方法。提出认知对齐推理（CAR）框架，通过问题重述与多路径共识推理提升模型对复杂问题的理解与推理能力，并在常识推理数据集上验证其有效性。
+
+
+第四章，基于动态强化学习的检索增强生成方法。针对传统RAG的静态性局限，引入动态强化学习机制优化检索与生成过程，通过实验证明其在提升生成鲁棒性方面的优势。
+
+
+第五章，线索数据感知的多智能体 SQL 生成框架。设计一个多智能体协作框架，利用线索数据引导上下文提取、模式剪枝与查询优化，有效提升复杂工业级数据库场景下的SQL 生成准确率。
+
+
+第六章，总结与展望。总结全文研究工作，指出当前方法的局限性，并对未来研究方向进行展望。
+
+
+本文组织结构框架介绍如图1.2。
+
+
+数 据 化 时代 背制 造 业 领域 需研 究 挑 战与 分型 推理基 于 的 提示 大检 索 增强 生 L Q S
+
+\chapter{L N 关 键}
+\zihao{-4}
+
+挑 战R A C 方法 研G A R- L R方 法 L Q S- E U L C框凝 提归练 出纳目 关 研创标 键 究新： 挑 内方战 容法景 求 析 模 成 究 研 架究第六章 总结与展望检 索 增双强编相生码关成器理与论交与叉技强编术化码学器习关键挑战 主要研究内容 主要创新点CAR：采用两阶段优化机制，研究内容一：第三章自然语言语义存在的模 以弥合原始问题与模型内部CAR：认知对齐增强和多糊性与歧义性问题 认知表征之间的差距；侧重视角共识推理方法问题侧和答案侧优化。
+
+
+传统RAG检索文档相关 研究内容二：第四章 将强化学习与RAG融合，优性不足问题 DRL-RAG：基于动态强化 化检索层、知识处理层以及学习RAG方法 生成控制层，多端性能提升。
+
+
+大规模的工业级数据库 多源提取上下文线索数据驱研究内容三：第五章以及相关数据利用率低 动逻辑理解，将线索数据认CLUE-SQL：多智能体协问题同的NL2SQL框架知融入SQL生成全过程。
+
+
+第三章 第四章 第五章CAR DRL-RAG CLUE-SQL认 动实 实 问 实知 态 多验 验 题 验问 对 问 强 智结 结 定 结题 齐 题 化 能果 果 义 果分 推 分 学 体与 与 与 与析 理 析 习 框分 分 分 分框 R 架架 析 A 析 析 析G目标：构建融合认知对齐、动态强化学习RAG和多智能体协作的SQL生成框架。在CAR推理范式下，通过DRL-RAG集成多源线索数据感知与动态知识优化机制，以突破模式局限并增强模型对实际数据库的认知，推动数据库数据智能检索与问答。
+
+\begin{figure}[htbp]
+\centering
+\fbox{\parbox{0.8\textwidth}{\centering \zihao{5}图1.2论文总体结构}}
+\caption{图1.2论文总体结构}
+\end{figure}
+
+
+\chapter{相关理论与技术}
+\zihao{-4}
+
+为了更好的阐述本课题研究内容，本章对 NL2SQL 研究所涉及的相关理论、技术进行了详细介绍。包括检索增强生成 RAG、强化学习、Bi-Encoder 与 CrossEncoder基本原理。本章内容为后续第三至五章的方法提供核心理论基础。
+
+\section{检索增强生成}
+
+检索增强生成（RAG）作为一种融合大语言模型内部知识与外部知识的强大范式，显著提升了文本生成质量。其目标很明确，就是要把外部知识库的动态检索能力和生成模型的创造力完美结合，从而解决传统大语言模型遇到的难题。该技术通过将检索机制整合到生成流程中，有效克服了传统框架的局限性，尤其在需要广泛领域知识的应用场景中。
+
+
+RAG 的工作流程可划分为三个核心阶段：检索、增强与生成。给定用户查询𝑞 和外部知识库𝐷，RAG 的生成过程可公式化表示为：
+
+\begin{equation}
+F(q) = G(R(q,D),q), (2.1)
+\end{equation}
+
+
+\begin{equation}
+其中：R(\cdot) 代表检索模块，负责从知识库 D 中检索与查询 q 最相关的文档子集
+\end{equation}
+
+
+\begin{equation}
+{d ,d ,\ldots,d }；G(\cdot)代表生成模块，将检索结果与原始查询整合后生成最终响应。
+\end{equation}
+
+
+\chapter{2 𝑠}
+\zihao{-4}
+
+
+\begin{equation}
+检索阶段通常通过向量化实现：将查询 q 和知识文档 d 映射为稠密向量（嵌i入表示），并计算其相似度（如余弦相似度）。设嵌入模型为 E(\cdot)，则检索过程可表示为：
+\end{equation}
+
+
+\begin{equation}
+R(q,D) = argmaxsim(E(q),E(d )). (2.2)
+\end{equation}
+
+𝑖
+
+\begin{equation}
+d \inD
+\end{equation}
+
+𝑖在生成环节中，基于相关文档的响应生成过程由大语言模型完成，该模型主要承担决策者或推理者的角色。大语言模型并非自主生成知识，而是通过综合检索到的信息构建连贯响应，从而降低内部幻觉风险。此外，还可应用多种提示工程技术，包括思维链（CoT）[24]、思维树（ToT）[27]、自注释（Self-Note）[108] 和重写与应答（RaR）[109] 等。根据具体任务和预期输出，在生成知识导向的响应后可能需要进行后处理步骤，例如针对多选题或分类任务的实体识别，以及面向多语言任务的翻译组件。
+
+
+基于关键词匹配的稀疏检索（如 BM25 算法）和基于语义相似度的密集检索（如使用Sentence-BERT等模型生成嵌入向量并进行向量相似度计算）；为了提升召回结果的精度，系统常会引入重排序技术进行进一步优化。生成器通常是一个基于Transformer 架构的大语言模型，其作用是将检索器返回的相关上下文信息与原始查询进行整合，进而生成流畅、准确的答案；在生成过程中，可以通过调节温度参数（Temperature）等生成参数来控制输出的随机性，以确保内容的稳定性和可靠性。在检索之前，有必要在开始时为检索组件构建一个合适的语料库，数据来源多种多样，如维基百科等特定领域的数据集、专业语料库（如科学文章、财务报告），或从网络抓取或搜索引擎收集的实时数据[41]。知识库作为系统的外部知识来源，通常由向量数据库（如 Milvus 等）进行支撑，这些数据库专为高效的近似最近邻搜索而优化；在构建过程中，原始数据需经过清洗、分块（通常采用重叠分块策略以保持上下文完整性）以及向量化等预处理步骤，才能被检索器有效利用[112-113]。这三个模块协同工作，共同构成了RAG 技术的基础框架。
+
+\section{强化学习}
+
+强化学习（Reinforcement Learning, RL）是机器学习的一个重要分支，它不同于监督学习和无监督学习。强化学习的核心思想在于智能体（Agent）通过与环境（Environment）进行持续交互，基于获得的奖励信号（Reward Signal）学习最优策略（Policy） ， 以最大化长期累积奖励[114]。这种从交互中学习、通过试错（Trial-and-Error）来探索最优行为的方式，与人类的学习过程有相似之处。
+
+\subsection{基本概念与理论基础}
+
+强化学习问题通常使用马尔可夫决策过程（MarkovDecisionProcess,MDP）作为其形式化框架。一个标准的MDP由五个基本元素构成：状态空间（StateSpace）、动作空间（Action Space）、状态转移概率（State Transition Probability）、奖励函数（RewardFunction）以及折扣因子（DiscountFactor）。
+
+\begin{figure}[htbp]
+\centering
+\fbox{\parbox{0.8\textwidth}{\centering \zihao{5}图2.1介绍了强化学习的一般性框架示意图，在该框架中，智能体（Agent）与}}
+\caption{图2.1介绍了强化学习的一般性框架示意图，在该框架中，智能体（Agent）与}
+\end{figure}
+
+环境（Environment）构成两个核心交互单元，各自包含特定的内在功能模块。智状态转移概率 奖励函数 价值Value 策略Policy反馈P(s |s,α) R(s,α) V(s)|Q(s,α) π(α s) t+1 t t t t t t t t| t转移策略更新：
+
+
+新状态 更新 感知状态s Value-based,s t+1 t Policy-based,Actor-Critic
+
+\begin{figure}[htbp]
+\centering
+\fbox{\parbox{0.8\textwidth}{\centering \zihao{5}图2.1强化学习的一般性框架示意图}}
+\caption{图2.1强化学习的一般性框架示意图}
+\end{figure}
+
+能体具备策略函数（Policy） 与价值函数（Value） 两大核心功能：策略函数直接映射环境状态到动作选择，体现其即时决策能力；价值函数则用于评估状态或动作的长期收益，反映其对未来回报的预测与规划能力。环境模块则包含奖励函数与状态转移：奖励函数负责在智能体执行动作后生成即时反馈信号，以引导其行为优化；状态转移函数定义了环境在动作影响下的动态演化机制，决定了状态之间的转移概率。该框架通过智能体与环境的持续交互，形成“状态–动作–奖励–新状态”的闭环，为智能体实现序贯决策优化提供基础。
+
+
+一个典型的强化学习系统包含以下几个核心组件：
+
+\begin{itemize}
+\item 智能体（Agent）：学习者/决策者，执行决策的主体。
+\item 环境（Environment）：智能体外部的一切，智能体与之交互。
+\item 状态（State）(𝑠)：当前环境的状态，表示环境可能处于的情况。
+\item 动作（Action） (𝑎)：智能体在给定状态下可以执行的操作。在特定环境内，允许被执行的动作集合，通常被称为动作空间，可依据动作的表示形式，主要区分为两类：
+\item 离散动作空间（discreteactionspaces）– 连续动作空间（continuousactionspaces）• 奖励（Reward）(𝑟)：智能体每执行一个动作，环境会向智能体反馈一个标量信号，这个信号被称为奖励，它是对该动作所产生的即时效果的评估。奖励信号定义了强化学习问题的目标，在每个时间步骤内，环境向强化学习发出
+\end{itemize}
+
+\begin{equation}
+表示为 a = \pi(s)，随机性策略表示为 \pi(a|s)，即在状态 s 下选择动作 a 的概
+\end{equation}
+
+率分布。
+
+\begin{itemize}
+\item 价值函数（Valuefunction）(𝑉)：衡量从某状态或状态-动作对出发，遵循特定策略所能获得的长期累积奖励的期望值。其中：
+\end{itemize}
+
+\begin{equation}
+– 状态价值函数（V\pi(s)）：示在状态s下，遵循策略\pi 所能获得的期望累
+\end{equation}
+
+积奖励。
+
+\begin{equation}
+– 动作价值函数（Q\pi(s,a)）：表示在状态s下执行动作a，之后遵循策略
+\end{equation}
+
+𝜋 所能获得的期望累积奖励。
+
+\begin{equation}
+• 折扣因子（DiscountFactor）(\gamma)：一个介于0和1之间的数（\gamma \in [0,1]），用
+\end{equation}
+
+于权衡即时奖励和未来奖励的重要性。
+
+
+马尔可夫决策过程为强化学习提供了数学建模基础，其定义为五元组
+
+\begin{equation}
+(S,A,P,R,\gamma)。其中 S 是状态集合，A 是动作集合，P(s'|s,a) 表示从状态 s 采
+\end{equation}
+
+
+\begin{equation}
+取动作a后转移到状态s' 的概率，R(s,a) 是奖励函数，\gamma 是折扣因子。
+\end{equation}
+
+
+\begin{equation}
+强化学习的目标是找到一个最优策略\pi∗，使得期望累积奖励（也称为回报）最大化。回报G 从时间步t开始定义：
+\end{equation}
+
+𝑡∞
+
+\begin{equation}
+G = R +\gammaR +\gamma2R +\cdots = \sum\gammakR . (2.3)
+\end{equation}
+
+
+\begin{equation}
+t t+1 t+2 t+3 t+k+1
+\end{equation}
+
+𝑘=0价值函数满足著名的贝尔曼方程（BellmanEquation），该方程体现了当前价值与后续状态价值之间的递归关系。状态价值函数的贝尔曼期望方程为：
+
+\begin{equation}
+V\pi(s) = \mathbb{E} [R +\gammaV\pi(S ) ∣ S = s]. (2.4)
+\end{equation}
+
+
+\begin{equation}
+\pi t+1 t+1 t
+\end{equation}
+
+动作价值函数的贝尔曼期望方程为：
+
+\begin{equation}
+Q\pi(s,a) = \mathbb{E} [R +\gammaQ\pi(S ,A ) ∣ S = s,A = a]. (2.5)
+\end{equation}
+
+
+\begin{equation}
+\pi t+1 t+1 t+1 t t
+\end{equation}
+
+最优价值函数则满足贝尔曼最优方程（BellmanOptimalityEquation）：
+
+\begin{equation}
+V∗(s) = max\mathbb{E}[R +\gammaV∗(S ) ∣ S = s,A = a], (2.6)
+\end{equation}
+
+
+\begin{equation}
+t+1 t+1 t t
+\end{equation}
+
+𝑎
+
+\subsection{主要算法分类}
+
+强化学习算法可根据其学习和优化的核心对象，主要分为三类：基于价值的方法、基于策略的方法以及结合两者优势的行动者-评论者方法。
+
+
+1、基于价值的方法（Value-BasedMethods）
+
+\begin{equation}
+这类算法的核心是直接学习并优化价值函数（通常是动作价值函数 Q(s,a)），
+\end{equation}
+
+
+\begin{equation}
+然后通过选择价值最大的动作（例如，使用贪婪策略 \pi(s) = argmax Q(s,a)）来
+\end{equation}
+
+𝑎间接导出最优策略。其特点是通常会产生一个确定的策略。
+
+\begin{itemize}
+\item Q-Learning：一种经典的无模型（Model-Free）离线策略（Off-Policy）算法。 其核心更新公式为：
+\end{itemize}
+
+\begin{equation}
+Q(s,a) \leftarrow Q(s,a)+\alpha[r+\gammamaxQ(s',a')−Q(s,a)], (2.8)
+\end{equation}
+
+𝑎′
+
+\begin{equation}
+其中 \alpha 是学习率，r 是即时奖励，s' 是下一状态。该算法通过不断用当前估
+\end{equation}
+
+
+\begin{equation}
+计值与目标值（r+\gammamax Q(s',a')）之间的时序差分（TemporalDifference,
+\end{equation}
+
+𝑎′TD）误差来更新𝑄值。
+
+\begin{itemize}
+\item 深度Q网络（DeepQ-Network,DQN）：由DeepMind在2013年提出，是深度强化学习的开创性工作。DQN 使用深度神经网络来近似 𝑄 函数，以处理高维的状态空间。它引入了两项关键技术来稳定训练：
+\end{itemize}
+
+\begin{equation}
+– 经验回放（ExperienceReplay）：将智能体的交互经验(s,a,r,s')存储在
+\end{equation}
+
+一个回放缓冲区中，训练时从中随机采样小批量数据进行学习，打破数据间的相关性。
+
+\begin{itemize}
+\item 目标网络（TargetNetwork）：使用一个独立的、参数更新较慢的网络来计算Q 学习的目标值，减少目标值的波动。DQN 的损失函数为： 2
+\end{itemize}
+
+\begin{equation}
+L(\theta) = \mathbb{E} [(r+\gammamaxQ(s',a';\theta−)−Q(s,a;\theta)) ], (2.9)
+\end{equation}
+
+
+\begin{equation}
+(s,a,r,s')∼𝒟
+\end{equation}
+
+
+\begin{equation}
+a'其中\theta 是主网络参数，\theta− 是目标网络参数，𝒟代表经验回放缓冲区。
+\end{equation}
+
+2、基于策略的方法（Policy-Based Methods）强化学习中基于策略搜索的代表性算法。其核心思想是直接参数化策略本身，并通过采样完整的轨迹数据来估计期望回报的梯度。算法通过智能体与环境的交互，收集从初始状态到终止状态的一系列状态-动作-奖励序列（即轨迹），并利用这些蒙特卡洛样本计算策略性能梯度的一致估计。其策略梯度公式为：
+
+\begin{equation}
+\nabla J(\theta) = \mathbb{E} [\nabla log\pi (a|s)G ], (2.10)
+\end{equation}
+
+
+\begin{equation}
+\theta \pi\theta \theta \theta t
+\end{equation}
+
+
+\begin{equation}
+其中 J(\theta) 是策略性能的度量（期望回报），G 是从时间步 t 开始的累积回报。
+\end{equation}
+
+𝑡REINFORCE通过沿该梯度方向更新策略参数𝜃，以逐步优化策略并最大化长期期望回报。REINFORCE无需依赖价值函数近似器即可直接优化随机策略，为其在部分观测或高维动作空间中的适用性提供了基础。
+
+
+3、行动者-评论者方法（Actor-CriticMethods）行动者-评论者架构结合了基于价值和基于策略方法的优点。它包含两个组件：
+
+\begin{equation}
+• 行动者（Actor）：负责执行策略\pi(a|s)，即根据当前状态选择动作。
+\end{equation}
+
+
+\begin{itemize}
+\item 评论者（Critic）：负责评估行动者所执行策略的价值，通常通过学习价值函
+\end{itemize}
+
+\begin{equation}
+数V(s)或Q(s,a) 来实现。
+\end{equation}
+
+评论者提供的价值估计被用来指导行动者策略的更新，从而减少方差，加速学习过程。近端策略优化（ProximalPolicyOptimization,PPO）是当前最流行的ActorCritic 算法之一，由 OpenAI 提出，它因其训练过程稳定、调参简单且在多种任务中表现鲁棒而成为当前最流行的强化学习算法之一。PPO 通过限制新旧策略之间的变化幅度，确保了训练过程的稳定性，使其易于调参且表现鲁棒。软行动者-评价者（SoftActor-Critic，SAC）则是一种基于最大熵强化思想的离线策略算法，在最大化期望回报的同时最大化熵，鼓励探索，在机器人控制等任务中表现出色。
+
+\section{双编码器与交叉编码器}
+
+在自然语言处理领域，编码器作为核心组件，承担着将文本序列转换为数值化向量表示的关键任务。这些向量表示能够捕捉文本的深层语义信息，从而为下游机器学习任务提供可处理的特征输入。在检索增强生成系统中，编码器的作用中使用的两种主要编码器类型。交叉编码器通过将查询和文档一起编码输入模型进行深度交互，输出二者之间的相关性分数，其在精度上通常表现更佳。双编码器则采用独立编码策略，分别将查询和文档映射到同一向量空间，通过计算向量间的相似度（如余弦相似度或点积）来衡量其相关性，其在处理大规模数据时具有更高的效率。如图2.2展示两者基本架构图。
+
+
+Cosine-Similarity Classification score Classifier Embedding A Embedding B SBERT* SBERT* BERT Input A Input B Input A Input B
+
+\begin{figure}[htbp]
+\centering
+\fbox{\parbox{0.8\textwidth}{\centering \zihao{5}图2.2Bi-Encoder（左）和Cross-Encoder（右）}}
+\caption{图2.2Bi-Encoder（左）和Cross-Encoder（右）}
+\end{figure}
+
+
+\subsection{双编码器（Bi-Encoder）}
+
+双编码器是一种在自然语言处理领域中广泛使用的编码机制，对每个输入的文本片段独立地生成一个嵌入向量。这种方式使得双编码器在处理大规模数据集时具有较高的灵活性和效率。每个文本片段被单独编码成一个高维空间中的点，这些点代表了文本的语义信息，进而能够捕捉到文本的深层次特征。
+
+
+双编码器（Bi-Encoder）采用对称或共享参数的两个独立编码器，分别对查询（Query）和文档（Document）进行编码，生成对应的稠密向量（嵌入）。其核心优势在于能够预先计算并索引所有文档的嵌入向量，从而在检索阶段实现极高的效率。给定查询𝑞 和文档𝑑，双编码器的处理过程可形式化表示为：
+
+\begin{equation}
+h = Encoder (q), h = Encoder (d), (2.11)
+\end{equation}
+
+𝑞 query 𝑑 doc
+
+\begin{equation}
+其中，Encoder 和 Encoder 通常共享参数或结构相同。随后，通过计算两
+\end{equation}
+
+query doc或
+
+\begin{equation}
+sim(q,d) = h \cdoth . (2.13)
+\end{equation}
+
+
+\begin{equation}
+q d由于其能够预先计算文档嵌入并建立索引（例如使用 ANN 等近似最近邻搜索），双编码器非常适用于需要从海量候选文档中快速检索出 Top-k 个最相关文档的场景，如大规模语义搜索、推荐系统以及RAG系统的初步检索阶段。然而，其独立编码的特性也限制了模型捕捉查询与文档间细粒度交互信息的能力，这可能导致在某些复杂语义匹配任务中精度不及交叉编码器。
+\end{equation}
+
+
+\subsection{交叉编码器（Cross-Encoders）}
+
+交叉编码器（Cross-Encoder）将查询 𝑞 和文档 𝑑 拼接成一个完整的序列输入到Transformer编码器中，允许模型在编码过程中直接进行精细的交叉注意力计算，从而更准确地评估两者的相关性。其输入序列构建通常遵循以下格式：
+
+\begin{equation}
+Input = [CLS]q [SEP]d [SEP]. (2.14)
+\end{equation}
+
+模型对该联合输入进行编码后，通常会利用 [CLS] 标记对应的输出向量或通过池化操作获得的综合表示，输入到一个分类头（如线性层加 Sigmoid 激活函数）中以生成一个范围在0到1之间的相关性分数：
+
+\begin{equation}
+s = \sigma(W \cdoth +b), (2.15)
+\end{equation}
+
+[CLS]
+
+\begin{equation}
+其中，\sigma 是Sigmoid 激活函数，W 和b 是可学习的权重和偏置。
+\end{equation}
+
+交叉编码器的优势在于其强大的交互建模能力，能够捕捉查询和文档之间细微的语义关联和上下文依赖关系，因此在重排序（Re-Ranking）、重复内容检测、释义识别、法律或医疗文本分析等对精度要求极高的任务中表现出色。但其主要缺点在于计算开销巨大，因为每个查询-文档对都需要进行单独的前向传播计算，无法进行预计算，这导致其难以直接应用于需要处理大规模候选集的首轮检索。
+
+
+为了在检索效率与排序精度之间取得最佳平衡，工业界和学术界广泛采用一种混合架构策略。该策略通常包含两个阶段：1、检索阶段（Retrieval） ： 使用高效的Bi-Encoder从庞大的文档库中快速检索出数量较多的候选文档（例如Top-100或Top-200）。2、 重排序阶段（Re-Ranking） ： 使用高精度的Cross-Encoder对初步以及RAG 系统之中。本文第4章提出的方法也采用了这种混合架构的思想。
+
+\section{本章小结}
+
+本章围绕本文研究所涉及的核心理论与技术进行了系统阐述。首先，介绍了检索增强生成（RAG）的基本原理与核心流程，分析了其在缓解大语言模型知识滞后与幻觉问题中的关键作用。其次，概述了强化学习的基本概念与主要算法分类，包括马尔可夫决策过程、贝尔曼方程以及近端策略优化（PPO）等代表性方法，为后续动态优化检索策略提供了理论基础。最后，对比分析了双编码器与交叉编码器两种编码机制的原理与适用场景，阐明了二者在检索效率与匹配精度上的互补特性。
+
+
+上述理论与技术共同构成了本文方法体系的技术基础。其中，检索增强生成与双编码器/交叉编码器的协同机制为第四章基于动态强化学习的检索增强生成方法（DRL-RAG）提供了检索架构支撑；强化学习理论为 DRL-RAG 中的多目标策略优化奠定了算法基础。本章内容为后续第三至第五章的研究工作提供了必要的理论准备。
+
+\chapter{认知对齐增强和多视角共识推理方法}
+\zihao{-4}
+
+大语言模型因其在大规模语料上预训练而获得的丰富语言知识，在问答和代码生成等任务中展现出强大能力，但在处理复杂推理任务自然语言转 SQL（NL2SQL）这一核心复杂推理任务中仍面临关键瓶颈：模型内部认知框架与自然语言查询、数据库模式的语义对齐存在根本性错位，极易引发用户查询意图误解、SQL生成语义偏差等问题。尽管思维链（Chain-of-Thought,CoT）和自洽性（SelfConsistency,SC）等方法通过生成多路径推理提升了通用推理质量，但二者均未解决原始问题与模型解释过程之间的根本性错位问题。
+
+
+为此，本章提出面向NL2SQL任务的认知对齐推理（Cognitive-AlignedReasoning,CAR）方法，通过问题重述增强与多视角共识推理，精准对齐自然语言查询与数据库模式的语义认知，强化模型对NL2SQL复杂查询的意图理解与SQL逻辑推理能力。在多个数据集上的实验结果表明，CAR方法在逻辑计划准确率、SQL语义正确性等核心指标上显著优于Zero-Shot、CoT、SC等基线方法，充分验证了该方法在提升NL2SQL 语义对齐效果、优化复杂SQL 生成性能方面的有效性。
+
+\section{问题分析}
+
+以 GPT 系列为代表的大语言模型，因其在问答、代码生成和智能体等应用中的卓越性能而广受欢迎[117-118]。在 NL2SQL 这一特定任务中，大语言模型被寄予厚望，旨在直接将用户模糊、多样的自然语言查询转化为精确、可执行的结构化查询语言（SQL），从而降低数据访问的门槛。尽管大语言模型通过海量语料库学习获得了强大的语义理解与生成能力，但当面对 NL2SQL 任务中复杂的、包含歧义的自然语言查询时，其推理过程仍面临根本性挑战。为解决复杂推理问题，研究者提出了多种方法。Wei 等人[24] 提出了思维链提示，通过引导模型“让我们一步一步思考”（“Let’s think step by step”）生成中间推理步骤来提升透明度和准确性。
+
+
+在此基础上，Wang 等人[119] 引入了自洽性方法，通过集成多条推理路径并投票选择最优解，以增强结果的稳定性。这些方法在通用推理任务上取得了显著成效。
+
+
+然而，复杂自然语言问题并非总能被模型直接理解。人类语言具有固有的模糊性，在数据库查询场景中尤为明显。例如，用户可能使用“销售额”、“营收”或“流水”来指代数据库中的同一业务指标（如sales\_amount列），或使用不完整、口理解。当原始的自然语言查询与模型的内部认知框架不匹配时，模型从问题理解的初始阶段就可能产生偏差。如图3.1所示，尽管思维链和自治性方法通过生成或集成多条推理路径，有效提升了推理过程的透明度与稳定性，但这些方法的优化焦点集中在推理路径的生成与选择上，并未从源头主动弥合用户意图与模型理解之间的初始认知鸿沟。在 NL2SQL 任务中，这种初始的理解偏差会直接传导至后续的模式链接（SchemaLinking）和SQL生成步骤，导致产生语法正确但语义错误的查询语句，例如错误地关联了表或列。
+
+
+Among the schools with the average score in Math over 560 in the SAT test, how many schools are directly charter-funded? Database: College
+
+\begin{lstlisting}
+Tables: satscores, frpm ...
+\end{lstlisting}
+
+Reasoning (single path) Perspective 1: Filtering First Perspective 1: Filtering First Perspective 4: Shortcut Path 1. Find schools with AvgScrMath > 560. 1. Filted schools withe AvgScrMath >560. 1. Join satscores and frpm on school 1. Filter directly charter-funded schools.2. Among these schools, find those that 2. Join with frpm to get charter funding code. 2. Check their AvgScrMath> 560.are directly charter-funded. type. 2. Filter by AvgScrMath > 560. 3. Count the schools.3. Count the number of such schools. 3. Keep those directly charter-funded. 3. Filter by directly charter-funded.4. Count the schools. 4. Count the remaining schools. Generated SQL Generated SQL Generated SQL Generated SQL
+
+\begin{lstlisting}
+SELECT COUNT(T2. `School Code`) SELECT COUNT(T2. `School Code`)
+\end{lstlisting}
+
+
+\begin{lstlisting}
+FROM satscores AS T1 SELECT COUNT(T2. `School Code") SELECT COUNT(T2. `School Code') FROM frpm AS T2
+\end{lstlisting}
+
+INNER JOIN frpm AS T2 FROM satscores AS T1 FROM satscores AS T1 INNER JOIN satscores AS T1 ON T1. cds = T2. CDSCode WHERE INNER JOIN frpm AS T2 INNER JOIN frpm AS T2 ON T1. cds = T2. CDSCode WHERE T1. AvgScrMath > 560 ON T1. cds = T2. Code WHERE T1. ON T1. cds = T2. CDSCode WHERE T2. Charter Funding Type =AND T2. Charter Funding Type = AvgScrMath > 560 T1. AvgScrMath > 560 ' Directly funded' ' Directly funded' AND T2. Charter Funding Type = AND T2. Charter Funding Type = AND T1. AvgScrMath > 560 ' Directly funded' ' Directly funded' Result: 119 Result: 117 Result: 102 Result: 132单路径推理容易产生幻觉或缺少约束，导致SQL不正确。 Voting CoT(Chain-of-Thought) Candidate SQL Support Count Vote Share
+
+\begin{lstlisting}
+SELECT C A O N U D N T T 2 (T . C 2. h `S ar c t h e o r o F l u C n o d d in e g " ) T .. y . p W e H = E ' R D E ir e T c 1 t . ly A f v u g n S d c e r d M ' ath > 560 3 75% Final answer: 132
+\end{lstlisting}
+
+
+\begin{lstlisting}
+SELECT COUN ' T D ( i T re 2 c . t S ly c f h u o n o d l e C d o ' A de N ) D .. . T W 1. H A E v R gS E c T rM 2. a C th h > ar 5 te 6 r 0 Funding Type = 1 25%
+\end{lstlisting}
+
+
+\begin{figure}[htbp]
+\centering
+\fbox{\parbox{0.8\textwidth}{\centering \zihao{5}图3.1NL2SQL任务中用户意图识别错误示例}}
+\caption{图3.1NL2SQL任务中用户意图识别错误示例}
+\end{figure}
+
+为应对上述挑战，本文提出认知对齐推理（Cognitive-AlignedReasoning,CAR）方法，旨在通过从源头优化问题理解与推理路径选择，系统性解决 NL2SQL 任务中因自然语言查询的模糊性、歧义性所导致的意图理解偏差与认知框架错配问题，从而显著提升大语言模型在该任务中的精确度和鲁棒性。CAR 方法的核心在于结合问题重述对齐与多视角共识推理，对复杂查询进行深层次语义解析，确保模型的认知与用户的真实意图对齐。
+
+
+该方法首先主动干预问题输入，引导大语言模型对原始自然语言查询进行多次重述与语义改写，生成多种在目标数据库上下文中语义等价但表述更精确、无歧义的问题版本。这一“对齐”过程旨在将模糊的用户查询自适应地映射到模型易推理步骤，最终通过自适应选择机制识别出最一致、最可靠的推理路径与答案。这种双阶段机制（输入对齐+多路径共识）共同确保了在面对复杂NL2SQL查询时，推理过程的准确性与稳定性。
+
+
+为验证CAR方法的通用性与有效性，我们在多个开源大语言模型（包括Qwen系列模型、GLM-4-9B-Chat 等）上进行了评估。实验不仅覆盖了多种常识推理任务，还特别设计了在NL2SQL相关数据集（如BIRD）上的评估，以检验其在提升自然语言到结构化查询转换任务中的逻辑正确性和意图理解准确性。实验结果表明，CAR方法在多个评估基准上显著优于主流基线方法（如Zero-Shot、CoT、SC），特别是在需要深层语义理解和消除歧义的任务上优势明显，验证了其提升复杂推理质量的有效性及其在NL2SQL 等结构化输出任务中的应用潜力。
+
+
+本章主要内容如下：
+
+
+1、提出面向复杂推理任务（如NL2SQL）的认知对齐推理（CAR）新框架，通过问题侧与答案侧协同优化，有效提升大语言模型推理性能。
+
+
+2、设计基于多样化问题重述的认知对齐机制，引导模型从多角度理解与重写原始查询，缓解因语义模糊导致的认知框架不匹配问题，增强模型对复杂问题的鲁棒性理解。
+
+
+3、提出多视角共识推理与自适应决策策略，集成多条推理路径信息，通过一致性选择提升答案的准确性与稳定性。
+
+
+4、在多个常识推理与 NL2SQL 相关数据集上进行系统评估，实验证明 CAR能显著提升不同大语言模型的推理质量，验证了方法的有效性与泛化性。
+
+\section{认知对齐推理框架}
+
+本章提出了认知对齐推理（CAR）的方法，旨在通过两阶段减少模型的理解偏差，增强其理解和多路径推理的能力，如图3.2所示。
+
+\subsection{多样化改写和对齐}
+
+在复杂的自然语言推理任务中，模型对输入语言表达的细微差异往往表现出显著的敏感性，这种敏感性可能导致深层次的理解偏见和误解。特别是在问题措schools with a funding type of "Directly whose charter funding type is listed as funded"? "Directly funded."
+
+\begin{lstlisting}
+SELECT COUNT(T2.`School Code`) SELECT COUNT(T2.`School Code`)
+\end{lstlisting}
+
+
+\begin{lstlisting}
+SELECT COUNT(DISTINCT T1.cds) FROM satscores AS T1 FROM satscores AS T1
+\end{lstlisting}
+
+
+\begin{lstlisting}
+FROM satscores AS T1 INNER JOIN frpm AS T2 INNER JOIN frpm AS T2
+\end{lstlisting}
+
+LEFT JOIN frpm AS T2 ON T1.cds = T2.CDSCode ON T1.cds = T2.CDSCode ON T1.cds = T2.Code WHERE T1.AvgAScrMath > 560 WHERE T1.AvgScrMath > 560
+
+\begin{lstlisting}
+WHERE T1.AvgScrMath >= 560 AND T2.`Charter Funding Type` = AND T2.`Charter Funding Type` =
+\end{lstlisting}
+
+AND T2.`School Type` = 'Charter'; 'Directly funded'; 'Directly funded';
+
+\begin{equation}
+\times \sqrt \sqrt
+\end{equation}
+
+Voting Step2: Multi-Perspective Consensus Reasoning Final answer:132
+
+\begin{figure}[htbp]
+\centering
+\fbox{\parbox{0.8\textwidth}{\centering \zihao{5}图3.2认知对齐推理（CAR）方法}}
+\caption{图3.2认知对齐推理（CAR）方法}
+\end{figure}
+
+辞与模型内建的认知框架不完全匹配时，这种偏见会进一步放大，从而影响推理的准确性和鲁棒性。研究表明[120]，仅替换句子中的同义词就可能导致自然语言处理模型对文本分类和推理任务的结果产生逆转，这凸显了模型语义理解脆弱性这一根本挑战。此外，大语言模型在区分事实、信念和知识等认知范畴时存在系统性困难，当问题表述涉及主观信念或多层嵌套结构时，模型更易出现逻辑误判。为了应对这一挑战，我们提出了一种名为“多样化改写与对齐”的方法，其核心思想是通过生成原始问题的多种语义等效改写版本，丰富模型对问题语义空间的表征，从而减少因单一表述方式引发的认知偏差。
+
+
+该方法首先基于精心设计的提示模板，引导大语言模型对原始问题进行重新表述与语义对齐。提示词旨在确保改写后的问题在引入语言多样性的同时，严格保持与原始问题的语义一致性，避免信息失真或扭曲。这一过程借鉴了“修正优于生成”思想，即通过细微调整而非完全重构来优化模型行为。提示词如下所示：
+
+\begin{lstlisting}
+"{original_question}"
+\end{lstlisting}
+
+Giventheabovequestion,rephraseandexpandittohelpyouunderstandand answer better. Maintain all information in the original question as much as possible.形式上，给定一个原始问题𝑞，我们使用大语言模型，通过基于采样的解码策且满足：
+
+\begin{equation}
+q' ∼ LLM (“Question: {q}\n{p}”), (3.2)
+\end{equation}
+
+𝑖 𝑅
+
+\begin{equation}
+其中 q' 表示在给定问题 q 和和特定元提示 p 的条件下，通过大型语言模型采样得
+\end{equation}
+
+
+\begin{equation}
+i到的第i个改写问题。该过程的核心在于，元提示p被精心设计用于引导模型在保持原始问题语义核心不变的前提下，生成具有多样化表面形式的表达变体。
+\end{equation}
+
+该方法不仅旨在引导大语言模型生成问题的不同表述形式，更关键的是确保重述后的问题与原始问题保持严格的语义对齐。通过对原始问题进行重述增强，我们实质上将其语义内容映射至模型固有的、且更为熟悉的认知框架中。这种对齐操作有助于激活模型内部与问题相关的知识路径，从而在更深层次上促进对问题意图的准确理解。此方法能够有效降低因问题表述的微妙差异所引发的模型理解偏差，为后续的推理步骤提供更清晰、更稳健的认知基础。
+
+\begin{equation}
+为了在重述与对齐过程中最大化问题表述的多样性，并激发模型的多视角理解潜能，我们采用随机采样技术。我们引入了温度采样（TemperatureSampling）和top-k 采样（top-k Sampling）等策略。温度参数通过调整模型输出概率分布的平滑度，鼓励模型在生成时探索更多低概率但合理的词汇选项；而top-k采样则通过限制每一步的候选词范围，在保证生成质量的同时引入随机性。这两种技术的结合使用，使得对同一问题的 n 次独立采样能够产生在词汇选择、句法结构和表达风格上更具差异性的改写版本。这种多样性对于模拟人类从不同角度理解问题的能力至关重要，它使模型能够突破其固有的表达模式。
+\end{equation}
+
+最终，我们从大模型中获得多个重述与对齐后的问题版本，每个版本都代表着对原问题在不同视角下的潜在理解。该方法有效丰富了问题侧的表述多样性，为多视角共识推理提供重要基础。通过拓宽视角范围，显著增强了大模型推理过程的稳定性与准确性。
+
+\subsection{多视角共识推理}
+
+在实现问题的多样化重述与语义对齐之后，本研究进一步提出一种多视角共识推理方法。该方法旨在通过聚合原始问题及其多个语义等效改写版本所触发的推理路径，将传统基于单一问题表述的推理模式扩展成多路径集成框架。具体而覆盖与更深层理解。这种集成策略不仅有助于克服单一表述可能带来的认知偏差，还能通过路径间的交叉验证提升推理结果的一致性与稳健性。
+
+\begin{equation}
+形式化地，给定原始问题q、其对应的改写问题集合R(q) = {q',q',\ldots,q'}以
+\end{equation}
+
+
+\chapter{2 𝑛}
+\zihao{-4}
+
+
+\begin{equation}
+及直接推理路径 K(q) = {k ,k ,\ldots,k }，模型将对每一问题版本执行推理，得到
+\end{equation}
+
+
+\chapter{2 𝑘}
+\zihao{-4}
+
+
+\begin{equation}
+相应的答案集合 𝒜(R(q))\cup𝒜(K(q))。最终答案 A 通过多数投票机制从所有推
+\end{equation}
+
+final理路径生成的答案中选取，其表达式如下：
+
+\begin{equation}
+A = MajorityVote . (3.3)
+\end{equation}
+
+final
+
+\begin{equation}
+a\in{𝒜(R(q))\cup𝒜(K(q))}
+\end{equation}
+
+在这一机制中，多数投票函数通过统计各候选答案的出现频率，选择支持度最高的答案作为最终输出。该方法本质上模拟了群体决策中的共识形成过程，通过集成多路径推理结果来降低因单一路径不确定性导致的错误风险，从而在复杂推理任务中实现更高的预测准确度与语义一致性。
+
+
+基于前述的多样化重述与语义对齐机制，我们进一步设计了集成化的提示模板，旨在将原始问题与其多个重述版本同时引入大语言模型的推理流程。该模板通过结构化引导，促使模型在生成回答时综合考量原始语义与多样化表达中所蕴含的互补信息，从而实现对问题意图的多角度解析与更深层次的理解。以下展示了所设计的提示模板结构：
+
+\begin{lstlisting}
+"(original) {original_question}"
+\end{lstlisting}
+
+
+\begin{lstlisting}
+"(rephrased) {rephrased_question}"
+\end{lstlisting}
+
+Use your understanding of the rephrased question to help you answer the originalquestion.在此模板中，原始问题与重述版本被明确标注并并列呈现，辅以指令要求模型借助对重述版本的理解来回答原始问题。这一设计借鉴了思维链提示的思想，通过显式关联不同表述，引导模型建立语义映射与交叉验证，从而激活其内部知识网络中与问题相关的不同侧面。研究表明[121]，此类结构化提示能够有效降低模型对单一问题表述的依赖，增强其语义泛化能力。
+
+
+为了在引入多视角理解的同时，确保原始问题的语义完整性不被稀释，我们额外整合了基于原始问题的 𝑘 条直接推理路径。在此路径下，模型不依赖任何重视角推理路径和原始问题路径的多元推理集合，显著丰富了推理过程中的信息源与评估基准。
+
+
+在获得基于不同视角的多条推理路径后，我们引入了一种基于多数投票的共识推理机制，以聚合各路径生成的答案，并选取一致性最高的结果作为最终输出。
+
+
+具体而言，模型会针对多视角推理路径和原始问题直接推理路径所产生的多个答案进行一致性投票评估，从而识别出最优的推理路径。该共识机制能够有效综合模型从不同视角得出的理解与判断，显著提升了其在处理复杂推理任务时答案的一致性与整体可靠性。该方法增强了系统的鲁棒性，为复杂问题的解决提供了更为稳定的解决方案。
+
+
+我们为Cognitive-AlignedReasoning（CAR）框架提供伪代码，详见算法1。
+
+
+算法1认知对齐推理(CAR)
+
+\begin{equation}
+输入: 原始问题q,重述次数n,直接路径数量k
+\end{equation}
+
+输出: 最终答案𝐴1:步骤1: 多样化重述与对齐
+
+\begin{equation}
+2: 使用LLM 在q 上生成q',q',\ldots,q' ▷构建多样化问题池
+\end{equation}
+
+rephrase 1 2 𝑛
+
+\begin{equation}
+3: 令R(q) \leftarrow {q',\ldots,q'}
+\end{equation}
+
+
+\chapter{𝑛}
+\zihao{-4}
+
+4:步骤2: 多视角共识推理
+
+\begin{equation}
+5: forq \in R(q) do
+\end{equation}
+
+𝑖
+
+\begin{equation}
+6: a \leftarrow LLM (q,q')
+\end{equation}
+
+𝑖 reason 𝑖7: endfor
+
+\begin{equation}
+8: forj \leftarrow 1 到k do ▷保留原始问题的直接推理路径，防止语义漂移
+\end{equation}
+
+(𝑞)
+
+\begin{equation}
+9: a \leftarrow LLM (q)
+\end{equation}
+
+
+\begin{equation}
+j reason 10: endfor (q) (q)
+\end{equation}
+
+
+\begin{equation}
+11: 令A \leftarrow {a ,\ldots,a ,a ,\ldots,a } ▷形成多路径推理集合
+\end{equation}
+
+
+\chapter{𝑛 1 𝑘}
+\zihao{-4}
+
+12:步骤3: 多数投票
+
+\begin{equation}
+13: A \leftarrow MajorityVote(A)
+\end{equation}
+
+14: return𝐴为全面评估所提出方法的有效性，我们选取了自然语言处理领域中三个具有代表性的常识推理基准数据集进行实验验证，包括：CommonsenseQA[122]、StrategyQA[123]、ARC[124] 和 Mini-Dev（BIRD 开发数据集的轻量版）。这些数据集均侧重于评估模型对隐含知识的理解与多步推理能力，但各自具有不同的特点与挑战维度，能够从多角度检验模型的性能。
+
+
+CommonsenseQA 是一个旨在评估机器对常识知识进行理解与推理的多项选择问答数据集。该数据集通过从 ConceptNet 知识库[125] 中提取概念关系，并采用众包方式构建问题，其核心挑战在于模型不仅需要理解问题的字面含义，还需利用人类习以为常的常识进行推理判断。数据集的正式版本包含约1.2万个问题，每个问题提供一个正确答案和四个精心设计的干扰项。该数据集作为一项富有挑战性的基准任务，对于推动机器迈向“能理解、会思考”的通用人工智能至关重要。
+
+
+StrategyQA 是一个专注于评估隐含多步推理能力的二元分类（是/否）问答数据集。该数据集的独特之处在于，问题的答案通常无法直接从单一事实或表面信息中得出，而是需要模型结合常识进行一系列逻辑推理步骤才能得出正确结论。在本研究中，我们采用了直接问答的评估方式，而未依赖数据集原始设定中可能提供的问题分解步骤或外部证据段落。这种方法旨在检验模型自身的语义理解与内在推理能力，使其更贴近实际应用场景中对模型端到端推理能力的要求。
+
+
+ARC（AI2ReasoningChallenge）数据集由艾伦人工智能研究所（AI2）发布，其目标是为需要高级推理能力的问答研究提供挑战。该数据集的问题来源于小学科学考试题目，要求模型不仅依赖表层知识，还需进行深刻的科学原理推理。ARC数据集根据难度被划分为两个子集：ARC-Easy和ARC-Challenge。其中，ARC-Challenge子集特别包含了那些即使使用基于检索的算法和词汇共现算法也难以正确回答的问题，从而对模型的真实推理能力提出了更高要求；ARC-Easy则包含了剩余的相对简单的问题。这种划分使得ARC数据集能够有效区分模型的简单知识检索能力与复杂推理能力。
+
+
+对于上述所有数据集，我们采用准确率（Accuracy）作为核心评估指标。准确率是分类任务中最直观的评估指标之一，其定义为模型预测正确的样本数量占测其中，𝑁 代表正确预测的样本数，𝑁 代表总样本数。该指标能够直观地反correct total映模型在整体上的推理性能，因其计算简单、解释性强而被广泛应用于多项选择问答任务的评估中。
+
+
+BIRD Mini-Dev 数据集是从大规模 NL2SQL 基准 BIRD[9] 中精心选取的一个轻量化、高代表性的子集，其保留了原数据集在真实业务场景下所蕴含的语义歧义、复杂模式关联与数值推理等核心挑战，同时凭借其较小的规模为算法验证与快速迭代提供了高效基准，常被用于方法原型开发。我们为其中的每个问题人工标注或通过SQL解析自动生成一个标准的逻辑计划作为评估的基准（GroundTruth）。
+
+
+为精准评估 SQL 的逻辑正确性，我们设计一个中间表示任务，称为“逻辑计划生成”。逻辑计划是数据库系统中介于 SQL 语句和物理执行计划之间的一种抽象表示。它描述了要执行的操作（如选择、投影、连接、聚合）及其逻辑顺序，但不包含具体的实现细节（如使用哪种索引或连接算法）。给定一个自然语言问题Q和相关的数据库模式S，模型需要输出一个结构化的逻辑计划P，这个计划由一系列操作符组成。如图3.3所示。
+
+
+操作符示例：
+
+
+Scan(table\_name)：扫描某张表。
+
+
+Filter(condition)：根据条件进行过滤。
+
+
+Join(left\_table, right\_table, condition)：根据条件连接两张表。
+
+
+Aggregate(group\_by\_columns, aggregation\_functions)：进行分组聚合。
+
+
+Project(columns)：选择要输出的列。
+
+
+案例说明：
+
+
+l 问题：“找出每个部门中薪水最高的员工姓名。”l 标准逻辑计划：
+
+
+1. Scan(employees) 2. Scan(departments) 3. Join(employees, departments, employees.dept\_id = departments.dept\_id) 4. Aggregate(group\_by: dept\_id, aggregation: MAX(salary) as max\_salary)// 先找到每个部门的最高薪水5. Join(结果3， 结果4， employees.dept\_id = 结果4.dept\_id AND employees.salary = max\_salary)// 将原表与最高薪水结果连接，找出对应员工6. Project(employee\_name)//选择要输出的列
+
+\begin{figure}[htbp]
+\centering
+\fbox{\parbox{0.8\textwidth}{\centering \zihao{5}图3.3逻辑计划生成}}
+\caption{图3.3逻辑计划生成}
+\end{figure}
+
+
+\chapter{𝑁}
+\zihao{-4}
+
+(𝑖) (𝑖)
+
+\begin{equation}
+Accuracy = \sumI(P = P ), (3.5)
+\end{equation}
+
+
+\begin{equation}
+N pred gti=1 (i) (i)
+\end{equation}
+
+
+\begin{equation}
+其中：N 表示总样本数，P 和P 分别代表第i个样本的预测计划和标准计划，
+\end{equation}
+
+pred gt𝐼(⋅)是指示函数（当计划完全匹配时取值为1，否则为0）。若使用图编辑距离，可定义为：
+
+\chapter{𝑁}
+\zihao{-4}
+
+(𝑖) (𝑖)
+
+\begin{equation}
+Accuracy = \sumexp(−\lambda\cdotd P ,P )), (3.6)
+\end{equation}
+
+𝑁 ( pred gt𝑖=1
+
+\begin{equation}
+其中，d(\cdot,\cdot) 为编辑距离，\lambda 为缩放参数。该指标侧重于整体结构的正确性，忽略
+\end{equation}
+
+实现细节，是评估语法和语义一致性的基础。
+
+
+操作符召回率（Operator Recall）：此指标聚焦于逻辑计划中操作符类型（如Join、Aggregate）的预测准确性，忽略操作符顺序的微小差异。召回率计算如下：
+
+
+|CorrectlyPredictedOperators|
+
+\begin{equation}
+Recall = , (3.7)
+\end{equation}
+
+|TotalOperatorsin𝑃 |gt其中，分子表示模型正确预测的操作符数量，分母是标准计划中的操作符总数。召回率反映模型覆盖标准操作符的能力。
+
+
+关键路径匹配度（KeyPathMatchScore）：指逻辑计划中影响查询语义的核心步骤序列（如聚合或连接条件）。该指标计算关键步骤的匹配比例：
+
+
+|MatchedKeySteps|
+
+\begin{equation}
+MatchScore = , (3.8)
+\end{equation}
+
+|TotalKeySteps|其中，分子是预测计划与标准计划中匹配的关键步骤数（例如，通过子图同构或语义对齐判断），分母是关键步骤总数。该指标强调对查询意图的核心保障，尤其适用于复杂查询的深度验证。
+
+\subsection{基准模型}
+
+在本研究中，我们将提出的认知对齐共识推理（Cognitive-Aligned Reasoning, CAR）方法与以下三种具有代表性且广泛采用的基线方法进行对比分析，包括：零样本（Zero-Shot）[25]、思维链（Chain-of-Thought,CoT）[24] 以及自洽性（SelfConsistency,SC）[119]。这些基准涵盖了从基础推理到复杂集成的不同层次，旨在系统性地验证CAR 模型在提升推理质量、一致性和鲁棒性方面的优势。
+
+
+在计算效率上具有优势，但由于其缺乏对复杂问题逻辑结构的显式引导，在处理需要多步分析或隐含常识的推理任务时，性能往往受到限制。
+
+
+思维链（Chain-of-Thought, CoT）方法通过显式引导模型生成中间推理步骤，显著改进了复杂问题的处理能力。具体实现中，该方法通常将测试问题与诸如“让我们逐步思考”（“Let’sthinkstepbystep”）的提示指令相结合，促使模型将问题分解为一系列连续的推理子步骤。这种分步推导的过程不仅提升了模型答案的透明度，使其推理逻辑得以展现，更有助于模型在解决算术、常识推理及符号操作等任务时更准确地跟踪信息状态，从而减少最终答案的错误。研究表明，CoT 能力通常在大规模语言模型中才能被有效激发。
+
+
+自洽性（Self-Consistency,SC）方法在CoT的基础上进一步引入随机采样与多数投票机制，以提升推理的稳健性。该方法首先通过调整解码参数（如提高采样温度）为同一问题生成多条可能具有差异性的推理路径，从而获得一组候选答案。随后，采用多数投票策略从这些候选答案中选择出现频率最高的作为最终输出。这种机制有效降低了因单一路径随机误差或局部偏差导致的错误，尤其适用于答案空间离散且可能存在多种合理推理过程的任务场景。然而，该方法也带来了显著增加的计算成本。
+
+\subsection{实施细节}
+
+在本研究的所有实验中，核心目标是通过多样化问题改写与多路径推理来增强模型对复杂问题的理解能力。由于该方法依赖于大语言模型生成具有创造性和多样性的文本，我们对模型进行了针对性配置：在生成问题改写版本和推理路径时，我们采用了基于随机采样的方法，通过调整关键超参数以平衡生成结果的多样性与质量。主要参数设置如下：
+
+
+(i) 温度参数（temperature）设置为0.8，使得模型在生成过程中探索更多合理的词汇选择，从而引入更丰富的表达变异；
+
+
+(ii) top\_k采样参数设置为20，限制每一步生成时的候选词范围，在保证语言流畅性的同时控制随机性；
+
+\begin{equation}
+(iii) 生成文本的最大长度（max_tokens）统一设为 512，以确保生成内容的完整充分覆盖问题的多种潜在表述方式，为多视角推理提供基础。实验表明，n=3能在生成充分多样性与计算开销之间取得良好平衡。对于多视角共识推理机制，我们为每个原始问题保留k=2条直接推理路径（不依赖任何改写版本），以保持原始语义的完整性，防止改写过程可能引起的语义漂移。因此，每个问题的总推理路径数为n+k = 5条。为进行公平比较，在基线方法自洽性中，我们同样为每个问题生成 5 条推理路径，并通过多数投票机制聚合最终答案。这一设计确保了所有对比方法在总计算量上的一致性，使性能差异可归因于方法本身而非资源投入。
+\end{equation}
+
+
+\subsection{主要实验}
+
+我们选取主流开源大模型 Qwen2-7B-Instruct 作为统一基座模型，对所提出的认知对齐推理（CAR）方法与 Zero-Shot、CoT、SC 三类经典基线方法开展公平、系统的对比实验评估。实验覆盖了 CommonsenseQA、StrategyQA、ARC-Easy 与ARC-Challenge 四个具有不同特点的常识推理数据集，旨在系统检验 CAR 在多样化任务上的有效性与泛化能力。表3.1展示了各方法在四个数据集上的准确率对比结果。
+
+\begin{table}[htbp]
+\centering
+\caption{表3.1使用Qwen2-7B-Instruct对不同方法的准确性（%）进行比较}
+\fbox{\parbox{0.8\textwidth}{\centering \zihao{5}表3.1使用Qwen2-7B-Instruct对不同方法的准确性（%）进行比较}}
+\end{table}
+
+Dataset Method CommonsenseQA StrategyQA ARC-Easy ARC-Challenge Zero-Shot 78.48 64.83 93.26 84.56 CoT 78.56 65.54 93.76 83.85 SC 78.87 64.97 94.49 89.59 CAR(ours) 79.65 70.02 94.82 90.84从整体实验结果可以清晰看出，本文提出的CAR方法在全部四个数据集上均取得最优性能，全面超越Zero-Shot、CoT、SC等基线方法，且在对深层语义理解、隐式多步推理要求更高的复杂任务上，性能提升幅度更为显著。这一结果充分印证，CAR 所提出的多样化问题重述 + 多视角共识推理机制，能够有效弥合原始问题表述与模型内部认知框架的错位问题，增强模型对问题语义的鲁棒性理解，同时通过多路径共识聚合提升推理过程的一致性与可靠性，从底层优化大语言模型的复杂推理表现。
+
+
+个百分点，突显其在隐式多步推理任务中的优势，多角度重述有助于识别隐含前提与推理结构。在 ARC-Easy 与 ARC-Challenge 上，CAR 也持续领先，特别是在ARC-Challenge 上优于 SC 等其他方法，表明其在处理科学类复杂问题时能整合多路径可靠信号，抑制单一路径错误。
+
+
+由此，CAR方法在日常常识推理、隐式多步推理、科学知识推理等不同类型、不同难度的推理任务中，均能稳定提升大语言模型的推理性能，尤其在需要深层语义解析、复杂逻辑推导的场景中优势更为明显。同时，该方法有效解决了自然语言查询的语义歧义与认知错位问题，大幅提升了模型对复杂查询意图的精准理解能力，为后续面向NL2SQL任务的逻辑计划生成与准确SQL转换奠定了坚实的语义基础。该结果充分验证了多样化问题重述与多视角共识推理机制的有效性，证明其能够切实增强大语言模型的推理鲁棒性与语义理解能力，为提升大模型复杂推理性能提供了通用、有效的技术方案。
+
+
+除了上述对比实验外，为了系统评估所提出的认知对齐共识推理（CAR）方法的泛化能力与模型无关性，我们进一步在多种不同规模与架构的大语言模型上进行了扩展实验。实验覆盖了包括GLM-4-9B-Chat、Qwen1.5-14B-Chat、Qwen1.532B-Chat、Qwen2.5-14B-Instruct以及Qwen2.5-32B-Instruct在内的五个代表性模型，旨在探究CAR框架在不同模型能力下的适应性。核心研究问题是：多样化问题重述与对齐以及多视角共识推理机制，是否能够作为一种普适性策略，帮助不同基础的模型实现更准确且一致的推理性能。
+
+
+综合分析表3.2数据可以发现，CAR方法在所有被测试的大语言模型上均一致地带来了性能提升，显著增强了模型在大多数常识推理任务中的准确性，这有力证明了该方法的有效性与鲁棒性超越了特定模型架构或规模的限制。在需要较强隐含推理能力的StrategyQA和ARC-Challenge数据集上，CAR带来的性能增益尤为显著。例如，在Qwen1.5-14B-Chat模型上，CAR相较于次优方法将StrategyQA的准确率提升了 2.38 个百分点；在 GLM-4-9B-Chat 模型上，ARC-Challenge 的准确率提升了1.66个百分点。这表明CAR通过多视角语义对齐，有效缓解了中小规模模型在面对复杂问题时因语义理解偏差或知识局限所导致的性能瓶颈。
+
+
+9B-Chat 14B-Chat 32B-Chat 14B- 32BInstruct Instruct Zero-Shot 82.23 81.89 84.37 82.54 86.75 CoT 81.63 80.75 81.14 82.13 85.19 CommonsenseQA SC 83.77 81.72 83.47 82.78 85.28 CAR(ours) 83.67 81.89 82.98 82.83 86.66 Zero-Shot 68.81 65.75 69.58 66.36 73.45 CoT 69.18 67.41 71.89 76.63 79.21 StrategyQA SC 69.77 67.76 72.30 76.85 80.35 CAR(ours) 71.43 70.14 75.23 78.71 80.55 Zero-Shot 95.89 93.43 95.36 96.77 98.52 CoT 95.97 93.76 94.49 96.81 98.31 ARC-Easy SC 95.98 93.78 95.71 97.12 98.24 CAR(ours) 96.58 95.53 95.89 97.31 98.26 Zero-Shot 92.97 86.76 87.86 90.87 93.88 CoT 90.72 86.35 92.41 92.54 95.42 ARC-Challenge SC 92.96 87.65 91.98 92.88 95.75 CAR(ours) 94.62 87.97 92.98 93.96 95.75此外，实验结果也揭示了模型规模与CAR效益之间存在的有趣关系。对于能力较强的超大模型（如 Qwen2.5-32B-Instruct），CAR 在部分相对简单的任务（如ARC-Easy）上带来的绝对提升幅度有所收窄，甚至与最优基线方法持平。然而，在更具挑战性的任务（如 StrategyQA 和 ARC-Challenge）上，CAR 依然能带来稳定提升或保持领先。这一现象说明，对于本身已具备强大推理能力的大模型，CAR的作用更多体现在进一步“精益求精”，通过共识机制降低输出不确定性，提升结果的一致性。反之，对于规模较小的模型（如GLM-4-9B-Chat,Qwen1.5-14B-Chat），CAR 能有效弥补其单一路径推理的不足，通过引入多视角信息显著增强其推理可靠性，缩小与更大模型之间的性能差距。
+
+\begin{figure}[htbp]
+\centering
+\fbox{\parbox{0.8\textwidth}{\centering \zihao{5}图3.4不同参数规模的大语言模型在协同推理中的效应}}
+\caption{图3.4不同参数规模的大语言模型在协同推理中的效应}
+\end{figure}
+
+为了深入探究不同参数规模的大语言模型在协同推理中的效应，我们设计了对比实验，分别评估模型在“多样化问题重述与对齐”和“多视角共识推理”两个关键步骤中的贡献。具体实验设置如下：第一组实验采用“大参数模型重述—小参数模型推理”的协同流程，即使用参数规模较大的语言模型执行问题重述与对齐步骤，再由参数规模较小的模型承担多视角共识推理任务；第二组实验则全程使用小参数规模语言模型独立完成重述与推理全过程。通过比较两组配置在相同测试集上的性能差异，可以揭示参数规模在不同推理阶段的作用机制。
+
+
+不同模型协同推理的结果如图3.4所示。实验结果表明，“大模型重述-小模型推理”的组合在所有数据集上均一致优于全程使用小模型的基准方法。这一发现说明，大参数语言模型在理解复杂语言结构和上下文语境方面具有显著优势，能够生成语义一致且表达多样的问题重述版本。这种高质量、多样化的重述为后续推理提供了更丰富的视角，有效提升了小参数模型在多视角共识推理中的表现。
+
+\subsection{NL2SQL 逻辑计划生成评估}
+
+为验证认知对齐推理（CAR）方法在提升自然语言转换为SQL查询的逻辑正确性方面的有效性，我们设计了一项基于逻辑查询计划生成的评估实验。该实验旨在探究模型对查询意图的理解与逻辑规划能力。实验在经我们重制、专注于逻等）组成，定义了查询的语义步骤，而不涉及具体的语法细节或执行策略。此种评估方式能更直接地反映模型的逻辑推理质量，因其剥离了 SQL 语言特定语法可能带来的干扰。如表3.3所示，我们对比了CAR 与基线方法在多项指标上的性能。
+
+\begin{table}[htbp]
+\centering
+\caption{表3.3不同方法在逻辑查询计划生成任务上的性能对比}
+\fbox{\parbox{0.8\textwidth}{\centering \zihao{5}表3.3不同方法在逻辑查询计划生成任务上的性能对比}}
+\end{table}
+
+方法 逻辑计划准确率 操作符召回率 关键路径匹配度Zero-Shot 48.6 72.4 63.1 Chain-of-Thought 61.5 82.0 76.6 Self-Consistency 63.2 84.7 79.0 CAR（Ours） 68.5 86.9 83.1实验结果表明，我们提出的CAR方法在三项评估指标上均一致且显著优于基线方法。CAR在逻辑计划准确率上达到68.5\%，较Chain-of-Thought基线提升7个百分点；在操作符召回率与关键路径匹配度上分别达到 86.9\% 与 83.1\%，亦明显高于对比方法。这一结果说明，CAR 通过问题重述与共识推理机制，能够更精确地捕捉用户查询意图，识别查询中所需的操作符，并还原其语义关联路径，从而生成结构更合理、逻辑更严密的查询计划。
+
+
+逻辑计划准确率的提升尤为关键，它不仅反映了模型对用户意图的深层理解能力，也意味着生成计划在结构层面更接近正确逻辑构造。一个高质量的逻辑计划为后续生成语法正确、语义一致的 SQL 查询奠定了坚实基础，有助于减少因结构错误导致的执行失败或结果偏差。此外，关键路径匹配度的显著提高进一步说明，CAR 能更好地识别并保留查询中的核心语义约束，这对于复杂查询（如多表连接、嵌套子查询等）的正确转换至关重要。
+
+
+本实验验证了CAR方法在逻辑查询计划生成任务上的有效性。其在多项指标上的领先表现，凸显了该方法在提升 NL2SQL 系统整体性能方面的潜力，特别是在处理语义复杂、结构多样的自然语言查询时具有明显优势。
+
+
+头提升意图理解准确性的新范式。该方法创新性地构建了包含“问题重述与认知对齐”和“多视角共识推理”的双阶段框架，通过主动干预问题输入与集成多路径推理输出，协同优化了大语言模型对复杂、模糊查询的理解与推理过程。
+
+
+在问题重述与认知对齐阶段，CAR 通过引导大语言模型对原始自然语言查询进行多样化语义重写，生成多个在目标数据库上下文中语义等效但表述更清晰、无歧义的问题版本。这一机制有效弥合了用户查询意图与模型内部认知框架之间的潜在偏差，从输入侧降低了因一词多义、口语化描述或术语不匹配所引发的误解风险，为后续的精准模式链接奠定了语义基础。在多视角共识推理阶段，CAR 并行处理多个重述后的问题，生成相应的推理路径，并通过自适应的一致性融合机制（如多数投票）筛选出最可靠的答案。该策略不仅增强了推理过程的稳定性，也通过集成多样化视角有效提升了对复杂逻辑的解析能力，尤其在处理需要多步推理的NL2SQL 查询时表现出显著优势。
+
+
+为全面评估 CAR 方法的有效性，本章在 CommonsenseQA、StrategyQA 等多个通用常识推理数据集以及 BIRD Mini-Dev 这一面向 NL2SQL 任务的基准数据集上进行了实验验证。结果表明，CAR方法在各项测试中均取得了显著的性能提升，尤其在需要深层语义消歧和复杂逻辑处理的场景下，其表现显著优于传统的零样本、思维链（CoT）及自洽性（SC）等基线方法。这充分证明了CAR在增强模型语义理解深度、抗干扰能力以及最终答案一致性方面的有效性，凸显了其在提升NL2SQL 系统鲁棒性方面的应用潜力。
+
+
+尽管CAR方法取得了令人满意的效果，但本研究也识别出若干值得进一步探索的局限性。首先，问题重述的质量在一定程度上依赖于基础语言模型的生成能力，这可能在资源受限场景下影响方法的适用性。另外，在面对极端复杂的推理任务时，不同推理路径之间可能产生实质性冲突，此时简单的多数投票机制可能不足以做出最优选择。这些问题为未来研究指明了方向，包括开发更精细的路径评估与融合策略，以及拓展方法在专业领域的应用验证。
+
+
+总体而言，本章提出的CAR方法为提升NL2SQL系统的语义理解能力提供了创新性解决方案，其核心思想对促进自然语言与结构化查询之间的精准转换具有重要理论价值和实践意义。该研究不仅为大语言模型在复杂推理任务中的应用提供了新思路，也为后续相关工作的开展奠定了坚实基础。
+
+\chapter{基于动态强化学习的检索增强生成方法}
+\zihao{-4}
+
+在自然语言到 SQL（NL2SQL）任务中，生成准确、可执行的 SQL 查询是核心目标。然而，大语言模型在此任务中不可避免地面临两大知识层面的挑战：一是模型内部参数化知识对特定数据库的模式、业务规则及专业术语覆盖不足；二是其固有的幻觉问题，极易导致生成的 SQL 包含虚构的表名、列名或错误的关联逻辑。尽管引入外部知识库的检索增强生成（RAG）技术能够为模型补充必要的领域知识（如数据库模式描述、业务字典、历史查询文档等），但在复杂的NL2SQL应用场景下，传统RAG方法的检索质量高度依赖外部文档的相关性，而静态、通用的检索策略难以精准匹配NL2SQL任务对知识“精确性”与“上下文相关性”的极端要求。当检索返回无关或低质量的数据库模式信息、过时的业务规则时，不仅无法纠正模型的幻觉，反而会引入噪声，直接导致生成的 SQL 在语法或语义上出现偏差，严重影响最终查询结果的准确性。
+
+
+为此，本章提出一种面向 NL2SQL 任务的、基于动态强化学习的检索增强生成框架（DynamicReinforcementLearningRAG,DRL-RAG），旨在系统性地解决在利用外延知识库辅助 NL2SQL 生成时，因知识检索不精准、不动态而引发的“知识误导”与“幻觉加剧”问题，从而从根本上提升SQL生成的鲁棒性与可靠性。在多个公开数据集上的实验表明，DRL-RAG 框架能够显著优化 NL2SQL 任务中的知识利用效率，相比传统RAG 方法在SQL 生成准确率上具有显著提升。
+
+\section{问题分析}
+
+近年来，大型语言模型在自然语言处理领域展现出强大的指令理解与文本生成能力，在自然语言到结构化查询语言（NL2SQL）任务中得到了广泛应用，旨在为关系型数据库提供智能、易用的自然语言接口。然而，在 NL2SQL 这一特定任务中，大语言模型在生成文本（SQL 查询语句）时存在容易产生事实性错误（即“幻觉”）的缺陷。具体表现为模型生成的 SQL 语句在语法上可能正确，但其选择的表、列、连接条件或聚合函数与实际的数据库模式、业务规则不符，导致查询结果与用户意图严重偏离。这种现象的根源在于，大语言模型作为基于概率的语言生成模型，其内部参数化知识难以覆盖所有特定领域数据库的复杂模式、专业术语及动态更新的业务逻辑，缺乏对目标数据库的精确理解与事实核查机制。因此，Among the schools with the average score in Math over 560 in the SAT test, how many schools are directly charter-funded? Database: College
+
+\begin{lstlisting}
+Tables: satscores, frpm ...
+\end{lstlisting}
+
+Retriever (Schema \& Example Retriever) Retrieve relevant tables, schema information and SQL examples Accurate Retrieval Context Inaccurate Retrieval Context
+
+\begin{lstlisting}
+Table: satscores Table: schools
+\end{lstlisting}
+
+Columns: School Code, AvgScrMath, ... Columns: School Code, School Name, Type,...
+
+
+Description: SAT scores of each school. Description: Basic information of schools.
+
+\begin{lstlisting}
+Table: frpm Table: enrollment
+\end{lstlisting}
+
+Columns: CDSCode, Charter Funding Type, ... Columns: School Code, Total Students, ...
+
+
+Description: School demographics and funding. Description: Enrollment statistics.
+
+
+Example SQL: Example SQL:
+
+\begin{lstlisting}
+SELECT COUNT(*) FROM satscores AS T1 SELECT COUNT(*) FROM schools
+\end{lstlisting}
+
+INNER JOIN frpm AS T2 ON T1.cds T2.CDSCode WHERE Type = 'Charter' AND Category = 'Directly funded'
+
+\begin{lstlisting}
+WHERE T1. AvgScrMath > 560 AND Math_Score > 560
+\end{lstlisting}
+
+AND T2. Charter Funding Type ' Directly funded' LLM (with accurate context) LLM (with accurate context)
+
+\begin{lstlisting}
+SELECT COUNT(*) SELECT COUNT(*)
+\end{lstlisting}
+
+
+\begin{lstlisting}
+FROM satscores AS T1 FROM satscores AS T1
+\end{lstlisting}
+
+INNER JOIN frpm AS T2 ON T1.cds = T2.CDSCode INNER JOIN frpm AS T2 ON T1.cds = T2.CDSCode
+
+\begin{lstlisting}
+WHERE T1. AvgScrMath >560 WHERE T1. AvgScrMath >560
+\end{lstlisting}
+
+AND T2. Charter Funding Type = ' Directly funded' AND T2. Charter Funding Type = ' Directly funded' Execution: 132 Execution: 18 (Correct) (Incorrect)
+
+\begin{figure}[htbp]
+\centering
+\fbox{\parbox{0.8\textwidth}{\centering \zihao{5}图4.1NL2SQL知识检索中的低质量检索器引入噪声信息示例}}
+\caption{图4.1NL2SQL知识检索中的低质量检索器引入噪声信息示例}
+\end{figure}
+
+为缓解上述问题，检索增强生成技术（RAG）应运而生。它通过在生成过程中引入外部知识源，将检索到的相关文档作为上下文信息输入模型，从而增强生成内容的事实依据[36]。尽管 RAG 在理论上具备提升生成准确性的潜力，其实际效果却高度依赖于检索文档的质量与相关性。若检索器返回无关或错误信息，不仅无法纠正模型的幻觉倾向，反而可能进一步误导生成过程，导致“垃圾进、垃圾出”的现象。如图4.1所示，低质量的检索结果会引入噪声，干扰模型对关键信息的提取与利用，甚至诱发更严重的事实偏差。传统RAG方法通常采用静态检索策略，对所有检索文档进行无差别融合，缺乏对文档相关性的动态评估与筛选机制，这在一定程度上限制了其性能上限。
+
+
+现有检索增强生成系统在应用于 NL2SQL 任务时，主要面临三方面特有的挑战。在检索模块中，面向非结构化的外延知识库（如长篇幅的模式文档），不合理的文档切分策略容易割裂表、列及其关系的完整描述，而通用的嵌入模型可能难以精准捕捉“查询意图-数据库模式元素”间的细粒度语义关联，导致关键的模式信息未被有效召回。在上下文构建阶段，系统需在“信息过载”与“关键信息缺失”之间取得平衡：若检索结果包含过多无关的模式细节或噪声，会干扰生成模型聚最终导致生成的 SQL 与数据库实际结构不一致。此外，现有的 RAG 评估机制多依赖于通用文本的相关性静态规则，难以适应 NL2SQL 任务中查询意图的动态变化，也缺乏对涉及多表连接、嵌套子查询等复杂逻辑的“多跳”推理任务的有效支持，限制了系统在真实、复杂数据库环境下的鲁棒性与泛化能力。
+
+
+针对上述在 NL2SQL 任务背景下，利用外延知识库时所面临的特有挑战，本章提出一种基于动态强化学习的检索增强生成框架（DRL-RAG），旨在通过引入面向数据库模式与业务知识的细粒度相关性评估，并利用强化学习机制动态优化检索策略，实现对外延知识库的精准、自适应利用，从而在源头提升 SQL 生成的准确性。该框架的核心创新点包括：第一，设计动态奖励信号，基于文档相关性评分持续优化检索策略；第二，引入大规模条件网络搜索作为静态知识库的补充，扩展检索范围并改善知识覆盖度；第三，构建双重复核机制，在检索与生成阶段分别进行相关性评估与质量验证，以提升输出结果的可靠性。实验结果表明，本方法在PopQA[39]、PubHealth[126] 和Arc-Challenge[124] 等数据集，以及后续第五章的 NL2SQL 任务中均取得显著效果提升，为构建面向企业级数据库的高性能、可信赖的NL2SQL 系统提供了关键技术路径。
+
+
+本章的主要研究内容与核心贡献概述如下：
+
+
+1、提出DRL-RAG框架：构建了一个端到端的检索增强生成框架，其核心创新在于引入动态强化学习机制，通过智能体与环境的交互自适应地优化检索策略，从而提升检索质量与整体生成的鲁棒性。
+
+
+2、设计基于强化学习的检索优化器：利用交叉编码器（Cross-Encoder）计算的相关性评分作为动态奖励信号，引导智能体调整检索策略，以实现相关性、多样性与效率的协同优化。
+
+
+3、提出条件网络搜索机制：该机制能在检测到内部检索置信度不足时，自动激活大规模网络搜索，有效扩展知识覆盖范围，弥补静态知识库的局限。
+
+
+4、开发多维置信度评估器：通过融合生成答案与检索上下文的一致性评估以及零样本分类技术，构建了轻量级的质量评估模块，为实现可靠输出提供了可量化的过滤依据。
+
+
+5、完成全面的实验验证：在 PopQA、PubHealth 和 ARC-Challenge 等多个基准数据集上的实验表明，DRL-RAG在生成准确性上显著优于现有先进RAG方法，d 1 strip 2 strip 1 Relevant d 2 Decomposition strip k Filtration strip k Recombination Relevance Knowledge refinement k 1 Score Knowledge X q fe :s a m tu a re rt , p h h a o p n t e ic , k 2 Irrelevant preparation feedback, user Rewrite k 3 Relevant Generate a model Confidence test Input Output Confidence Level Text Irrelevant generation Return the confidence level
+
+\begin{figure}[htbp]
+\centering
+\fbox{\parbox{0.8\textwidth}{\centering \zihao{5}图4.2基于强化学习的自适应检索与置信度感知生成}}
+\caption{图4.2基于强化学习的自适应检索与置信度感知生成}
+\end{figure}
+
+并在面对噪声检索时表现出更优的鲁棒性。
+
+\section{动态强化学习 RAG}
+
+我们将交叉编码器（Cross-Encoder）与强化学习（ReinforcementLearning）深度融合于一个框架中，并引入了动态置信度评估机制，以自适应方式优化文本生成的质量与可靠性。该方法针对检索与生成任务整合了两项关键技术：1、采用多目标强化学习策略，动态调整相关性、多样性与效率的权重，以实现检索结果的精准优化；2、引入了置信度驱动的文本生成机制，对生成文本的置信程度进行量化评估，从而确保生成内容的可靠性与多样性。具体实现流程如图 4.2所示。
+
+\subsection{基于强化学习的交叉编码器优化框架}
+
+传统的检索增强生成框架通常采用静态检索策略，难以适应复杂查询场景下对相关性、多样性和效率的动态权衡需求。在本节中，提出了一种基于强化学习的交叉编码器优化框架，实现对检索结果的动态精细化调整。如图4.3所示，该框架的核心创新在于引入强化学习智能体，使其能够根据当前查询语义与检索中间状态，自适应地调整相关性权重、多样性控制系数及效率约束，从而显著提升后续生成阶段的知识供给质量。
+
+
+Black-box LLM Web Search Black-box LLM Input Query Output Rewriter Rewriter Reader Documents (c) Trainable rewrite-retrieve-read Black-box LLM Web Search Black-box LLM Cross-Encoder Input Query Output Rewriter Rewriter model Reader Documents Cross-Encoder Scoring Initial Query Retriever DRL Generator Generator Compute Update BM25 Policy Input Text Reward DRL Top-K Filter Docs Documents
+
+\begin{figure}[htbp]
+\centering
+\fbox{\parbox{0.8\textwidth}{\centering \zihao{5}图4.3概述我们提出的管道，比较三个阶段：（a）标准检索然后读取，（b）基于LLM的查询}}
+\caption{图4.3概述我们提出的管道，比较三个阶段：（a）标准检索然后读取，（b）基于LLM的查询}
+\end{figure}
+
+重写，以及（c）集成可训练的重写器与传统的检索增强过程不同，本框架构建了一个闭环优化系统。其关键改进在于利用交叉编码器提供细粒度的语义相关性信号，并将其作为强化学习环境反馈的重要组成部分，驱动策略网络持续优化多目标检索决策。下文将对该框架的核心组件进行详细阐述。
+
+
+1、状态表示状态表示的设计旨在为智能体提供全面且信息丰富的环境观测。本研究通过融合双编码器（Bi-Encoder）的独立语义编码能力与交叉编码器（Cross-Encoder）的深度交互匹配信号，构建出多层次的状态特征。具体而言，状态向量𝑠由三部分融合而成：
+
+\begin{equation}
+s = Concat(𝜙 (q),𝜙 (d),𝜙 (q,d)), (4.1)
+\end{equation}
+
+bi bi cross
+
+\begin{equation}
+其中：𝜙 (q)和𝜙 (d)分别表示查询q 和文档d 经由双编码器提取的固定维度嵌入
+\end{equation}
+
+
+\begin{equation}
+bi bi向量。双编码器因其高效性，能够快速捕获查询和文档的独立语义表示。𝜙 (x)封bi装了编码及池化操作。𝜙 (q,d) 则代表查询-文档对经由交叉编码器计算得到的cross
+\end{equation}
+
+
+\begin{equation}
+交互式匹配分数，并通过Sigmoid 函数\sigma 归一化至（0,1）区间：
+\end{equation}
+
+
+\begin{equation}
+𝜙 (q,d) = \sigma(Encoder (q,d)). (4.2)
+\end{equation}
+
+cross cross交叉编码器通过完全交叉注意力机制对查询和文档进行联合编码，能够捕捉动作空间定义了智能体在给定状态下可执行的操作集合，本框架中对应于对检索结果进行调整的三类动态策略。这些策略共同作用，以平衡相关性、多样性和效率这三个关键目标。
+
+
+相关性调整：该动作基于交叉编码器给出的原始相关性分数𝑠 进行动态校cross准，使其适应特定的任务阈值范围。调整后的分数𝛼 计算如下：
+
+
+rel𝑠 −min(𝑆 )
+
+\begin{equation}
+\alpha = cross cross \times(t −t )+t , (4.3)
+\end{equation}
+
+
+\begin{equation}
+rel max(S )−min(S )+𝜖 max min min cross cross其中，S 是当前批次所有文档由交叉编码器生成的分数集合，𝜖 是一个极小正cross值用于数值稳定性，[t ,t ]是目标分数区间。此操作实现了分数归一化与缩放，min max使其更具可比性。
+\end{equation}
+
+多样性控制：为了降低返回结果之间的冗余度，引入了基于余弦相似度的惩罚机制。该动作𝛼 鼓励选择与已选文档集差异性更大的文档：
+
+
+div
+
+\begin{equation}
+\alpha = \alpha \cdotmax(cos_sim(e ,E )), (4.4)
+\end{equation}
+
+
+\begin{equation}
+div d d selected\alpha 是一个可学习的权重系数，用于控制多样性惩罚的强度，e 是当前文档的嵌入d d
+\end{equation}
+
+
+\begin{equation}
+表示，E 是已选文档的嵌入集合，cos_sim 计算余弦相似度。此机制有效促
+\end{equation}
+
+
+\begin{lstlisting}
+selected
+\end{lstlisting}
+
+进了检索结果的主题覆盖广度。
+
+
+效率优化：检索系统的响应速度至关重要。效率动作 𝛼 与处理时间成反比，𝑒激励系统在保证质量的同时尽可能提升速度：
+
+
+1
+
+\begin{equation}
+\alpha = , (4.5)
+\end{equation}
+
+
+\begin{equation}
+e \Deltat+𝜖
+\end{equation}
+
+其中，Δ𝑡表示检索或处理当前文档所需的时间，𝜖为平滑因子。
+
+
+3、策略网络
+
+\begin{equation}
+策略网络 \pi (\alpha|s) 是智能体的“大脑”，其职责是根据当前状态 s 选择最优动
+\end{equation}
+
+𝜃作𝛼。本研究采用了一种基于Transformer架构的深度神经网络来参数化策略函数，该网络融合了多头自注意力机制（MHA）、残差连接、层归一化（LN）以及前馈神经网络（MLP），以具备强大的特征提取和非线性拟合能力。
+
+\begin{equation}
+\pi (\alpha|s) = W \cdotGELU(W \cdotGELU(W \cdotLN(s+MHA(s))+b )+b )+b . (4.6)
+\end{equation}
+
+𝜃 3 2 1 1 2 3多头自注意力机制使网络能够关注状态向量中不同部分的相互作用，有效捕线性变换，相较于ReLU等传统激活函数，其在负值区域保留了部分梯度信息，增强了模型的表达能力。上述组件经堆叠与组合，最终将融合后的状态特征映射为一个动作概率分布，智能体据此采样执行动作，从而实现对检索策略的动态调整。
+
+
+4、奖励函数强化学习的目标是通过最大化奖励来优化策略。在此任务中，可以根据模型输出的相似性分数与实际相关性之间的匹配程度、多样性以及效率来设置奖励。
+
+\begin{equation}
+R(s,a) = \alpha \cdot\alpha +\alpha \cdot(1−\alpha )+\alpha \cdot\alpha , (4.7)
+\end{equation}
+
+
+\begin{equation}
+r rel d div e eff
+\end{equation}
+
+
+\begin{equation}
+\alpha 是调整后的相关性分数，其值越大，奖励越高。(1-\alpha )鼓励多样性，当文档与rel div已选集最大相似度越低（即\alpha 越小）时，此项奖励越高。\alpha 是效率得分，处理div eff
+\end{equation}
+
+
+\begin{equation}
+越快，奖励越高。\alpha ，\alpha ，\alpha 是预设的权重系数，用于调整三个目标的相对重要
+\end{equation}
+
+
+\begin{equation}
+r d e
+\end{equation}
+
+性，可根据具体任务需求进行配置。
+
+
+该奖励函数通过综合考虑相关性、多样性和效率这三个目标，为策略网络的优化提供了明确的方向。该系统设计具有多目标权衡、归一化处理、可扩展性以及任务一致性等多重优势，这些优势共同提升了检索与生成任务的整体性能。
+
+
+5、训练过程本章所讨论的方法采用近端策略优化（Proximal Policy Optimization, PPO）算法进行实现，其核心目标是让智能体通过与环境交互，学会动态平衡检索结果的相关性、多样性及系统效率。该过程是一个迭代的闭环优化，每个迭代周期包含数据收集、策略评估与参数更新三个关键阶段。
+
+\begin{equation}
+训练开始时，智能体基于当前策略（由策略网络\pi 参数化）与环境交互。环𝜙境的状态s由双编码器（Bi-Encoder）和交叉编码器（Cross-Encoder）共同构建：双编码器为查询 q 和文档集 D 生成独立的语义嵌入，交叉编码器则提供细粒度的i i语义匹配分数。策略网络根据当前状态 s 生成动作 \alpha，该动作实质上是用于动态
+\end{equation}
+
+
+\begin{equation}
+调整多目标奖励函数中相关性权重 \alpha 、多样性惩罚系数 \alpha 以及效率控制系数 \alpha
+\end{equation}
+
+
+\begin{equation}
+r d e
+\end{equation}
+
+
+\begin{equation}
+的增量\Delta\alpha。在策略评估阶段，系统根据奖励函数计算奖励。为了更准确地评估动作的优劣，通常采用广义优势估计方法计算优势函数A 。若A >0，表明该动作优t t于平均水平，应受到鼓励。参数更新阶段采用 PPO 独特的裁剪机制来确保训练稳定性。其核心是最小化裁剪替代目标函数 ℒclip，该函数通过限制新旧策略的概率行协同优化。详细流程如算法2所示。
+\end{equation}
+
+算法2多目标动态强化学习RAG输入: 𝜙 (dual encoder), 𝜃 (cross encoder), 𝜙 (policy params), 𝐸 (epochs),bi cross policy
+
+\begin{equation}
+{\alpha ,\alpha ,\alpha }(rewardweights),N (batchsize),𝜀 = 0.2 (clipthreshold)
+\end{equation}
+
+
+\begin{equation}
+r d e
+\end{equation}
+
+
+\begin{equation}
+输出: 优化后的策略网络\pi 和交叉编码器\theta𝜙 cross 1: 初始化: 𝜙 (dualencoder),\theta (crossencoder),𝜙 (policyparams),E (epochs),bi cross policy
+\end{equation}
+
+
+\begin{equation}
+{\alpha ,\alpha ,\alpha }(rewardweights),N (batchsize),𝜀 = 0.2 (clipthreshold)
+\end{equation}
+
+
+\begin{equation}
+r d e
+\end{equation}
+
+2: for轮数= 1 到𝐸 do
+
+\begin{equation}
+3: for批次{(q ,D ,y )}N do
+\end{equation}
+
+
+\begin{equation}
+i i i i=1
+\end{equation}
+
+
+\begin{equation}
+4: 构建状态表示: s \leftarrow 拼接(𝜙 (q ), 𝜙 (D ), \theta (q ,D ))
+\end{equation}
+
+
+\begin{equation}
+i bi i bi i cross i i
+\end{equation}
+
+
+\begin{equation}
+5: 策略网络生成动作: a ∼ \pi (\cdot ∣ s ) \rightarrow [\Delta\alpha ,\Delta\alpha ,\Delta\alpha ]
+\end{equation}
+
+
+\begin{equation}
+i 𝜙 i r d e
+\end{equation}
+
+
+\begin{equation}
+6: 更新动作权重: \alpha' \leftarrow \beta ⊙(\alpha+\Delta\alpha)
+\end{equation}
+
+
+\begin{equation}
+7: 计算多目标奖励: R \leftarrow \alpha' \cdota +\alpha' \cdot(1−a )+\alpha' \cdota
+\end{equation}
+
+
+\begin{equation}
+i r rel d div e e
+\end{equation}
+
+
+\begin{equation}
+8: 计算PPO 裁剪损失: ℒclip \leftarrow \mathbb{E} [min(r A , clip(r ,1\pm𝜀)A )]
+\end{equation}
+
+
+\begin{equation}
+i i i i i
+\end{equation}
+
+
+\begin{equation}
+9: 更新策略网络参数: 𝜙 \leftarrow 𝜙+\eta \nabla ℒclip
+\end{equation}
+
+𝑝 𝜙2
+
+\begin{equation}
+10: 更新交叉编码器参数: \theta \leftarrow \theta +\eta \nabla ∥\theta (q ,D )−y ∥
+\end{equation}
+
+
+\begin{equation}
+cross cross c \theta cross i i i 2
+\end{equation}
+
+11: endfor 12: endfor
+
+\subsection{检索文档的分区}
+
+在DRL-RAG框架中，为了实现对检索结果的精细化质量控制，本节设计了一种基于置信度分数的文档分区机制。该机制的核心目标是根据交叉编码器计算出的文档-查询相关性评分，对初始检索到的文档集合进行动态分类与后续处理，从而有效提升输入生成模块的上下文质量。如果置信度分数超过上限阈值，则检索到的文档被指定为“相关”。反之，如果分数低于下限阈值，则该文档被归类为“无关”。否则，在没有明确配置的情况下，将指定为“不确定”。每个检索文档均经过独立处理，随后进行整合。
+
+\begin{equation}
+假设我们有一组文档分数集合S，其中每个分数s 对应于特定文档的分数。对i于每个文档得分s ，分类基于以下两个阈值：
+\end{equation}
+
+
+\begin{equation}
+ii ⎨ 2 i 1 {{{Irrelevant, ifs < threshold .⎩ i 2
+\end{equation}
+
+
+\begin{equation}
+相关文档（Relevant）。当文档的置信度得分s 高于或等于上限阈值threshold
+\end{equation}
+
+𝑖 1时，该文档被判定为“相关”。这表示检索系统以高置信度认为该文档与用户查询高度相关。在后续处理中，此类文档将被优先保留，并作为生成答案的主要知识来源。其内含的信息被认为具有较高的可靠性，旨在为大型语言模型提供准确、坚实的上下文支撑。
+
+\begin{equation}
+无关文档（Irrelevant） 。若文档的置信度得分s 低于下限阈值threshold ，则
+\end{equation}
+
+𝑖 2被标记为“无关”。这表明当前检索结果中可能不包含有效信息，若强行使用此类文档，反而可能引入噪声甚至导致模型产生“幻觉”。为了应对此种情况，系统会触发备选知识获取机制。本章引入了一种大规模网络搜索机制，当检测到检索结果整体不相关时，自动从互联网中寻找并补充更可靠、更及时的外部知识，从而弥补静态知识库的不足。
+
+
+不确定文档（Uncertain） 。对于那些置信度得分介于上下限阈值之间的文档，
+
+\begin{equation}
+即threshold \leq s < threshold ，系统将其归类为“不确定”。这类文档的相关性
+\end{equation}
+
+
+\chapter{𝑖 1}
+\zihao{-4}
+
+难以明确判定，直接全部采纳或丢弃都存在风险。因此，系统采用一种审慎的融合策略，会同时参考“相关”文档的核心信息，并对“不确定”文档中的内容进行选择性加权融合，使其与高置信度内容相互补充与验证，以期在不确定性中尽可能挖掘有价值的信息。
+
+
+通过对检索文档进行上述分区处理，DRL-RAG框架实现了对知识源的动态评估与筛选，为核心生成任务构建了更高质量、更可靠的上下文输入，有效提升了整体系统的鲁棒性。
+
+\subsection{基于置信度评估的动态生成优化机制}
+
+为提升检索增强生成系统中文本生成环节的效率与输出质量，本节提出一种基于置信度评估的动态生成优化机制。该机制的核心思想是通过对模型生成内容的实时质量评估，动态调整生成策略，从而在保证信息增量的同时，确保输出结果具有高可靠性与低冗余度。
+
+
+组成部分：
+
+\begin{equation}
+• QA一致性评估（QAConsistencyEvaluation）。采用预训练的QA一致性验证模型，检验生成答案\alpha是否与原始问题q 在语义上保持一致。该模型输出的一致性分数 C 用于衡量生成内容是否准确回应了查询意图，其数值越高QA表示逻辑一致性越强。
+\end{equation}
+
+
+\begin{itemize}
+\item 零样本分类置信度（Zero-ShotClassificationConfidence）。借助零样本分类模型，将生成答案𝛼映射到预定义的类别空间中，并提取其对应最高概率类别的置信度分数𝐶 。该分数反映了生成内容在外部知识体系下的合理性。 ZS最终，通过线性加权方式融合上述两项得分，得到生成答案的综合置信度：
+\end{itemize}
+
+\begin{equation}
+C = \alpha\cdotC +\beta \cdotC , (4.8)
+\end{equation}
+
+final QA ZS其中，𝛼 和 𝛽 为可调节的权重系数，用于平衡内部一致性与外部知识验证的重要性。
+
+
+动态生成机制。为避免生成重复或冗余内容，本机制在每次生成答案后，会计算其与已有历史响应集合 𝐻 之间的语义相似度 𝑆。若当前答案与历史答案的相
+
+\begin{equation}
+似度S(\alpha,H)超过预设阈值\theta，则判定其为冗余信息，系统将自动跳过该答案的输
+\end{equation}
+
+出，并可触发以下任一后续操作：激活重生成流程、返回高置信度历史答案、或发起新一轮检索以获取更丰富的上下文信息。该动态筛选策略有效提升了生成结果的多样性与信息密度，同时降低了无效计算。
+
+
+本机制通过实时置信度评估与相似度比对，实现了生成过程的质量控制与冗余过滤，显著增强了RAG 系统在复杂场景下的鲁棒性与实用性。
+
+\section{实验结果与分析}
+
+我们通过实验验证了 DRL-RAG 对基于检索增强生成（RAG）方法的适应性及其在生成任务中的普适性。
+
+
+理的ARC-Challenge数据集[124]。这些数据集涵盖了知识密集型生成、事实准确性验证和多步推理等多种任务类型，能够全面检验模型在不同场景下的性能。
+
+
+PopQA 是一个专门用于测试模型世界知识和事实性知识的开放域问答数据集。该数据集中的问题通常涉及现实世界中的实体与事实，旨在探究模型在回答事实性问题时对内部知识的依赖程度以及有效利用外部信息检索的能力。其任务形式为简短问答，有助于直接评估模型的事实准确性。
+
+
+PubHealth 是一个专注于公共卫生领域的事实验证数据集，由一系列真/假陈述构成。该数据集的设计目标是提供一个基准，用于测试和提升模型在公共卫生领域进行事实验证的能力。这要求模型不仅能理解自然语言声明，还需具备一定的医学常识，并能结合或推理出支持或反驳该声明的证据，有助于评估生成内容在专业领域的可靠性和事实一致性。
+
+
+Arc-Challenge 是ARC（AI2ReasoningChallenge）数据集的挑战子集，由艾伦人工智能研究所创建，旨在推动需要高级推理能力的问答系统研究。该数据集主要包含日常常识性科学现象的多项选择题，要求模型不仅依赖表面知识，还需进行深度推理。ARC-Challenge特别包含了那些同时被基于检索的算法和词汇共现算法都回答错误的问题，这意味着这些问题更难通过简单的表面匹配或统计方法解决，更能检验模型的真实推理能力。
+
+
+参照已有研究，本实验采用准确率（Accuracy） 作为上述三个数据集的统一评价指标，即模型输出答案与标准答案完全匹配的样本占总样本的比例，以客观衡量生成结果的正确性。
+
+\subsection{基线模型}
+
+为全面评估 DRL-RAG 框架的有效性，本实验设置了系统化的基线模型对比体系，涵盖无检索基础模型、标准检索增强生成及其最新变体。
+
+
+我们主要比较了 DRL-RAG 与有检索和无检索两种方法，后者可以进一步分为标准RAG 和最新的高级RAG，包括：
+
+
+不依赖检索的基线模型(Baselineswithoutretrieval)。 此类基线用于评估模型在未引入外部知识时的原生能力，反映其仅依赖内部参数化知识的生成上限。我们选择了具有不同参数规模的开放模型与闭源模型进行对比：开放模型包括 LLaMA2策略的模型对比亦有助于分析DRL-RAG 框架在不同基座模型上的通用性。
+
+
+标准检索增强生成模型(StandardRAG) 。 标准RAG基线采用经典的“检索-阅读”范式，即先通过密集检索器从外部知识库中召回相关文档，再将检索结果与查询拼接后输入生成模型，包括 LLaMA2-7B/13B 与 Alpaca-7B/13B。此外，为增强对比的严谨性，我们复现了Self-RAG[111] 中基于检索增强指令调优的LLaMA2-7B模型，该模型在生成过程中不启用自反思机制，仅作为标准RAG 使用。
+
+
+高级检索增强生成模型RAG(AdvancedRAG) 。此类基线代表当前RAG研究的前沿方向，重点引入具有自省或优化能力的检索-生成交互机制。Self-RAG作为核心对比基线，其在指令微调数据中引入由 GPT-4 自动标注的反思标记（如“检索必要性”、“相关度评分”、“生成质量校验”），使模型能够动态决策检索时机并对检索内容进行批判性整合。同时，我们还比较了基于私有数据训练的检索增强基线 Ret-ChatGPT 与 Ret-LLaMA-chat，这些模型在特定领域语料上进一步微调，以验证DRL-RAG 在领域适应性方面的优势。
+
+\subsection{主要实验}
+
+本节对DRL-RAG在三个基准数据集（PopQA、PubHealth、ARC-Challenge）上的整体性能进行了系统评估与分析。如表4.1所示，所提方法在多种生成模型基础上均展现出稳定且显著的性能提升，这充分验证了其动态优化机制的有效性，并凸显了框架对不同基座模型的强适配性。
+
+
+DRL-RAG在性能上全面超越了现有基线模型，展现出其核心机制的有效性和通用性。以SelfRAG-LLaMA2-7b为生成基座时，DRL-RAG在PopQA、PubHealth和ARC-Challenge数据集上相比标准RAG分别实现了8.1\%、37.8\%和16.7\%的绝对准确率提升，显著优于其他同类方法。与同样具备自适应检索能力的先进方法Self-RAG 相比，DRL-RAG 在上述三个数据集上仍保持了 6.0\%、4.4\% 和 2.6\% 的准确率优势。这说明，通过强化学习动态优化检索策略并结合置信度过滤，能够更有效地从源头控制知识输入的质量，从而系统性地提升生成内容的准确性和可靠性。值得注意的是，当采用未经过特殊指令调优的 LLaMA2-hf-7b 作为生成器时，DRL-RAG同样表现稳健，在三个数据集上分别较标准RAG高出6.0\%、13.5\%和14.2\%。这进一步表明，本框架的性能增益并非依赖于特定生成模型的额外指令跟13B Ret-LLaMA2-𝑐 51.8 52.1 37.9 13B ChatGPT 29.3 70.1 75.3 Ret-ChatGPT 50.8 54.7 75.3 Baselineswithoutretrieval
+
+\begin{equation}
+LLaMA2 14.7 34.2 21.8
+\end{equation}
+
+7B
+
+\begin{equation}
+Alpaca 23.6 49.8 45.0
+\end{equation}
+
+7B
+
+\begin{equation}
+LLaMA2 14.7 29.4 29.4
+\end{equation}
+
+13B
+
+\begin{equation}
+Alpaca 24.4 55.5 54.9
+\end{equation}
+
+13B Baselineswithretrieval
+
+\begin{equation}
+LLaMA2 38.2 30.0 48.0
+\end{equation}
+
+7B
+
+\begin{equation}
+Alpaca 46.7 40.2 48.0
+\end{equation}
+
+7B SAIL – 69.2 48.4
+
+\begin{equation}
+LLaMA2 45.7 30.2 26.0
+\end{equation}
+
+13B
+
+\begin{equation}
+Alpaca 46.1 51.1 57.6
+\end{equation}
+
+13B LLaMA2-hf-7b RAG 50.5 48.9 43.4 Self-RAG* 30.2 21.7 24.9 DRL-RAG(ours) 56.5 62.4 57.6 SelfRAG-LLaMA2-7b RAG 52.8 39.0 53.2 Self-RAG 54.9 72.4 67.3 DRL-RAG(ours) 60.9 76.8 69.9随或反思能力，其设计具有良好的模型无关性和任务通用性。
+
+
+该方法在多样化任务场景中展现了强大的泛化能力。实验选取的三个数据集分别对应不同的知识类型与推理需求：PopQA 侧重于事实性短答案生成，要求模型快速、精确地检索并输出客观事实；PubHealth面向专业领域的二分类事实验证，需要模型在复杂、有时带有误导性的文本中进行细粒度信息甄别与逻辑判断；而ARC-Challenge则需要多步骤常识推理，考察模型在隐含知识关联与多跳推理上的能力。DRL-RAG在这些任务目标、输出形式和领域知识需求差异显著的数据集上均取得了领先性能，其显著且一致的提升表明，框架所提出的动态检索优化与多阶段质量管控机制并非针对单一任务设计，而是能够普遍增强RAG系统在面对异构、复杂查询时的鲁棒性与准确性。
+
+
+DRL-RAG在适配不同生成模型时表现出优异的灵活性与可移植性，这是其区别于一些紧密结合特定模型架构的方法的重要优势。一个关键发现是，当基座模型DRL-RAG在不同能力、不同训练方式的基座模型上均能保持稳定的性能增益。这种差异源于两者的核心设计理念不同：Self-RAG 的性能严重依赖于生成模型本身经过针对性指令微调以学习和输出特定的反思与控制标记（如“检索”、“相关”、“支持”等），其检索决策与内容评估能力深度内嵌于生成过程中；而DRL-RAG则将检索策略的优化、结果相关性的重评估以及生成内容的置信度过滤等关键控制逻辑，封装在独立于生成模型的检索与决策模块中。这种解耦式架构对生成器本身无特殊要求，实现了“即插即用”的灵活集成。这种设计不仅降低了使用门槛，也使其具备作为通用增强组件的长期潜力，能够无缝适配未来更强大或更专用的大语言模型，而无需承担额外的、复杂的模型适配或微调成本，具有良好的可扩展性和未来适应性。
+
+\subsection{NL2SQL 模式链接评估}
+
+NL2SQL系统的核心挑战之一是“模式链接”，即将自然语言问题中的提及准确映射到数据库的表、列及值。检索增强生成（RAG）可以通过从数据库模式描述、业务文档等外部知识库中检索相关信息，辅助大语言模型理解模糊术语、建立正确映射。然而，检索结果若包含不相关或误导性信息（噪声），会直接导致链接错误，进而生成错误的SQL。
+
+
+为直接验证 DRL-RAG 方法在自然语言到结构化查询语言（NL2SQL）这一核心应用场景中的有效性，本节设计并执行了一项针对 NL2SQL 模式链接子任务的专项评估实验。模式链接的准确性是决定最终 SQL 生成质量的基础，其核心挑战在于从数据库的复杂模式描述中精准检索出与用户自然语言查询语义相关的表、列及约束信息。传统检索增强生成方法在此任务中常因返回无关或低质量的上下文而引入噪声，导致后续的语义映射出现偏差。本实验旨在证明，DRL-RAG通过其动态强化学习机制，能够显著优化此检索过程，为 SQL 生成提供更可靠的知识支撑。
+
+
+本实验将模式链接任务形式化为一个文档检索与排序问题。给定一个自然语言查询（NLQ），系统的目标是从一个包含目标数据库所有模式描述文本的知识库中，检索并按照相关性降序排列这些文档。知识库中的每个文档对应数据库中的一个表，其内容为该表的CREATETABLE语句（包含表名、列名、数据类型、键的标准答案。
+
+
+实验选用BIRD数据集的开发集作为基准。BIRD是当前最具挑战性的工业级NL2SQL基准，其数据库模式复杂、数据规模大，且提供了详尽的模式文本描述，完美契合“从专业结构化描述文本中检索信息”的实验场景。为全面评估DRL-RAG的性能，我们设置了如下基线方法进行对比：
+
+
+1. BM25：经典的稀疏检索模型，基于TF-IDF加权与关键词词频统计进行匹配。
+
+
+该方法无需训练，仅依赖查询词与文档之间的表面词汇重叠度进行相关性计算，作为传统信息检索方法的代表，用于检验基于语义理解的稠密检索是否带来实质性提升。
+
+
+2. Bi-Encoder(DenseRetrieval)：采用BAAI/bge-large-en-v1.5预训练模型分别编码自然语言查询和数据库模式描述文档为固定维度的稠密向量，通过余弦相似度计算两者的语义相关性。此方法代表了基础版的向量语义检索范式，亦是当前主流RAG 系统的核心检索组件，作为语义检索能力的基准线。
+
+
+3. 静态 RAG (Bi-Enc + 静态交叉编码器重排序)：首先使用 Bi-Encoder 召回Top-20 个候选文档，随后利用一个预训练的交叉编码器（本实验使用 crossencoder/ms-marco-MiniLM-L-6-v2）对这批候选进行精细化的相关性打分并重新排序。该方法代表了采用了更先进重排序技术但检索策略固定的 RAG 系统，是DRL-RAG 最直接的强基线。
+
+
+本实验中的 DRL-RAG 模型基于上述静态 RAG 架构进行强化学习训练。其状态空间融合了查询向量、候选文档向量、交叉编码器初始分数及已选文档的多样性特征。动作空间允许智能体动态调整相关性权重与多样性惩罚系数，并针对NL2SQL 任务特点，设计了一个探索性动作：当检索到的列描述模糊时（如列名status），可决策是否触发对数据库中该列具体取值样例的查询，以获取补充语义线索（模拟“条件网络搜索”在数据库上下文检索中的延伸）。奖励函数基于排序结果的平均精度均值（MAP）和 Recall@10 综合设计，以引导智能体学习同时优化检索精度与召回率的策略。
+
+
+我们采用信息检索领域的标准指标进行评估，重点关注前序结果的召回能力与整体排序质量：
+
+
+2. 平均精度均值 (MAP)：MAP 对排序质量高度敏感，其核心特点是优先奖励那些能够将相关文档排在结果列表更靠前位置的系统。一个系统即使在前 K个结果中召回了所有相关文档，但如果它们都散落在列表后半段，其 MAP值也会显著偏低；反之，若相关文档集中在列表前列，MAP 则较高。因此，MAP 用一个数值同时反映了系统的查准率与查全率，尤其强调“前序结果的查准率”，与 NL2SQL 模式链接任务对高精度上下文优先供给的需求高度
+
+\begin{equation}
+契合。设查询集合为 Q，查询 q 的相关文档数为 R ，rel (k) 表示位置 k 的
+\end{equation}
+
+𝑞 𝑞
+
+\begin{equation}
+文档是否相关，P@k(q)为位置k 的精确率，详细计算公式如下：
+\end{equation}
+
+
+\chapter{|𝑄| 1 𝑁}
+\zihao{-4}
+
+
+\begin{equation}
+MAP = \sum( \sumP@k(q)\timesrel (k)). (4.9)
+\end{equation}
+
+
+\begin{equation}
+|Q| R q
+\end{equation}
+
+
+\begin{equation}
+q=1 q k=1
+\end{equation}
+
+在BIRD开发集上的实验结果如表4.2所示。所有基于语义的稠密检索方法（BiEncoder, 静态 RAG, DRL-RAG）均显著优于基于关键词的 BM25 方法，印证了语义理解在此类任务中的必要性。
+
+\begin{table}[htbp]
+\centering
+\caption{表4.2不同方法在BIRD数据集模式链接检索任务上的性能对比}
+\fbox{\parbox{0.8\textwidth}{\centering \zihao{5}表4.2不同方法在BIRD数据集模式链接检索任务上的性能对比}}
+\end{table}
+
+Method Recall@5 Recall@10 MAP BM25 0.42 0.55 0.48 Bi-Encoder(Dense) 0.60 0.72 0.72静态RAG(Bi-Enc+CrossEnc) 0.65 0.78 0.70 DRL-RAG(Ours) 0.68 0.81 0.74通过表4.2所示的实验结果可知，我们提出的动态强化学习检索增强生成（DRLRAG）方法在 Recall@10 和平均精度均值（MAP）两项核心检索评估指标上均取得了最优性能，这验证了该方法在 NL2SQL 模式链接任务中的有效性。在召回率方面，DRL-RAG 的 Recall@10 达到了 0.81，相较于采用了固定重排序策略的静态 RAG 基线提升了 3.8\%。这一提升表明，通过强化学习策略的持续优化与决策，DRL-RAG能够更全面、更鲁棒地从数据库模式描述知识库中检索出与自然语言查询相关的信息，尤其擅长捕捉那些语义关联密切但表面文本匹配度较低的“长尾”相关文档，并将其有效地纳入前K个检索结果中，从而提高了整体检索的覆盖度。
+
+
+在排序质量方面，DRL-RAG 的 MAP 指标达到 0.74，相较于静态 RAG 显著提升提及的核心数据表、进行条件过滤或连接操作的关键列），从而为后续的大语言模型生成阶段提供了质量更高、噪声更少的上下文信息，从根本上提升了模式链接的可靠性。
+
+
+值得注意的是，静态 RAG 虽然在 Recall@10 上高于 Bi-Encoder 基线，但其MAP指标（0.70）反而低于后者（0.72）。这说明其采用的固定重排序策略虽能召回更多相关文档，却未能有效将它们精准置于结果列表的前列。相比之下，DRL-RAG通过强化学习动态调整排序策略，在Recall@10与MAP上同步取得提升，表明其学得的策略能够更精准地识别并优先排序对SQL 生成最为关键的上下文信息。
+
+
+另外一个值得注意的现象是，DRL-RAG 在 Recall@5 上的提升相对温和，但其MAP却实现了大幅提升。这暗示了DRL-RAG的优化策略并非单纯追求在极少数案例中取得最高的 Top-1 精确率，而是致力于系统性地改善整个检索结果列表的整体效用与稳定性。对于 NL2SQL 这类通常需要综合多表、多列信息以构建复杂查询的任务而言，一个在前10个结果中均匀、稳定地包含多个相关模式实体的高质量检索列表，其实际价值远高于一个仅在最前列偶然精准但后续结果充斥噪声的列表。因此，DRL-RAG 在 MAP 上的卓越表现更具实际意义，它确保了提供给SQL 生成模型的上下文具备更高的一致性和可依赖性。
+
+\subsection{消融实验}
+
+为验证设计的对知识处理动作的有效性，对所提出的方法中的每个单一动作（无相关性阈值限制）进行了消融实验，我们先评估了三种基础知识处理动作的独立贡献。图4.4、图4.5和图4.6分别展示了在PopQA、PubHealth和Arc-Challenge数据集上，依次移除各个动作后模型准确率的变化情况。实验以完整的DRL-RAG模型为起点，每次仅移除一个待评估的动作，同时保持其他所有组件及超参数完全一致。
+
+
+结果表明，无论移除哪一个动作，系统在所有数据集上的性能均出现下降。这种一致性的性能衰减模式强有力地证明，每个被设计的动作都是提升生成鲁棒性所必需的，它们共同构成了一个协同优化的整体。
+
+\begin{figure}[htbp]
+\centering
+\fbox{\parbox{0.8\textwidth}{\centering \zihao{5}图4.4移除了PopQA数据集上每个单独动作的消融研究（准确率%）}}
+\caption{图4.4移除了PopQA数据集上每个单独动作的消融研究（准确率%）}
+\end{figure}
+
+
+\begin{figure}[htbp]
+\centering
+\fbox{\parbox{0.8\textwidth}{\centering \zihao{5}图4.5移除了PubHealth数据集上每个单独动作的消融研究（准确率%）}}
+\caption{图4.5移除了PubHealth数据集上每个单独动作的消融研究（准确率%）}
+\end{figure}
+
+
+\begin{figure}[htbp]
+\centering
+\fbox{\parbox{0.8\textwidth}{\centering \zihao{5}图4.6移除了Arc-Challenge数据集上每个单独动作的消融研究（准确率%）}}
+\caption{图4.6移除了Arc-Challenge数据集上每个单独动作的消融研究（准确率%）}
+\end{figure}
+
+为了更精细地剖析核心操作模块的贡献度，我们在PopQA数据集上针对三个关键操作进行了重点消融实验，结果如表4.3所示。具体实验设置包括：
+
+
+能无关的网页内容）不加筛选地全部输入生成模型。
+
+
+移除置信度评估操作（NoConfidence）：生成模型产生的所有文本将不经过任何置信度过滤机制，直接被用作最终输出。
+
+
+实验数据显示，移除任一操作均导致模型性能显著下降。其中，移除强化学习检索优化操作对性能影响最大，在LLaMA2-hf-7b和SelfRAG-LLaMA2-7b两个基座模型上分别导致准确率下降 3.9\% 和 7.4\%，这凸显了动态策略优化在筛选高质量上下文中的核心作用。知识精化操作的移除也有明显的性能损失，印证了对外部知识进行去噪和筛选的必要性。而置信度评估的缺失同样带来了性能下降，表明其对不可靠生成结果的过滤是保证最终输出质量的关键一环。所有消融变体的性能均低于完整DRL-RAG模型，且高于或接近基础RAG基线，这充分揭示了每个操作都是提升知识利用效率不可或缺的组成部分。
+
+\begin{table}[htbp]
+\centering
+\caption{表4.3去除PopQA知识利用操作的消融研究（准确率%）}
+\fbox{\parbox{0.8\textwidth}{\centering \zihao{5}表4.3去除PopQA知识利用操作的消融研究（准确率%）}}
+\end{table}
+
+Method LLaMA2-hf-7b SelfRAG-LLaMA2-7b DRL-RAG (full) 54.4 60.9 NoRL 50.5 53.5 Norefinement 52.3 55.5 NoConfidence 52.6 57.2 RAG(baseline) 49.5 51.8另外，我们还对多维置信度融合机制进行了深入的消融分析，以探究其内部两个子模块QA一致性验证（a）与零样本分类置信度（b）的差异化影响，结果如
+
+\begin{table}[htbp]
+\centering
+\caption{表4.4所示。实验通过分别移除各个子模块来观察其对生成质量（准确率、ROUGE-}
+\fbox{\parbox{0.8\textwidth}{\centering \zihao{5}表4.4所示。实验通过分别移除各个子模块来观察其对生成质量（准确率、ROUGE-}}
+\end{table}
+
+L、BLEU-4）的影响。结果表明，QA一致性验证模块对生成答案的事实准确性具有更为关键的影响，移除该模块后，准确率下降幅度相对更大，尤其是在LLaMA2hf-7b 基座模型上更为明显。相比之下，零样本分类置信度模块的移除对流畅性指标（ROUGE-L, BLEU-4）的影响在不同基座模型间存在差异，但其与 QA 一致性模块的融合（Complete）始终能取得最佳或接近最佳的综合性能。此结果证实了所提出的多模态置信融合机制的有效性，两个子模块从不同维度评估生成内容，具有一定的互补性，共同确保了输出结果的可靠性与质量。
+
+
+上述系列消融实验从不同层面验证了 DRL-RAG 框架中各个组件的有效性与必要性。基础动作、关键操作模块以及置信度子模块的缺失均会导致模型性能的Removeb(hf) 55.1 0.2210 0.1584 Removea(self) 58.9 0.4792 0.5377 Removeb(self) 59.0 0.4767 0.5362 Complete(hf) 56.4 0.2237 0.1649 Complete(self) 60.9 0.4794 0.5472显著退化，这从反面论证了本框架设计的合理性与完整性。实验结果强有力地支撑了核心论点：动态强化学习检索优化、知识精化流程以及多维置信度评估共同构成了一个高效协同的体系，显著提升了检索增强生成系统的鲁棒性与可靠性。
+
+\subsection{检索性能的稳健性}
+
+为深入评估 DRL-RAG 框架在检索性能波动条件下的稳定性与适应性，本小节设计了可控的检索质量衰减实验。通过模拟不同程度的检索结果质量下降，系统探究了生成性能随检索质量变化的响应规律，从而验证框架在面对非理想检索环境时的鲁棒性。
+
+
+实验设计与设置如下：在 PopQA 数据集上，以 SelfRAG-Llama-7b 为基础生成模型，我们通过随机替换部分高相关性检索文档为低相关性或无关文档的方式，构造了检索性能恶化的多种场景。此方法旨在模拟实际应用中因检索器性能波动或知识库覆盖不足导致的噪声检索情况。同时，设置了网络知识补充机制的启停条件，以评估外部知识扩展对缓解检索质量下降的作用。
+
+\begin{figure}[htbp]
+\centering
+\fbox{\parbox{0.8\textwidth}{\centering \zihao{5}图4.7基模型SelfRAG-Llama-7b在PopQA上的检索准确率下降与生成性能差异分析}}
+\caption{图4.7基模型SelfRAG-Llama-7b在PopQA上的检索准确率下降与生成性能差异分析}
+\end{figure}
+
+与标准 RAG。比如，当检索准确率降至 60\% 时，DRL-RAG 的生成准确率相较基线模型保持了约 15\% 的相对优势。这说明，本研究引入的动态强化学习优化机制能够有效甄别噪声文档，并通过置信度加权策略减轻无关信息对生成过程的干扰，从而提升了系统的抗噪声能力。
+
+\begin{figure}[htbp]
+\centering
+\fbox{\parbox{0.8\textwidth}{\centering \zihao{5}图4.8基模型SelfRAG-Llama-7b在PopQA上的网络知识补充效果减弱与生成性能分化}}
+\caption{图4.8基模型SelfRAG-Llama-7b在PopQA上的网络知识补充效果减弱与生成性能分化}
+\end{figure}
+
+进一步观察外部知识补充的贡献（图4.8），在启用网络搜索扩展机制后，DRLRAG 在面对检索质量下降时展现了更强的性能维持能力。与仅依赖静态知识库的基准方法相比，DRL-RAG 通过激活条件化网络搜索，能够获取补充性知识资源，部分补偿了原始检索结果的质量缺陷。值得注意的是，即使在网络知识补充受限（模拟为补充效果减弱）的场景下，DRL-RAG 的性能衰减曲线也更为平缓，证明了其多源知识自适应融合机制的有效性。
+
+
+实验结果表明，DRL-RAG通过其动态检索优化与条件化知识扩展机制，显著增强了对检索性能波动的鲁棒性。这不仅体现在面对检索质量下降时具有更优的稳定性，也反映在利用外部知识补偿检索不足方面的有效性。该特性确保了 DRLRAG 在现实复杂应用环境中具备更高的可靠性。
+
+
+另外，为了在整体任务框架中评估 DRL-RAG 对本文 NL2SQL 任务中模式链接的贡献度，本研究将其验证实验置于第五章（5.3.3 节）的主要实验中进行。该设计旨在 CLUE-SQL 完整框架下，通过对比集成 DRL-RAG 前后的性能差异，直接观察最终生成的 SQL 中模式召回率等关键指标的变化，从而客观、系统地说明本章聚焦于提升检索增强生成（RAG）系统在面临检索结果相关性不足时的鲁棒性问题。在 NL2SQL 场景中，检索增强生成（RAG）框架的性能高度依赖于从数据库模式描述、业务文档等外延知识库中所获取信息的相关性与精确性。若检索到无关、过时或噪声文档，将直接误导模型生成包含错误表名、列名或连接逻辑的 SQL 语句，加剧“幻觉”现象，严重影响查询结果的可靠性。为应对这一核心挑战，章提出了一种面向 NL2SQL 任务的、基于动态强化学习的检索增强生成框架（DRL-RAG），旨在通过智能化的决策机制动态优化对外延知识库的检索与利用过程，从而提升SQL 生成的准确性与鲁棒性。
+
+
+DRL-RAG框架的核心贡献在于其系统性地整合了三大创新模块，共同提升了检索增强生成系统的鲁棒性与准确性。该框架设计了一种基于强化学习的检索优化器，通过交叉编码器提供的细粒度相关性评分构建动态奖励信号，引导智能体自主学习最优检索策略，从而在相关性、多样性与效率之间实现多目标协同优化。
+
+
+在此基础上，框架引入了一种条件网络搜索机制，能够根据对内部知识库检索结果的置信度评估，自适应地触发大规模网络搜索，有效扩展知识覆盖范围，缓解静态语料库的局限性。此外，框架还开发了一个多维置信度评估模块，通过融合QA一致性评估与零样本分类置信度，对生成内容进行量化可靠性评估，并基于评估结果实施选择性过滤，显著提升最终输出的准确性与可信度。
+
+
+在通用知识问答任务上，实验表明DRL-RAG相较于传统RAG及先进方法在答案准确性方面有显著提升。针对 NL2SQL 任务，在 BIRD 数据集上的评估显示，DRL-RAG 在模式信息检索排序任务中的平均精度均值和 Recall@10 均优于静态RAG 基线，验证了其提升相关上下文质量的有效性。消融实验证实了各核心组件的贡献，同时在模拟检索性能下降的场景下，DRL-RAG 表现出更强的鲁棒性。
+
+
+尽管 DRL-RAG 框架在外部知识利用方面取得进展，仍有改进空间。当前对SQL 生成置信度的评估依赖预定义阈值，未来可研究更自适应、精细化的动态评估机制。此外，如何将框架轻量化适配于实时系统，并探索其在跨领域场景中的扩展性与迁移性，亦是值得深入研究的未来方向。
+
+\chapter{多智能体协同的NL2SQL框架}
+\zihao{-4}
+
+将自然语言问题转换为 SQL 查询（即 NL2SQL）能够显著降低访问关系数据库的技术门槛，对非技术用户实现数据访问民主化至关重要。当前，尽管基于大语言模型的方法已成为 NL2SQL 研究的主流并取得了显著性能，但面对真实工业环境中复杂的数据库模式、专业领域术语以及多样化的查询意图时，这些方法在生成SQL的准确性与可靠性方面仍面临挑战。为此，本章提出CLUE-SQL：一种利用数据感知上下文线索的多智能体框架，其核心是通过协同工作的多个智能体，系统地捕捉并融合多源线索，旨在提升模型对真实业务数据分布和关联关系的理解能力，从而在复杂的工业数据库场景下实现更精准、更鲁棒的自然语言到 SQL转换。实验结果表明，CLUE-SQL框架在Spider、BIRD公开数据集上均取得了较高的准确率，其性能超越了多数现有方法，验证了利用多智能体协同挖掘数据感知线索这一思路的有效性。
+
+\section{问题分析}
+
+基于大语言模型（Large Language Model, LLM）的自然语言到结构化查询语言转换（Natural Language to SQL，NL2SQL）技术，旨在利用大规模预训练语言模型（如 GPT 系列、LLaMA 等），将用户以自然语言表述的查询问题自动转化为符合语法与语义要求、并可在关系型数据库中执行的结构化查询语言（Structured Query Language, SQL）语句。该技术通过深层语义理解、上下文推理以及对数据库模式（Schema）的感知与对齐，显著降低了非专业用户直接查询数据库的技术门槛，是实现“数据民主化”和提升数据访问自动化水平的关键路径之一。
+
+\begin{equation}
+从形式化角度，基于大语言模型的 NL2SQL 任务可定义如下：给定一个自然语言查询 Q 和一个关系数据库的模式信息 S（包括表集合、列集合、数据类型及主外键关系等），目标是生成一个能正确反映 Q 语义意图的 SQL 查询 Y。其生成过程可建模为如下条件概率模型：
+\end{equation}
+
+
+\begin{equation}
+SQL = LLM (Q,S,\Theta), (5.1)
+\end{equation}
+
+𝜃
+
+\begin{equation}
+其中：LLM (\cdot) 表示参数为 \theta 的大语言模型所实现的映射函数；\Theta 表示提示工程
+\end{equation}
+
+𝜃（PromptEngineering）所引入的上下文信息，包括系统指令、少样本示例以及输出
+
+\begin{equation}
+其中，P(Y ∣ Q,S) 表示在给定 Q 和 S 的条件下模型生成完整 SQL 序列的似然概
+\end{equation}
+
+率，体现了LLM基于上文词汇自回归地生成下一个词元𝑦 的机制。
+
+
+𝑡一个稳健的、基于LLM的NL2SQL 系统通常包含以下几个关键技术与步骤：
+
+
+查询理解与语义解析。模型需深入理解自然语言查询 𝑄 的真实意图，识别其中所涉及的实体（如列名、表名）、操作类型（如 SELECT, WHERE, JOIN 等）以及条件约束（如过滤条件、排序要求）。在此过程中，如何处理自然语言固有的歧义性与上下文依赖性是核心挑战。
+
+
+模式链接（SchemaLinking）。此步骤是确保生成SQL语义正确的核心，旨在将𝑄中提及的概念精准映射到数据库模式𝑆 中的具体表、列乃至数据值。例如，将用户问句中的“turnover/salesrevenue（销售额）”正确映射到数据库中的sales\_amount列。现实数据库中常存在表数量庞大、列名缩写或业务含义隐晦等问题，使得模式链接成为影响系统准确率的的关键难点。
+
+
+SQL 生成与结构优化。基于语义解析和模式链接的结果，模型需要生成不仅语法正确、而且能高效执行的SQL语句。对于复杂的业务查询（如涉及多表连接、嵌套子查询及聚合函数），要求LLM具备一定的逻辑推理和程序规划能力。
+
+
+验证与后处理。生成的 SQL 语句需经过执行验证（确保可执行）、逻辑验证（确保结果符合用户意图）以及可能的性能优化（如避免笛卡尔积、优化子查询等），以提升系统的可靠性与实用性。引入执行反馈进行迭代修正是提升最终准确率的有效策略之一。
+
+
+相较于早期基于规则的方法或神经网络模型，基于大语言模型的 NL2SQL 方法展现出显著优势：1、强大的泛化与语境理解能力：LLM通过在海量文本语料上预训练，对自然语言的多样表达、同义词替换及口语化表述具有更强的鲁棒性。2、上下文学习（In-ContextLearning）能力：通过精心设计的提示（Θ），模型能够在少量甚至零样本情况下快速适应新的数据库模式或专业业务术语，降低了对大量标注数据的依赖。3、处理复杂查询的能力：LLM展现出一定的逻辑推理能力，能够更好地处理需要进行多步推理、复杂关联和聚合操作的查询。4、端到端学习的简化：减少了传统流水线方法中多个模块间错误传递的风险，实现了从自然语言到SQL 的更直接映射。
+
+
+NL2SQL 技术致力于利用大语言模型的强大能力，将非结构化的自然语言查1、多智能体协同框架：提出由线索数据检索代理（CDR）、数据库模式剪枝代理（DSP）与查询生成优化代理（QGR）三个专用智能体构成的 CLUE-SQL 框架，通过分工协作提升整体性能。
+
+
+2、多源线索数据的融合机制：设计了一种分层检索与融合策略，有效利用关键词、实体值、元数据及相关文档等多源线索，实现上下文感知的精准SQL生成。
+
+
+3、基于查询计划分解的 SQL 优化：提出一种新的 SQL 优化修订方法，能够对生成结果进行针对性修正，提高SQL 的执行效率与逻辑正确性。
+
+
+4、工业级数据库的适用性设计：框架采用分层检索架构，使其能够从 TB 级数据集中高效提取相关信息，并对超大规模数据库模式具有良好的适应性。
+
+
+5、实验验证与性能分析：在BIRD和Spider等权威数据集上的实验结果表明，CLUE-SQL 框架在准确率等关键指标上优于多数现有主流方法，尤其在处理复杂查询时表现出优势。
+
+\section{多智能体框架}
+
+CLUE-SQL 是一个面向复杂工业关系数据库的多智能体框架，其核心创新在于通过系统化地提取与利用上下文线索数据，增强对用户查询意图与数据库模式的理解，从而生成准确且高效的SQL查询。CLUE-SQL借鉴了多智能体系统中的分工与协作机制，通过引入线索数据感知机制，使各智能体能够在生成 SQL 过程中动态参考多源信息，从而显著提高输出的正确性与鲁棒性。
+
+\subsection{线索数据的定义}
+
+在本研究中，线索数据（ClueData）指在NL2SQL转换过程中，从用户查询、数据库内容、元数据、查询历史及外部知识源等多种异构数据源中提取的、可用于辅助推理的结构化或半结构化信息。这些信息为智能体在执行语义解析、模式对齐和SQL 生成等任务时提供关键的上下文支持，构成系统逻辑推理的基础。
+
+
+具体而言，CLUE-SQL 中所利用的线索数据包括但不限于以下类别，按其来源与功能可分为：
+
+
+1、查询衍生的关键词/短语 ：由线索数据检索器从CAR（本文第三章介绍）生局部敏感哈希、语义向量匹配等，从数据库表中提取的具体数据值，用于填充查询条件、验证属性存在性，或辅助语义链接。
+
+
+3、相关的模式元数据 ：与当前查询相关的数据库模式描述信息，包括表名/列名描述、注释、数据类型和值注解等，由线索数据检索器通过向量数据库的语义匹配获取，用于理解数据库结构并正确映射用户意图。
+
+
+4、模式相关性指示器 ： 基于语义相似性计算与LLM验证生成的量化指标，用于评估各表、列对当前查询的重要程度，辅助智能体进行模式剪枝与注意力分配。
+
+
+5、语义结构相似的示例：通过抽象语法树（AST）与语义骨架匹配检索得到的〈问题，SQL〉对，作为 Few-Shot 示例提供给生成模块，以提升复杂查询的生成质量。
+
+
+6、执行衍生物 ：在 SQL 执行与优化阶段产生的动态信息，包括语法错误提示、查询执行计划、中间结果集、空结果分析等。该类线索被查询生成优化代理用于自我修正与性能调优。
+
+
+7、系统开发文档等外部知识：利用 DRL-RAG 等技术从系统设计文档、API说明等文本中检索获得的领域知识，用于理解业务术语、惯用表达及特定约束。
+
+
+上述线索数据在流程各阶段被提取、过滤与融合，最终合成为连贯的上下文信息，驱动智能体进行协同决策，从而在工业级数据库场景下实现高精度的NL2SQL转换。
+
+\subsection{数据预处理}
+
+为提高线索数据检索器中实体检索与上下文检索工具的响应速度与执行效率，本系统在运行前对数据库中的具体数据值以及数据库目录等元数据进行了预处理。
+
+
+针对结构化的数据库值，我们采用局部敏感哈希（Locality-SensitiveHashing,LSH）索引技术实现高效的语法级近似匹配；对于包含较长文本描述、需进行语义理解的数据库目录，则利用向量数据库方法进行语义相似性度量。
+
+
+1、数据库值的局部敏感哈希索引在实体值检索（Entity Values Retriever）工具中，我们的目标是检索与问题中提取的一组关键词最匹配的数据库值。需要注意的是，由于可能存在拼写错误、表达差异，或者用户不熟悉数据库中数据存储的确切格式等情况，问题中的关键词度，计算开销将随着数据库规模扩大而急剧增长，难以满足实时交互需求。因此，我们设计了一种分层检索流程，在预处理阶段为数据库唯一值构建局部敏感哈希（LSH）索引。
+
+
+局部敏感哈希是一种近似最近邻搜索（Approximate Nearest Neighbor Search,ANN）技术，其核心原理是设计特殊的哈希函数，使得在原空间中相似的数据点经过哈希映射后，有更高概率落入相同的哈希桶中。在预处理阶段，我们使用LSH对数据库中各列的唯一值进行索引构建。在线检索时，实体值检索工具首先查询该 LSH 索引，快速获取与关键词最相似的若干候选值（例如，召回相似度最高的
+
+\chapter{个候选），随后再对这批候选值计算精确的编辑距离及语义嵌入相似度（基于}
+\zihao{-4}
+
+BAAI/bge-large-en-v1.5模型[130] 生成的向量），并依据预设阈值进行筛选。对于每个关键词，最终保留综合相似度最高（通常为编辑距离最小）的数据库值作为匹配结果。
+
+
+该方法将大规模数据集上的实时相似度计算转化为“LSH 快速召回 + 小范围精确匹配”的两阶段过程。实验表明，相较于直接全量计算编辑距离，该策略能将单次查询的平均处理时间从数分钟量级显著降低至秒级，在保证匹配准确性的同时，极大提升了系统响应效率。
+
+
+2、基于向量数据库的元数据与文档检索在 BIRD 数据集[9] 中，数据库模式通常包含对列内容的详细描述，这些描述对于理解数据语义、生成正确的 SQL 查询至关重要。然而，若在提示中引入全部模式描述，可能导致信息过载，尤其对参数规模较小的开源模型而言，会干扰其生成质量。现实工业环境中的数据库目录通常包含更丰富的元数据，如值域约束、关系说明、业务规则等。有效筛选并呈现与当前用户问题最相关的元数据，是提升NL2SQL 模型性能的关键。
+
+
+为评估并检索与问题语义最相关的模式描述，本系统采用向量相似度检索方法。在预处理阶段，我们利用预训练语言模型将各列的描述文本转化为高维向量，并存入向量数据库（本实验采用 ChromaDB）。ChromaDB 专为高效存储与检索向量嵌入而设计，支持基于余弦相似度或欧氏距离的快速最近邻搜索。在线检索时，线索数据检索代理中的模式上下文描述工具通过查询该向量数据库，找出与用户问题嵌入最接近的模式描述向量，从而精准召回高相关度元数据。
+
+
+储于 ChromaDB 中。结合 DRL-RAG 工具，系统能根据当前查询上下文，动态优化检索策略，从海量文档中精准定位最相关的知识片段，为 SQL 生成提供丰富的线索数据。
+
+
+针对系统开发文档、API说明文档等非结构化领域知识，我们同样可以将其纳入向量化检索体系。这些文档通常包含项目特有的技术术语、业务逻辑描述及接口规范，对于理解查询语境中的专有名词或习惯性表达至关重要。通过嵌入模型将这些文档转换为高维向量并存储在ChromaDB中，DRL-RAG工具能够基于强化学习机制动态优化检索策略，使得系统能从海量文档中精准召回与当前 SQL 生成任务最相关的领域知识片段，有效避免因术语歧义或上下文缺失导致的生成偏差。
+
+
+3、基于预训练模型的自然语言到数据库字段映射自然语言问句中的词汇与数据库字段名之间的准确映射是 NL2SQL 的核心挑战之一，尤其在存在同义词、缩写及多样化表达时。为提升映射的泛化能力，我们在预处理环节引入了基于预训练语言模型的语义映射机制。
+
+
+该方法的本质是利用大规模语料上预训练得到的深度语言模型，将自然语言中的短语（如“sales revenue（销售额）”）和数据库中的字段名（如 sales\_amount）映射到同一低维语义空间。通过计算两者嵌入向量之间的语义相似度（如余弦相似度），即可实现即使字面不匹配也能准确映射（例如，将“salesamount（销售金额）或revenue（营收）”也正确关联到sales\_amount字段）。此过程在SQL生成前完成，为后续步骤提供了一个高质量的术语翻译基础，显著增强了对业务术语多样性的适应能力，并提升了最终SQL 的生成准确性。
+
+\subsection{方法框架}
+
+CLUE-SQL 是一个面向复杂现实世界数据库环境的多智能体协同框架，能够从多数据源中提取线索数据（ClueData），以实现精准、鲁棒的自然语言到SQL转换。其架构如图5.1所示，集成了三个专用智能体，每个智能体均配备特定工具。
+
+
+本节介绍CLUE-SQL的三个专用代理及其方法工具：线索数据检索代理（Clue DataRetriever，CDR）、数据库模式剪枝代理（DatabaseSchemaPruner，DSP）和查询生成优化代理（QueryGenerator-Refiner，QGR）。每个都使用特定于域的工具来实现其在高效SQL 生成中的作用。以下描述概述了他们的功能职责和实施方法。
+
+
+ENTITY VALUES RETRIEVER: RETRIEVER(CDR) \{ Majority Voting:“satscores”: \{ “AvgScrMath”: [560] \}, SELECT COUNT(T2.' School Code')“frpm”: \{“Charter Funding Type”: [“Directly funded”]\} FROM satscores AS T1\} INNER JOIN frpm AS T2 ON T1. cds = T2. CDSCode DATABASE SCHEMA SCHEMA CONTEXT DESCRIPTOR: PRUNER(DSP) WHERE T1. AvgScrMath > 560 AND T2. Charter Description of keywords related to clues in the database. Funding Type = ' Directly funded' DRL-RAG retrieved document description Voting DRL-RAG Query RetrieverDRL Ranking Clue Docs
+
+\begin{lstlisting}
+TABLE SELECTION:
+\end{lstlisting}
+
+
+\begin{lstlisting}
+selected tables: [“satscores”, “frpm”]
+\end{lstlisting}
+
+Reward Feedback COLUMN FILTERING:\{“satscores”: [“cds”, “AvgScrMath”],“frpm”: [“CDSCode”, “Charter Funding Type”, “School Code”...]\} DRL-RAG COLUMNS PRIORTIZATION:\{“satscores”: [“cds”, “AvgScrMath”],“frpm”: [“CDSCode”, “Charter Funding Type”, ...]\}
+
+\begin{figure}[htbp]
+\centering
+\fbox{\parbox{0.8\textwidth}{\centering \zihao{5}图 5.1 用于 NL2SQL 任务的 CLUE-SQL 多智能体框架包括三个代理：线索数据检索代理}}
+\caption{图 5.1 用于 NL2SQL 任务的 CLUE-SQL 多智能体框架包括三个代理：线索数据检索代理}
+\end{figure}
+
+（CDR）、数据库模式剪枝代理（DSP）和生成器优化代理（QGR）1、线索数据检索代理线索数据检索代理（ClueDataRetriever,CDR）是CLUE-SQL框架中负责多源语义理解与上下文构建的核心组件，旨在通过融合词汇、实体与模式等层面的线索信息，为企业级数据库环境下的自然语言查询提供丰富、准确的上下文表征。该代理集成了线索关键词提取、实体值检索与模式上下文描述三个专项工具，构建了一套层次化的语义理解体系，能够从用户输入中捕获显式与隐式语义线索，并将其与数据库内容及结构进行有效关联。
+
+
+（a）线索关键词提取工具该工具基于少样本学习（Few-ShotLearning）机制，从经过CAR第一阶段预处理后的自然语言问题集中，精准识别并提取核心关键词及关键短语。与传统依赖正则匹配或词频统计的方法不同，本工具通过引入提示工程（PromptEngineering）与上下文示例，实现从表层词汇到深层概念的语义跃迁。其能够有效处理复合概念的分解与归一化，显著提升了在业务术语多样化、表达口语化场景下的关键词召回质量，为后续在数据库模式和描述中进行相似性检索奠定基础。
+
+
+（b）实体值检索工具针对企业级数据库中百万行级别的数据规模，该工具承担在底层数据中快速定位与关键词相匹配的具体取值的任务。为克服用户查询表述与数据库实际存储值之间存在的不一致问题（如拼写变体、缩写或简称），工具综合运用语法与语义将单次实体检索的平均耗时从传统暴力扫描的 5 分钟大幅压缩至 5 秒以内，实现了亚线性时间复杂度的检索效率，较好地满足了对大规模数据环境的实时响应要求。
+
+
+（c）模式上下文描述工具该工具专注于为 SQL 生成过程补充必要的数据库模式语境信息。其基于预构建的 ChromaDB 向量数据库，对来自数据库目录的模式元数据（如列名描述、业务注释、数据类型说明、值域约束等）以及相关的系统文档进行深度语义编码。在检索时，工具将用户问题及已提取的关键词向量化，并通过余弦相似度计算在向量库中召回最相关的模式描述片段。这种语义级匹配机制能够有效克服关键字匹配的局限性，从而为LLM生成准确的SQL 提供关键的上下文依据。
+
+
+通过整合句法和语义相似性评估，线索数据检索代理确保了全面的上下文理解，不仅检索词汇相似的值，还检索语义相关的元数据和文档性描述，从而显著提高了企业级数据库系统的检索准确性。
+
+
+2、数据库模式剪枝代理面对现实工业环境中数据库模式规模庞大、表列关系复杂的挑战，数据库模式剪枝代理（DatabaseSchemaPruner,DSP）被设计用于在SQL生成前对数据库模式进行智能筛选与聚焦。该代理的核心任务是依据当前自然语言查询的语义，从完整的数据库模式中识别并保留与之最相关的表与列，从而显著降低后续 SQL 生成模块所面对的模式复杂性，形成层次化的剪枝机制，提升生成效率与准确率。
+
+
+（a）列过滤工具在包含数百列的大型数据库中，多数列与特定用户查询的语义无关。直接将这些无关列纳入生成过程会引入噪声，增加模型的计算负担与出错概率。该工具以列名（及可选的列注释）和用户自然语言问题作为输入，输出为该列与查询的相关性判断。
+
+
+该工具采用一种兼顾效率与精度的多级处理机制。首先，通过多向量共识模块计算列名/描述与查询问题之间的语义相似度评分，进行初步筛选，自动过滤掉评分低于动态阈值的非关键列。语义向量通常由预训练语言模型生成，相似度度量多采用余弦相似度。然后引入大语言模型验证层，将初步筛选出的候选列及其上下文信息（如表名、部分同行列名）通过精心设计的提示提交给LLM进行二次（b）表选择工具该工具将数据库的子模式和问题作为输入，并通过大语言模型提示返回回答查询所需的表。在这个阶段，我们采用基于大语言模型引导的推理过程，通过分析数据库子模式与用户查询的语义关联，精准识别与当前查询相关的数据表。
+
+
+（c）列优先级选择工具要进一步缩小相关架构项的范围，可以使用列优先级选择工具。通过输入子模式和问题，代理仅检索必要的列。该工具则基于动态子模式分析，结合具体查询需求进一步提炼关键任务列。
+
+
+数据库模式剪枝代理的这三个工具可以视数据库复杂度和查询难度单独或组合使用。关键在于动态平衡剪枝过程的精确度与召回率，避免过度剪枝导致信息缺失，或剪枝不足导致噪声残留。后续实验表明，在处理包含超过2000列的工业级数据库模式时，该代理能显著减少不相关的模式信息，将参与最终 SQL 生成的表列数量降低一个数量级，从而为后续的查询生成优化器提供了更清晰、更专注的上下文环境，在复杂的实际应用场景中展现出显著的性能优势与可扩展性。
+
+
+这种分阶段处理策略有效避免了模式过载问题，尤其适用于包含数千列的工业级数据库场景。以下算法3描述了该过程的详细流程。
+
+
+在本部分中，我们使用一个示例来展示如何在整个列过滤、表选择和列优先级选择中缩小初始模式的范围。该示例选自 BIRD 基准测试的 Formula 1 数据库，共有13个表和96列。以下是问题及其证据：
+
+\begin{itemize}
+\item Question: What’sthefastestlaptime everinaracefor LewisHamilton?• Evidence: fastestlaptime everreferstomin(fastestLapTime).
+\end{itemize}
+
+\begin{figure}[htbp]
+\centering
+\fbox{\parbox{0.8\textwidth}{\centering \zihao{5}图5.2清晰展示了数据库模式剪枝代理在分层过滤过程中的数据库模式的变}}
+\caption{图5.2清晰展示了数据库模式剪枝代理在分层过滤过程中的数据库模式的变}
+\end{figure}
+
+化。从包含 13 个表、96 列的初始模式，经过列过滤工具处理后保留 13 个表中的48列；表选择工具进一步将模式缩减至2个核心表与13列；最终列选择工具输出仅含 2 表 5 列的精简子模式，该子模式将直接用于 SQL 生成。这种渐进式过滤机制显著降低了模式复杂度，为后续查询生成提供了高效的数据基础。
+
+
+为了更直观地展示模式选择的具体流程，我们使用实体关系图5.3（ERD）进行说明。在这个图中，每个表都表示为一个块，下面列出了它的列。主键带下划2:步骤1: 列过滤3: for每个列𝐶 in𝑆′ do
+
+\begin{equation}
+4: irrelevantCount \leftarrow 0
+\end{equation}
+
+
+\begin{equation}
+5: fori \leftarrow 1 tondo
+\end{equation}
+
+
+\begin{equation}
+6: score \leftarrow embeddingModel (C.name,Q)
+\end{equation}
+
+𝑖
+
+\begin{equation}
+7: if score < \theta then
+\end{equation}
+
+
+\begin{equation}
+8: irrelevantCount \leftarrow irrelevantCount+1
+\end{equation}
+
+9: endif 10: endfor
+
+\begin{equation}
+11: if irrelevantCount \geq 0.8\timesn then
+\end{equation}
+
+
+\begin{equation}
+12: 从S' 中移除C ▷直接移除不相关列13: endif 14: endfor 15: for每个候选列C inS' do
+\end{equation}
+
+
+\begin{equation}
+16: relevance \leftarrow LLMValidate(C,Q)l
+\end{equation}
+
+
+\begin{equation}
+17: if notrelevancethen
+\end{equation}
+
+
+\begin{equation}
+18: 从S' 中移除C19: endif 20: endfor 21: 重建S' 中的主键和外键约束 ▷确保数据完整性22:步骤2: 表选择
+\end{equation}
+
+
+\begin{equation}
+23: T \leftarrow LLMSelectTables(S',Q) ▷LLM返回必要表集合
+\end{equation}
+
+
+\begin{equation}
+24: S' \leftarrow {T \in S' ∣ T \in T} ▷过滤表
+\end{equation}
+
+
+\begin{equation}
+i i25:步骤3: 列优先级排序26: for每个表T inS' doi
+\end{equation}
+
+
+\begin{equation}
+27: cols \leftarrow prioritySelect(T ,Q)
+\end{equation}
+
+𝑖
+
+\begin{equation}
+28: 设置T 的列为cols
+\end{equation}
+
+𝑖29: endfor 30:return𝑆′All Tables \& Columns
+
+\chapter{Tables}
+\zihao{-4}
+
+
+\chapter{Columns}
+\zihao{-4}
+
+Column Filtering
+
+\chapter{Tables}
+\zihao{-4}
+
+
+\chapter{Columns}
+\zihao{-4}
+
+
+\begin{lstlisting}
+Table Selection
+\end{lstlisting}
+
+
+\chapter{Tables}
+\zihao{-4}
+
+
+\chapter{Columns}
+\zihao{-4}
+
+Column Selection
+
+\chapter{Tables}
+\zihao{-4}
+
+
+\chapter{Columns}
+\zihao{-4}
+
+Generate SQL
+
+\begin{figure}[htbp]
+\centering
+\fbox{\parbox{0.8\textwidth}{\centering \zihao{5}图5.2基于代理剪枝的数据库模式逐步筛选流程}}
+\caption{图5.2基于代理剪枝的数据库模式逐步筛选流程}
+\end{figure}
+
+c c n n u c o o n s tru o n s tru a m e a tio n a rl n s tru c c to rId c to rR e lity to f rs constructorsStandings constructorStandingId raceId constructorId position points positionText wins q u a q u a lify Id ra c e Id d riv e rId c o n s tru c to n u m b e r p o s itio n q 1 /q 2 /q 3 lify rId in g constructorResults constructorResultsId raceId constructorId points status races raceId year round circuitId name date time url drivers driverId results driverRef resultId number raceId code status driverId forename statusId constructorId surname status number dob position nationality grid/points url positionText/Order laps pitStops time raceId milliseconds driverId fastestLap stop rank lap fastestLapTime time fastestLapSpeed duration statusId milliseconds S e a s o n y e a r u rl la p T im e s ra c e Id d riv e rId la p p o s itio n tim e m illis e c o n d s d riv e rS ta n d in g d riv e rS ta n d in g s Id ra c e Id d riv e rId p o in ts p o s itio n p o s itio n T e x t w in s c irc u its c irc u itId c irc u itR e f n a m e lo c a tio n c o u n try la t ln g a lt u rl s circuits After column selection After table selection After column filtering Initial schema
+
+\begin{figure}[htbp]
+\centering
+\fbox{\parbox{0.8\textwidth}{\centering \zihao{5}图5.3模式选择示例formula_1_926}}
+\caption{图5.3模式选择示例formula_1_926}
+\end{figure}
+
+在数据处理流程中，筛选链接列（主键和外键）的决定是一项需要全局模式的任务，无法通过局部列分析实现，因此我们不会筛选这些列，而是将所有列都包含在列筛选步骤的结果中，这解释了为什么在此步骤之后所有主键和外键都存在。
+
+
+另外，如“laps”、“time”和“milliseconds”等列，在语义上都与问题相关，因为问题要求最快的圈数（the fastest lap time），这表明过滤列工具成功地使用了本地信息来查找所有相关列。但是，所有这些列都不会用于构建 SQL 查询，因此我们需要找到与其相对信息相关的列，这将在选择表和选择列工具中完成。在选择表3、查询生成优化代理查询生成优化代理负责使用检索到的线索数据生成与用户问题相对应的 SQL查询。为了完成这项任务，该代理首先调用工具生成问题集中对应的多个候选查询。然后，它在数据库上执行这些候选查询，检查结果，并识别任何有问题的查询（包含语法错误或返回空结果的查询）进行修改，直到问题得到解决或达到允许的最大修订数。
+
+
+（a）查询生成工具此工具按照CAR范式针对问题集中的每个问题生成一个候选查询。它采用问题、模式和上下文（实体和描述等）等，并提示大语言模型遵循多步骤推理来编写候选SQL 查询。
+
+
+Poincaré Ball Similar SQL examples:Q Retrieval Repository <Q , SQL >
+
+\chapter{1}
+\zihao{-4}
+
+<Q , SQL >Key Value 2 2......
+
+
+Q Skeleton SQL Mapping Q Skeleton SQL......
+
+
+Embeddings Q Skeleton Hyperbolic Space
+
+\begin{figure}[htbp]
+\centering
+\fbox{\parbox{0.8\textwidth}{\centering \zihao{5}图5.4庞加莱球示例选择}}
+\caption{图5.4庞加莱球示例选择}
+\end{figure}
+
+在基于上下文学习的 NL2SQL 生成任务中，示例检索的质量直接制约着大语言模型生成 SQL 的准确性。当前的结构化示例选择策略通过掩码实体的问题相似性、SQL骨架结构相似性等进行综合筛选[86]，有效平衡了语义匹配与结构对齐。然而，该方法主要依赖于欧几里得空间中的向量相似度计算，难以充分捕捉查询之间复杂的层次化语义关联。为进一步提升检索效果，我们引入基于庞加莱球（Poincaré初始阶段，示例库中每个<问题，SQL>对的问题文本需经过预处理，包括规范化、去除停用词以及可能的实体泛化（例如将特定日期或国家名称替换为 <date>、<country>等类型化标记，枚举值被替换为对应列名），以降低模型对表面实体的过拟合。随后，借助嵌入模型将预处理后的问题文本编码为高维欧几里得空间中的向量表示，这些向量能够有效捕获问题的语义信息。获得欧氏空间中的初始向量后，通过一个可学习的映射函数将其投影至庞加莱球这一双曲空间模型中。该映射常通过指数映射实现，其数学表达与庞加莱球的曲率半径参数密切相关。此步骤将欧氏空间中的向量转化为庞加莱球内的双曲嵌入，其关键特性在于能够利用双曲空间的指数级容量更高效地表示数据间的层次关系。对于给定的原始查询问题，遵循完全相同的预处理与映射流程，以获得其在庞加莱球中的双曲嵌入表示。
+
+
+相似度度量基于庞加莱距离（双曲距离）进行。该距离公式内在地考虑了双曲空间的曲率，当嵌入点靠近庞加莱球边界时，距离会急剧增大。两点间的庞加莱距离计算涉及双曲函数，能对层次化的语义或结构差异更为敏感。检索时，系统计算原始查询的双曲嵌入与示例库中所有示例嵌入之间的庞加莱距离，并选取距离最小的前𝐾 个示例作为检索结果。公式如下：
+
+
+‖x−y‖2
+
+\begin{equation}
+d(x,y) = arcosh(1+2 ), (5.3)
+\end{equation}
+
+(1−‖x‖2)(1−‖y‖2)其中 x 和 y 分别表示原始问题和示例问题的嵌入向量。该距离度量能更好地区分实体间的语义差异。
+
+
+检索到的示例随后被整合到提示中，作为少样本学习内容，指导大语言模型生成候选 SQL 查询。该方法通过庞加莱检索增强了示例的相关性和多样性，减少了噪声干扰，为查询生成工具提供了更可靠的上下文支持，从而提升了 SQL 生成的准确性和鲁棒性。
+
+
+此外，我们注意到，只操纵一个表的SQL示例对涉及多个表的SQL生成帮助有限，因此，在选择SQL示例时，对于通过模式链接选择两个或多个表的问题，我们只选择涉及多个表操作的 SQL 查询，每个问题最多使用 5 个示例。为了减少输入令牌的消耗和冗余列的干扰，每个选定的SQL 示例只提供最少量的表列模式。
+
+
+（b）查询优化工具生成的候选 SQL 查询不可避免地包含逻辑或语法错误[21,131]。通过利用这些
+
+\begin{lstlisting}
+FROM Player_Attributes AS t1
+\end{lstlisting}
+
+
+\begin{lstlisting}
+WHERE STRFTIME('%Y', t1.date) >= '2013' 致索引失效 INNER JOIN Player AS t2
+\end{lstlisting}
+
+AND STRFTIME('\%Y', t1.date) <= '2015' • 对t1表进行了全表扫描(SCAN)，而非索引查 ON t1.player\_api\_id = t2.player\_api\_id AND t1.sprint\_speed >= 97; 找(SEARCH) WHERE t1.date >= '2013-01-01'• sprint\_speed字段无索引，过滤效率低 AND t1.date <= '2015-12-31'• 连接操作前进行了大量数据过滤，增加了连 AND t1.sprint\_speed >= 97;接成本执行EXPLAIN QUERY PLAN 执行EXPLAIN QUERY PLAN查询计划 Plan A-存在缺陷 查询计划 Plan B-优化后指导反馈id parent not detail id parent not detail used used SEARCH t1 USING COVERING 1 5 0 SCAN t1 LLM修复 1 0 0 INDEX idx\_player\_attrs (sprint\_speed>=? AND date>=?
+
+
+SEARCH t2 USING INDEX 应用优化策略： AND date<=?) 2 15 0 s (p q l l a it y e e \_ r a \_ u a t p o i i \_ n i d d e = x ? \_ ) Player\_1 • • 消 创 除 建覆 WH 盖 E 索 RE 引 子 优 句 化 中 查 的 询 函 性 数 能 调用 2 0 0 S sq E li A te R \_ C au H t o t2 in U de S x I \_ N P G la I y N e D r\_ E 1 X 3 32 0 U D S IS E T I T N E C M T P B-TREE FOR • • 重 调 写 整 日 查 期 询 范 结 围 构 条 减 件 少 以 中 利 间 用 结 索 果 引 集 3 0 0 ( U p S la E y e T r E \_ M ap P i\_ B id - = T ? R ) EE FOR DISTINCT性能瓶颈分析l SCAN t1 - 对Player\_Attributes表进 优化效果分析行全表扫描，效率低下 l SEARCH USING COVERING INDEX - 使l STRFTIME()函数导致索引失效，无 用覆盖索引扫描，避免全表扫描法利用date字段索引 l 消除了WHERE子句中的函数，允许索引有l WHERE子句中的函数计算增加每行 效使用处理开销 l 索引覆盖了所有查询字段，无需回表查询l 查询性能提升10倍以上（预估）
+
+\begin{figure}[htbp]
+\centering
+\fbox{\parbox{0.8\textwidth}{\centering \zihao{5}图5.5从BIRD[9] 数据集的european_football_2数据库中选择的查询计划优化SQL示例}}
+\caption{图5.5从BIRD[9] 数据集的european_football_2数据库中选择的查询计划优化SQL示例}
+\end{figure}
+
+SQL 查询缺陷的线索，我们可以在一定程度上进行改进和纠正查询。查询计划（QueryPlan）是数据库优化器生成的执行策略，可以通过“EXPLAINQUERYPLAN”命令查询执行路径，描述了如何获取数据，包括使用的索引、连接方式、扫描类型等，并识别性能瓶颈/逻辑缺陷。为此，我们使用查询优化工具通过执行反馈和查询计划分析来纠正可优化的候选查询。该工具采用分解策略，将复杂的 SQL 分解为子查询，以进行渐进式优化定位。示例如图5.5所示。
+
+
+”question”: ”Atpresent,calculatefortheplayer’sagewhohaveasprintspeed ofnolessthan97between2013to2015.””evidence”: ”players age at present = SUBTRACT((DATETIME(), birthday)); sprint speed of no less than 97 refers to sprint\_speed >= 97; between 2013to2015referstoYEAR(date)>=’2013’ANDYEAR(date)<=’2015’;Yourqueryshouldonlyinclude DISTINCTDATETIME()-Player.birthday”为解决复杂查询中的语义错误，我们使用基于逻辑算子与中间状态对齐的细粒度拆解方法。我们将复杂的SQL查询解析为由逻辑算子（LogicalOperators）组成的树状结构（如Filter,Join,Project）。这一抽象层级屏蔽了底层物理执行路径（如全表扫描vs索引扫描）的差异，使模型能够专注于校验SQL语义与用户自然语言意图在逻辑功能上的一致性，而非陷入数据库引擎的实现细节。在语义验证阶段，核心模块：语义验证与中间过程拆解步骤1：逻辑-物理双层 步骤2：获取中间状态语义验证与拆解模块映射拆解 数据策略：将自然语言意图 中间结果一致拆解为Sub-goals，并 性检查？
+
+
+将SQL算子(Query Plan)映射到Sub-goals标记：谓词选择率错误 标记：谓词选择率错误 标记：谓词选择率错误构建执行线索工件（错误日志+查询计划+故障点描述）构建Refinement Prompt 构建Refinement Prompt
+
+\begin{figure}[htbp]
+\centering
+\fbox{\parbox{0.8\textwidth}{\centering \zihao{5}图5.6利用中间状态对齐与子目标拆解的SQL故障定位及修复机制}}
+\caption{图5.6利用中间状态对齐与子目标拆解的SQL故障定位及修复机制}
+\end{figure}
+
+不再仅关注最终输出，而是通过建立“用户意图逻辑子目标”与“物理查询计划算子”的双向映射，逐层校验中间执行状态与预期约束的一致性。基于此分析生成的执行线索工件，涵盖错误日志、结构化查询计划及具体故障描述，能够精确定位故障发生的逻辑节点，从而有效指导大语言模型进行针对性改进。这一迭代过程将持续进行，直至查询成功或达到预设的修订限制。整体流程如图5.6所示。
+
+\section{实验结果与分析}
+
+本节对 CLUE-SQL 框架的有效性进行了全面评估。我们讨论了与模式相关的度量、生成的SQL查询的准确性以及生成正确SQL的效率。此外，我们对每个智能体进行消融研究，并分析线索数据的影响。
+
+\subsection{数据集与指标}
+
+Spider数据集[11]。该数据集是由耶鲁大学LILY实验室于2018年推出的大规模跨域 ML2SQL 基准数据集，旨在推动自然语言处理与数据库技术的结合。该数据集包含 10,181 个自然语言问题和 5,693 个独特的复杂 SQL 查询，涉及 200 个具有多表结构的数据库，覆盖138个不同领域（如教育、金融、体育等）。其核心特点在于强调“跨域”和“复杂查询”，要求模型在未见过的数据库模式和SQL结构上泛化，查询类型包括多表连接、嵌套子查询、聚合操作及排序等高级语法。数据的性能，其数据库规模更大、内容更复杂，涵盖了37个实际专业领域数据，包括区块链、医疗保健和教育等领域，包含了12751个独特的问题SQL对，覆盖了95个大型数据库，总大小为 33.4GB。BIRD 的挑战性在于处理数据中的噪声、数值计算以及复杂模式下的外部知识依赖，要求模型不仅生成语法正确的 SQL，还需确保查询结果在真实数据上的执行准确性。BIRD 中的 SQL 查询通常比 Spider 数据集中的查询更复杂。
+
+
+评估指标对于衡量 NL2SQL 性能至关重要。我们采用三个评估指标来全面评估CLUE-SQL的性能：执行精度（ExecutionAccuracy,EX）、精确集匹配精度（ExactSet Match, EM）和有效效率得分（ValidEfficiencyScore, VES）。我们定义 𝑁 为数
+
+\begin{equation}
+据集大小，Q 为第 i 个样例的自然语言问题，V 为真实 SQL 查询 Y 的执行结果
+\end{equation}
+
+
+\begin{equation}
+i i i
+\end{equation}
+
+集合，而𝑉̂ 是由NL2SQL 系统生成的SQL 查询𝑌̂ 的执行结果集合。
+
+
+𝑖 𝑖执行准确率。该指标通过比较真实SQL查询与预测SQL查询的执行结果集合是否一致，来评估NL2SQL 系统的性能。其计算公式为：
+
+\chapter{𝑁}
+\zihao{-4}
+
+
+\begin{equation}
+EX = \sumI(V = V̂), (5.4)
+\end{equation}
+
+
+\begin{equation}
+N i i
+\end{equation}
+
+
+\begin{equation}
+i=1其中I(\cdot)是一个指标函数，如果满足内部条件，则等于，否则等于0。这里需要注意的是可能会出现漏报，因为与语义上不同的自然语言查询相对应的不同 SQL 查询可能会产生相同的执行结果集。
+\end{equation}
+
+组件匹配准确率。该指标通过衡量真实SQL查询与预测SQL查询在不同SQL组件（如SELECT、WHERE等）上的精确匹配情况，来评估NL2SQL系统的细致性能。对于某个特定SQL 组件𝐶，其计算公式为：
+
+\chapter{𝑁}
+\zihao{-4}
+
+
+\begin{equation}
+CM = \sumI(YC = ŶC), (5.5)
+\end{equation}
+
+
+\begin{equation}
+C N i i
+\end{equation}
+
+𝑖=1
+
+\begin{equation}
+其中 YC 表示第 i 条 SQL 查询 Y 的组件 C。为了正确判断组件是否匹配，某些
+\end{equation}
+
+𝑖 𝑖SQL 组件（如WHERE）在比较时不考虑顺序约束。
+
+
+精确匹配准确率。该指标基于组件匹配准确率，用于衡量预测 SQL 查询的所
+
+\begin{equation}
+有组件C \in {C }是否与真实SQL查询完全匹配。该指标要求模型生成的SQL语
+\end{equation}
+
+𝑘句与标准答案严格一致，从语法完整性、关键字准确性到语句逻辑结构，任何细其中⋀ 表示对所有组件取逻辑“与”。
+
+
+有效效率得分。该指标衡量的是有效 SQL 查询的执行效率。它同时考虑了SQL 执行的正确性与效率，计算公式如下：
+
+\chapter{𝑁}
+\zihao{-4}
+
+
+\begin{equation}
+VES = \sumI(V = V̂)\cdotR(Y ,Ŷ), (5.7)
+\end{equation}
+
+
+\begin{equation}
+N i i i i
+\end{equation}
+
+
+\begin{equation}
+i=1其中，E(Y )
+\end{equation}
+
+
+\begin{equation}
+R(Y ,Ŷ) = \sqrt i . (5.8)
+\end{equation}
+
+
+\begin{equation}
+i i E(Ŷ)
+\end{equation}
+
+
+\begin{equation}
+i用于度量预测SQL查询相对于真实SQL查询的相对执行效率，可消除机器状态带来的不确定性；E(\cdot)表示单条SQL查询的效率，可指执行时间、内存占用等。
+\end{equation}
+
+
+\subsection{基准模型}
+
+为展示CLUE-SQL的性能，我们选用现有NL2SQL方法进行对比，包括基于大语言模型的多种先进SOTA 方案。
+
+
+在BIRD数据集上我们选择了RSL-SQL[132]、E-SQL[78]、CSC-SQL[133]、DAILSQL[86] 及 DIN-SQL[67]。在 Spider 数据集上我们选择了 MiniSeek(Anonymous)、DAIL-SQL[86]、DIN-SQL[67] 以及 C3[68]。此外，我们还列举了一些基于预训练模型的方法在Spider数据集上的性能，这些方法包括PICARD[66]、RASAT[134]、RESDSQL[17] 和Graphix-T5[18]。
+
+
+C3 是一种基于手工构建清晰指令的零样本方法，强调通过清晰的提示布局和干净的上下文来降低模型理解难度，其核心在于优化提示的格式与内容以提升模型解析效率。
+
+
+DIN-SQL采用分解式上下文学习框架，将复杂的NL2SQL任务分解为模式链接、查询分类与分解、SQL 生成及自我修正等多个子任务，通过思维链式提示逐步推理，在Spider等复杂数据集上取得了领先的执行准确率。
+
+
+DAIL-SQL 通过分析自然语言查询与 SQL 语句的语义相似性来自适应地选择提示示例，该策略能动态优化上下文学习的效果，尤其在结合 GPT-4 等强大模型时表现优异。
+
+
+CSC-SQL结合了自洽性与自校正机制，通过并行采样生成多个SQL候选，并值）和条件直接融入问题描述和 SQL 构建计划中以增强语义理解，并利用候选谓词生成减少SQL 中的错误或不完整谓词。
+
+
+RSL-SQL 是一种基于稳健模式链接的提示工程框架，通过双向模式链接（结合前向选择与后向从初步 SQL 中提取）策略实现高召回率的数据库元素识别，并采用上下文信息增强、二元选择策略以及多轮自校正机制优化生成质量。
+
+
+PICARD、RASAT、RESDSQL和Graphix-T5代表基于SOTAPLM的方法。它们都基于T5模型，改进了编码器、解码器或任务公式。
+
+\subsection{主要实验}
+
+由于BIRD基准测试集暂不可用，本实验在其开发集上进行。我们采用以下两种设置来评估CLUE-SQL的性能：（1）调用高性能在线大模型DeepSeek-V3；（2）使用完全本地的开源大模型CodeLlama-13b。这种设置旨在验证框架在不同资源约束和隐私要求下的适用性。
+
+
+如表5.1所示，CLUE-SQL在使用DeepSeek-V3时表现最佳，其执行准确率达到 75.11\%，有效效率得分达到 69.57\%，显著优于其他对比方法。这一结果验证了 CLUE-SQL 框架中多智能体协同与线索数据融合机制的有效性，特别是在处理BIRD 数据集所强调的海量数据值和需要外部知识推理的复杂查询时。
+
+
+此外，在许多工业应用场景中，数据的隐私和安全是首要考虑因素，这限制了对OpenAIGPT系列等专有模型（其训练数据和处理过程可能不完全透明）的直接使用，如CHASE-SQL[131] 和MCS-SQL[135]。针对此类对数据隐私有严格要求的场景（例如金融、医疗等行业），我们基于完全本地的开源模型CodeLlama-13b进行了实验。CLUE-SQL 在该设置下仍取得了具有竞争力的性能，其执行准确率为63.54\%，有效效率得分为 66.67\%，这表明 CLUE-SQL 框架具备良好的可移植性，能够在不依赖外部 API 的情况下，为企业部署私有化的高效 NL2SQL 系统提供可行的解决方案，有效平衡了性能与数据安全。
+
+
+为评估我们所提出方法在 BIRD 数据集之外的泛化能力，我们在 Spider 数据集上对其进行了跨基准测试。与 BIRD 不同，Spider 不包含列或表的详细描述信息，因此我们在测试过程中移除了对模式上下文描述工具的依赖，其余配置均保持不变，也未针对 Spider 进行任何模型微调或上下文示例的专门调整。如表5.2所CSCSQL 71.44 60.70 67.84 64.41 RSL-SQL 71.02 59.85 64.37 61.96 E-SQL 67.79 55.21 63.62 59.61 DAIL-SQL 64.26 53.65 58.77 53.01 DIN-SQL 60.92 52.77 56.06 51.19示，CLUE-SQL 在 Spider 数据集上取得了 88.40\% 的执行准确率，超过了其他基于大语言模型的方法，同时在精确匹配率上也达到了 80.67\%，在所有基于预训练语言模型的方法中位列最高。这充分证明了 CLUE-SQL 具备较强的跨数据集适应能力。值得注意的是，Spider 数据集排行榜上目前最优的（且未公开的）方法是Miniseek，其准确率为91.2\%。
+
+\begin{table}[htbp]
+\centering
+\caption{表5.2CLUE-SQL在Spider数据集上的表现（EX/EM）}
+\fbox{\parbox{0.8\textwidth}{\centering \zihao{5}表5.2CLUE-SQL在Spider数据集上的表现（EX/EM）}}
+\end{table}
+
+EX EM Method DeepSeek-V3 CodeLlama-13b DeepSeek-V3 CodeLlama-13b CLUE-SQL 88.40 76.19 80.67 70.50 DAIL-SQL 86.77 70.82 71.07 61.22 DIN-SQL 81.36 64.20 67.80 57.73 C3 82.28 66.17 52.39 50.69 PICARD 79.65 64.11 78.33 68.81 RASAT 80.52 65.83 78.10 68.70 RESDSQL 86.91 72.50 80.61 70.35 Graphix-T5 82.02 66.62 79.15 70.10此外，在使用完全本地部署的开源模型CodeLlama-13b时，CLUE-SQL在Spider上仍取得了76.19\%的执行准确率与70.50\%的精确匹配率，显著优于同规模模型下的其他方法，说明该框架在资源受限或隐私敏感场景下仍具备实用价值。
+
+
+CLUE-SQL 在 Spider 与 BIRD 两个数据集上表现出的性能差异，反映了两类基准任务的不同侧重点。BIRD数据集的现实复杂性，包括噪声数据值、隐式的领域知识需求以及大规模执行效率要求，恰好与 CLUE-SQL 在线索数据检索和查询生成修订方面的核心优势相契合。而 Spider 数据集更侧重于在更干净、规模较小的数据库中进行结构解析，这削弱了 CLUE-SQL 以线索数据为导向所带来的相对优势，特别是在缺乏模式描述而限制上下文检索的情况下。这种差异凸显了我们的框架在面对实际挑战时，也在高度饱和的结构化基准测试中保持了竞争力。
+
+
+据集中官方提供的GoldSQL（标准答案SQL）为基准，在执行时间上对比CLUESQL 生成语句与 Gold SQL 的性能差异。实验结果如图5.7所示，与基准 Gold SQL相比，经 CLUE-SQL 处理产生的正确 SQL 语句在执行时间上平均减少了 25.7\%。
+
+
+这一结果显著证明了CLUE-SQL 框架在提升SQL 执行效率方面的有效性。
+
+\begin{figure}[htbp]
+\centering
+\fbox{\parbox{0.8\textwidth}{\centering \zihao{5}图5.7生成SQL和GoldSQL的执行时间分布}}
+\caption{图5.7生成SQL和GoldSQL的执行时间分布}
+\end{figure}
+
+
+\subsection{消融实验}
+
+为验证 CLUE-SQL 框架中各组件的实际贡献并分析其设计合理性，我们在BIRD 数据集上进行消融实验。本研究围绕框架中的关键工具与线索数据（Clue Data）的集成作用展开。
+
+
+我们首先评估 CLUE-SQL 中各核心工具的独立贡献。实验通过依次禁用特定工具，观察执行准确率的变化，结果如表5.3所示。以完整配置（Alltools）的性能（75.11\%EX）作为基线，逐一分析各工具的移除所导致的性能下降。
+
+
+实验结果显示，线索数据检索工具（retrieve\_clue\_entity+\_context）的贡献最为显著，其禁用导致执行准确率下降5.91\%。表明从自然语言问题和大规模数据库中精准检索实体值与上下文信息，是提升复杂查询生成准确性的关键环节。作为对w/otable\_selection 70.33 -4.78 w/ocolumn\_filtering 71.29 -3.82 w/ocolumn\_prioritization 72.15 -2.96 w/orevise 70.16 -4.95比，在禁用该工具的实验组中，我们采用随机样例检索并包含全部列描述，其性能显著低于基于语义相似性的选择性检索策略，进一步验证了精准线索数据检索的有效性。
+
+
+同时，在禁用数据库模式剪枝代理中的表选择工具（table\_selection）后执行准确率下降 4.78\%，突显了在多表复杂模式中快速聚焦核心数据表的重要性。禁用查询优化器中的修订工具（revise）后执行准确率下降 4.95\%，说明基于执行反馈与查询计划分解的迭代优化机制能有效修正初步生成结果中的逻辑与语法错误，尤其在处理复杂查询时至关重要。列过滤（column\_filtering）与列优先级排序（column\_prioritization）工具分别贡献了 3.82\% 与 2.96\% 的性能提升，体现了模式精简对降低生成噪声的积极影响。
+
+
+线索数据是 CLUE-SQL 框架的核心，为深入探究线索数据在框架不同阶段的作用，我们设计了多组对照实验，重点评估线索数据在以下三个关键路径中的集成效果：（1）模式剪枝阶段，通过线索数据识别相关表/列；（2）SQL生成阶段，将线索数据作为上下文信息辅助生成；（3）优化修订阶段，利用线索数据驱动反馈优化。实验结果如表5.4所示。
+
+
+与无线索数据基线（Baseline, 63.13\%EX）相比，全系统集成线索数据（All agents）带来11.98\%的显著性能提升。分层数据显示，线索数据对中等难度（Moderate）和复杂（Challenging）查询的提升尤为明显，分别提升 12.93\% 与 15.86\%，说明其有效缓解了复杂语义解析与多步推理的挑战。
+
+
+进一步观察各阶段贡献：线索数据在SQL生成阶段的集成贡献最大（+6.16\%），尤其在中等难度查询上表现突出（+6.26\%），证明其能为大语言模型提供关键的上下文信息，辅助生成更准确的 SQL 查询。在优化修订阶段集成线索数据也带来了4.82\%的提升，突显了基于数据感知的反馈修正机制的有效性。模式剪枝阶段集成线索数据贡献了2.13\%的提升，且在复杂查询上增益最大（+3.82\%），说明精准的模式聚焦对处理大规模数据库至关重要。
+
+
+84.22(Simple) +7.71 Allagents 72.06(Moderate) +12.93 66.90(Challenging) +15.86 63.13(Overall) –76.51(Simple) –Baseline(w/oCluedata) 60.13(Moderate) –51.04(Challenging) –65.26(Overall) +2.13 78.75(Simple) +2.24 SchemaPruning+Clue 62.54(Moderate) +2.41 data 54.32(Challenging) +3.82 69.29(Overall) +6.16 81.75(Simple) +5.24 SQLGeneration+Clue 66.39(Moderate) +6.26 data 60.12(Challenging) +3.98 67.75(Overall) +4.82 80.44(Simple) +3.93 Revision+Cluedata 65.78(Moderate) +5.65 56.12(Challenging) +5.08为了探究本文第三章提出的CAR推理范式与第四章提出的DRL-RAG工具在NL2SQL 任务中的贡献度，我们进行了消融实验。实验以完整集成 CAR 推理与DRL-RAG 检索的框架作为性能基准。我们设置了两种变体进行对比：无 CAR 变体（w/oCAR）是移除CAR模块，以传统思维链（Chain-of-Thought,CoT）推理替代；无DRL-RAG变体（w/oDRL-RAG）是移除DRL-RAG模块，以普通RAG检Tools EX △EX Alltools 75.11 w/oCAR 69.90 -6.21 w/oDRL-RAG 65.58 -9.53实验数据表明，移除CAR推理范式后，执行准确率下降6.21\%，说明CAR对提升 SQL 生成准确率具有显著影响。分析其性能增益来源，主要得益于 CAR 的双阶段优化机制：问题重述阶段通过对自然语言查询进行多样化改写，对齐模型认知框架，减少语义歧义；共识推理阶段通过多路径投票增强答案一致性。相比之下，CoT 仅提供线性推理路径，无法有效处理查询表述的多样性，尤其在复杂NL2SQL任务中（如嵌套查询或隐含约束），CAR能更精准地捕捉用户意图，减少语义歧义。
+
+
+移除DRL-RAG工具后，执行准确率大幅下降9.53\%，凸显了DRL-RAG在框架中的重要作用。普通RAG检索因依赖静态策略，容易返回低相关性文档（如无关模式描述或噪声值），误导后续SQL生成过程。而DRL-RAG通过动态强化学习优化检索策略，确保了检索结果与查询的高相关性，显著提升了模式链接的准确性，从而将CLUE-SQL框架的整体执行准确率（EX）提高了9.53\%，有效减少了因错误模式链接导致的幻觉问题。
+
+\begin{table}[htbp]
+\centering
+\caption{表5.6数据库模式剪枝代理在使用工具后评估正确SQL表/列中模式项的性能指标}
+\fbox{\parbox{0.8\textwidth}{\centering \zihao{5}表5.6数据库模式剪枝代理在使用工具后评估正确SQL表/列中模式项的性能指标}}
+\end{table}
+
+Toolname Recall Precision Accuracy F1Score使用DRL-RAG 前
+
+\begin{lstlisting}
+TableSelection 92.50 89.15 78.90 90.78
+\end{lstlisting}
+
+ColumnFiltering 88.75 76.40 45.20 82.05 ColumnPrioritization 88.30 83.50 55.80 85.83使用DRL-RAG 后
+
+\begin{lstlisting}
+TableSelection 95.41 92.08 82.33 93.71
+\end{lstlisting}
+
+ColumnFiltering 93.42 82.32 51.76 87.52 ColumnPrioritization 92.02 88.31 60.56 90.13为深入分析数据库模式剪枝代理中各组件的模式识别能力，本研究采用精确结果如表5.6所示。
+
+
+根据表中数据可以看出，在引入 DRL-RAG 后，所有子模块的各项性能指标均获得一致提升，这表明 DRL-RAG 通过提供更精准的语义检索，有效改善了模式剪枝代理的输入信息质量，从而系统性地增强了模式识别的准确性。
+
+
+表选择工具（TableSelection）在所有指标上均表现最佳（F1分数达93.71），说明其能够高效且准确地识别查询涉及的核心数据表。列过滤工具（ColumnFiltering）在召回率上表现突出（93.42\%），但其精确率相对较低（82.32\%），且准确率仅为51.76\%；这主要是由于在过滤后，系统为维持表之间的引用完整性，会自动添加必要的主键/外键列，从而引入了部分并非由用户查询直接指定的“非核心列”。列优先级选择工具（Column Prioritization）在精确率与 F1 分数上表现均衡，说明该组件能有效识别并聚焦对当前查询最为关键的数据列。
+
+
+消融实验结果表明，CLUE-SQL 框架中各核心组件均对系统性能具有明确的正向贡献，其中以线索数据检索、表选择与查询优化三个模块的作用最为关键。线索数据在不同处理阶段的集成均能有效提升系统表现，尤其在应对涉及多表连接、嵌套查询或复杂条件组合的查询场景时，性能增益尤为显著。模式剪枝代理通过精准识别与问题相关的数据库表与列，有效过滤噪声信息，为后续 SQL 生成阶段提供了清晰、简洁的上下文环境，显著降低了语义映射与结构生成的难度。上述结果从模块效能、阶段协同与任务适配等多个维度，共同验证了 CLUE-SQL 框架在架构设计上的合理性与各组件间协同机制的有效性，为构建可解释、高稳健的NL2SQL 系统提供了重要依据。
+
+\section{本章小结}
+
+本章系统性地提出了面向线索数据感知的 CLUE-SQL 多智能体框架，旨在应对复杂现实数据库环境下自然语言到 SQL 查询转换所面临的多方面挑战。该框架以多源线索数据为核心，通过构建线索数据检索代理、数据库模式剪枝代理与查询生成优化代理三个功能明确、协同工作的智能体，分别解决了语义理解不充分、模式结构冗余以及 SQL 生成质量与效率不足等关键问题，为实现高效、精准的NL2SQL 翻译提供了一条创新路径。
+
+
+实验部分在 BIRD 和 Spider 数据集上对 CLUE-SQL 进行了全面评估。结果表及优化修订机制在提升复杂查询处理性能方面均不可或缺。
+
+
+尽管 CLUE-SQL 框架在语法正确性验证和避免空结果方面取得了进展，但其当前的验证机制仍存在局限，尤其难以有效检测语法正确但逻辑上存在缺陷（即语义不一致）的 SQL 查询。这类“隐蔽”错误在实际应用中可能导致查询结果与用户预期严重偏离，影响系统的可靠性。
+
+
+展望未来，一个重要的研究方向是开发更为精细和强大的语义验证系统。该系统需要能够深入理解查询的语义意图，并结合数据库的完整业务逻辑与约束规则，对生成的 SQL 进行深层逻辑一致性检查。例如，可以探索利用更强的推理模型或引入形式化验证技术，来识别诸如连接条件错误、聚合函数误用、违反业务规则等语义层面的问题。通过将此类语义验证环节无缝集成到 CLUE-SQL 的生成与优化流程中，有望显著提升框架在真实工业场景下输出的 SQL 查询的可靠性与鲁棒性，从而推动NL2SQL 技术走向更加成熟和广泛的实际应用。
+
+\chapter{总结与展望}
+\zihao{-4}
+
+
+\section{本文工作总结}
+
+自然语言到结构化查询语言（NL2SQL）技术作为连接人类自然语言与机器可执行指令的关键桥梁，是推动数据民主化、实现“人人都是数据分析师”愿景的核心驱动力。特别是随着大模型时代的到来，NL2SQL 技术能够更深入地理解自然语言查询的语义和上下文，并将其转化为结构化的 SQL 语句，极大地降低了数据库查询的技术门槛，使非专业用户也能自由地按需获取数据洞察。本研究正是在这一技术演进背景下，围绕提升 NL2SQL 系统的推理准确性、知识检索鲁棒性和复杂查询转换能力展开了系统性的探索。
+
+
+本文从“认知对齐-检索增强-生成优化”三个关键层面出发，提出了一个层层递进的系统性解决方案。在第三章中，针对 NL2SQL 任务中自然语言理解的模糊性和复杂性，我们提出了认知对齐推理（CAR）方法针对 NL2SQL 任务中自然语言理解的模糊性和复杂性，通过多样化问题重述改写增强与多视角共识推理，显著提升了模型对用户查询意图的深层理解能力。实验表明，CAR 方法通过减少问题与模型认知框架之间的差距，并整合多个推理路径的共识，有效提升了复杂查询的语义解析准确性，为后续的SQL 生成奠定了坚实的理解基础。
+
+
+在第四章中，我们着眼于 NL2SQL 系统依赖外部知识时的可靠性问题，提出了基于动态强化学习的检索增强生成（DRL-RAG）方法。针对传统 RAG 在检索相关性不足时容易向大语言模型提供不准确或误导性知识的问题，DRL-RAG通过引入强化学习机制，优化了知识检索和利用的策略。特别地，我们在BIRD数据集上设计了针对“模式链接”子任务的专项实验，验证了 DRL-RAG 在检索排序质量和召回率上的显著优势，使系统能够在动态交互中进行自我校正，显著增强了NL2SQL 系统在开放域环境下的鲁棒性和适应性。
+
+
+在第五章中，我们面向复杂的真实业务数据库查询场景，构建了 CLUE-SQL框架。该框架通过线索数据检索、数据库模式剪枝和查询生成优化三个核心代理的协同工作，有效解决了跨域多表查询、模式匹配和SQL生成优化等挑战。CLUESQL 充分利用了线索数据的上下文信息，增强了语义验证，从而在复杂数据库场景中生成了更准确、更高效的SQL 语句。
+
+
+总的来说，本文从“认知对齐-检索增强-生成优化”三个层面，系统性地构建智能数据库交互、级联决策等实际应用场景提供了重要的理论支撑与实践方案。
+
+\section{未来展望}
+
+尽管本研究在 NL2SQL 的多个关键环节取得了阶段性成果，但随着技术的快速演进和应用场景的不断深化，研究仍面临诸多挑战，存在广阔的提升空间。
+
+
+针对认知对齐共识推理（CAR）方法 ， 其性能目前仍较大程度上依赖于大语言模型固有的生成与推理能力。对于参数规模较小的模型，高质量、多样化问题重述的能力相对有限，这制约了CAR方法的普惠化应用。未来的研究可探索更具性和结构化的共识推理机 例如，可基于规则或知识图谱的约束条件，对生成的多个推理路径进行智能过滤与融合，从而在问题极其复杂或模糊时，更有效地消除路径间的冲突，选择出最优解。此外，CAR 方法在不同类型推理任务中的能力和稳定 在更广泛、更具挑战性的基准数据集上进行验证，例如面向多轮交互、上下文依赖性更强的对话式查询场景。
+
+
+对于强化学习 RAG（DRL-RAG）方法 ，其当前的主要挑战在于如何实现完全自适应和高度智能化的检索与生成闭环 。未来的研究仍需致力于增强系统的内置评估能力，使其能够自主、实时地评估检索结果的相关性和生成答案的可靠性，并据此调整。同时，DLRL-RAG 在不同领域（如金融风控、医疗诊断）和不同任务（如复杂报表生成、数据洞察分析）中的泛化能力是另一个关键研究方向。
+
+
+对于 CLUE-SQL 框架，其未来的核心方向在于构建深度语义验证系统。当前的验证方法多集中于 SQL 语法正确性和执行结果非空等表层指标，难以有效识别和防范那些语法正确但逻辑与用户意图严重偏离的“语义陷阱”式查询。未来工作可致力于开发能够深度理解数据语义关系、业务逻辑规则的验证模块。此外，将CLUE-SQL 与 CAR 的认知对齐能力、DRL-RAG 的动态优化能力进行更深层次的技术融合，构建一个集智能理解、鲁棒检索、精准生成与深度验证于一体的下一代NL2SQL 系统，是极具前景的宏观方向。
+
+
+综上所述，NL2SQL技术正处在一个从“可用”到“好用”的关键跃升期。本文的研究工作是对这一趋势的积极响应和有益尝试。展望未来，通过解决上述挑战，NL2SQL 技术必将更深度地赋能企业的数字化转型，最终实现实现数据驱动决策”成为普惠化的现实。
+
+\chapter*{参考文献}
+\addcontentsline{toc}{chapter}{参考文献}
+
+[1] LIU X Y, SHEN S Y, LI B Y, et al. A survey of text-to-sQL in the era of lLMs:
+
+\begin{lstlisting}
+where are we, and where are we going?[J]. IEEE Transactionson Knowledge and
+\end{lstlisting}
+
+DataEngineering,2025.[2] 刘喜平, 舒晴, 何佳壕, 等. 基于自然语言的数据库查询生成研究综述[J/OL].软件学报,2022,33(11): 4107-4136. https://doi.org/10.13328/j.cnki.jos.006539.[3] 赵猛, 陈珂, 寿黎但, 等. 基于树状模型的复杂自然语言查询转 SQL 技术研究[J/OL]. 软件学报, 2022, 33(12): 4727-4745. https://doi.org/10.13328/j.cnki.jos.006686.[4] VASWANI A, SHAZEER N, PARMAR N, et al. Attention is all you need[J]. Advancesinneuralinformationprocessingsystems,2017,30.[5] DEVLIN J, CHANG M W, LEE K, et al. Bert: pre-training of deep bidirectional transformers for language understanding[C]//Proceedings of the 2019 conference of the north american chapter of the association for computational linguistics: humanlanguagetechnologies,volume1(longandshortpapers). 2019: 4171-4186.[6] 曹金超, 黄滔, 陈刚, 等. 自然语言生成多表 SQL 查询语句技术研究[J]. 计算机科学与探索,2020,14(07): 1133-1141.[7] 潘璇,徐思涵,蔡祥睿,等. 基于深度学习的数据库自然语言接口综述[J]. 计算机研究与发展,2021,58(09): 1925-1950.[8] WANGBL,SHINR,LIUXD,etal. RAT-SQL:relation-awareschemaencoding andlinkingfortext-to-SQLparsers[C/OL]//JURAFSKYD,CHAIJ,SCHLUTER N, et al. Proceedings of the 58th annual meeting of the association for computationallinguistics. Online: AssociationforComputationalLinguistics,2020: 75677578. https://doi.org/10.18653/v1/2020.acl-main.677.[9] LI J Y, HUI B Y, QU G, et al. Can llm already serve as a database interface? a big bench for large-scale database grounded text-to-sqls[J]. Advances in Neural InformationProcessingSystems,2023,36: 42330-42357.[10] LI F, JAGADISH H V. Constructing an interactive natural language interface for relationaldatabases[J]. Proceedingsof theVLDBEndowment,2014,8(1): 73-84.[11] YUT,ZHANGR,YANGK,etal. Spider: alarge-scalehuman-labeleddatasetfor for Computational Linguistics, 2018: 3911-3921. https://doi.org/10.18653/v1/D18-1425.[12] POURREZA M, RAFIEI D. Evaluating cross-domain text-to-SQL models and benchmarks[C/OL]//BOUAMOR H, PINO J, BALI K. Proceedings of the 2023 conference on empirical methods in natural language processing. Singapore: Association for Computational Linguistics, 2023: 1601-1611. https://doi.org/10.18653/v1/2023.emnlp-main.99.[13] MAHMUD T, HASAN K A, AHMED M, et al. A rule based approach for nLP based query processing[C]//2015 2nd international conference on electrical informationandcommunicationtechnologies(EICT). 2015: 78-82.[14] SUTSKEVERI,VINYALSO,LEQV. Sequencetosequencelearningwithneural networks[J]. Advancesinneuralinformationprocessingsystems,2014,27.[15] CHOI D, SHIN M C, KIM E, et al. Ryansql: recursively applying sketch-based slot fillings for complex text-to-sql in cross-domain databases[J]. Computational Linguistics,2021,47(2): 309-332.[16] YIN P C, NEUBIG G, YIH W T, et al. TaBERT: pretraining for joint understanding of textual and tabular data[C/OL]//JURAFSKY D, CHAI J, SCHLUTER N,etal. Proceedingsofthe58thannualmeetingoftheassociationforcomputational linguistics. Online: Association for Computational Linguistics, 2020: 8413-8426.https://doi.org/10.18653/v1/2020.acl-main.745.[17] LIHY,ZHANGJ,LICP,etal. Resdsql: decouplingschemalinkingandskeleton parsingfortext-to-sql[C]//ProceedingsoftheaAAIconferenceonartificialintelligence. 2023: 13067-13075.[18] LIJY,HUIBY,CHENGR,etal.Graphix-t5: mixingpre-trainedtransformerswith graph-awarelayersfortext-to-sqlparsing[C]//ProceedingsoftheaAAIconference onartificialintelligence. 2023: 13076-13084.[19] RAI D, WANG B L, ZHOU Y L, et al. Improving generalization in language model-based text-to-SQL semantic parsing: two simple semantic boundary-based techniques[C/OL]//ROGERS A, BOYD-GRABER J, OKAZAKI N. Proceedings [20] KATSOGIANNIS-MEIMARAKISG,KOUTRIKAG. Asurveyondeeplearning approachesfortext-to-sQL[J]. The VLDBJournal,2023,32(4): 905-936.[21] TALAEI S, POURREZA M, CHANG Y, et al. CHESS: contextual harnessing for efficient SQL synthesis[J/OL]. CoRR, 2024, abs/2405.16755. https://doi.org/10.48550/ARXIV.2405.16755.[22] 吕剑清, 王先兵, 陈刚, 等. 面向工业生产的中文 Text-to-SQL 模型[J]. 计算机应用,2022,42(10): 2996-3002.[23] LEI W Q, WANG W X, MA Z X, et al. Re-examining the role of schema linking in text-to-sQL[C]//Proceedings of the 2020 conference on empirical methods in naturallanguage processing(EMNLP). 2020: 6943-6954.[24] WEIJ,WANGXZ,SCHUURMANSD,etal. Chain-of-thoughtpromptingelicits reasoninginlargelanguagemodels[J]. Advancesinneuralinformationprocessing systems,2022,35: 24824-24837.[25] KOJIMAT,GUSS,REIDM,etal.Largelanguagemodelsarezero-shotreasoners [J]. Advancesinneuralinformationprocessingsystems,2022,35: 22199-22213.[26] YAO S Y, YU D, ZHAO J, et al. Tree of thoughts: deliberate problem solving withlargelanguagemodels[J].Advancesinneuralinformationprocessingsystems,2023,36: 11809-11822.[27] BESTA M, BLACH N, KUBICEK A, et al. Graph of thoughts: solving elaborate problems with large language models[C]//Proceedings of the aAAI conference on artificialintelligence. 2024: 17682-17690.[28] YAO S Y, ZHAO J, YU D, et al. React: synergizing reasoning and acting in language models[C]//The eleventh international conference on learning representations. 2022.[29] SEL B, AL-TAWAHA A, KHATTAR V, et al. Algorithm of thoughts: enhancing exploration of ideas in large language models[C]//Forty-first international conferenceonmachinelearning,ICML2024,vienna,austria,july21-27,2024. OpenReview.net,2024.[30] WANG L, XU W Y, LAN Y H, et al. Plan-and-solve prompting: improving Canada: AssociationforComputationalLinguistics,2023: 2609-2634.[31] ZHANG Y F, YANG J Q, YUAN Y, et al. Cumulative reasoning with large language models[J/OL]. CoRR, 2023, abs/2308.04371. https://doi.org/10.48550/ARXIV.2308.04371.[32] XU F Z, WU Z Y, SUN Q S, et al. Symbol-LLM: towards foundational symbol-centric interface for large language models[C/OL]//KU L W, MARTINS A, SRIKUMAR V. Proceedings of the 62nd annual meeting of the association for computational linguistics (Volume 1: long papers). Bangkok, Thailand: AssociationforComputationalLinguistics,2024: 13091-13116. https://doi.org/10.18653/v1/2024.acl-long.707.[33] XUJD,FEIH,LUOM,etal. Aristotle: masteringlogicalreasoningwithalogiccompletedecompose-search-resolveframework[C/OL]//CHEWX,NABENDEJ,SHUTOVAE,etal. Proceedingsofthe63rdannualmeetingoftheassociationfor computational linguistics (Volume 1: long papers). Vienna, Austria: Association for Computational Linguistics, 2025: 3052-3075. https://doi.org/10.18653/v1/2025.acl-long.153.[34] LIUTX,XUWJ,HUANGWZ,etal. Logic-of-thought: injectinglogicintocontexts for full reasoning in largelanguage models[C/OL]//CHIRUZZO L, RITTER A, WANG L. Proceedings of the 2025 conference of the nations of the americas chapteroftheassociationforcomputationallinguistics: humanlanguagetechnologies(Volume1: longpapers). Albuquerque,NewMexico: AssociationforComputational Linguistics, 2025: 10168-10185. https://doi.org/10.18653/v1/2025.naacllong.510.[35] WANGZS,LIUJM,BAOQM,etal. Chatlogic: integratinglogicprogramming with large language models for multi-step reasoning[C]//2024 international joint conference onneuralnetworks(IJCNN). 2024: 1-8.[36] LEWIS P, PEREZ E, PIKTUS A, et al. Retrieval-augmented generation for knowledge-intensive nlp tasks[J]. Advances in neural information processing systems,2020,33: 9459-9474.aCL 2024. Bangkok, Thailand: Association for Computational Linguistics, 2024:14379-14391. https://doi.org/10.18653/v1/2024.findings-acl.854.[38] SU W H, YUE B Q, AI Q Y, et al. Judge: benchmarking judgment document generationforchineselegalsystem[C]//Proceedingsofthe48thinternationalaCM sIGIR conference on research and development in information retrieval. 2025:3573-3583.[39] MALLEN A, ASAI A, ZHONG V, et al. When not to trust language models:investigating effectiveness of parametric and non-parametric memories[C/OL]//ROGERS A, BOYD-GRABER J, OKAZAKI N. Proceedings of the 61st annual meeting of the association for computational linguistics (Volume 1: long papers).
+
+
+Toronto, Canada: Association for Computational Linguistics, 2023: 9802-9822.https://doi.org/10.18653/v1/2023.acl-long.546.[40] GUUK,LEEK,TUNGZ,etal. Retrievalaugmentedlanguagemodelpre-training [C]//Internationalconference onmachinelearning. 2020: 3929-3938.[41] KARPUKHINV,OGUZB,MINS,etal. Densepassageretrievalforopen-domain questionanswering.[C]//EMNLP(1). 2020: 6769-6781.[42] NASHID N, SINTAHA M, MESBAH A. Retrieval-based prompt selection for code-relatedfew-shotlearning[C]//2023iEEE/ACM45thinternationalconference onsoftwareengineering(ICSE). 2023: 2450-2462.[43] RAM O, LEVINE Y, DALMEDIGOS I, et al. In-context retrieval-augmented language models[J]. Transactions of the Association for Computational Linguistics,2023,11: 1316-1331.[44] ZAN D G, CHEN B, LIN Z Q, et al. When language model meets private library [C]//Findingsoftheassociationforcomputationallinguistics: eMNLP2022. 2022:277-288.[45] 包刚林. 面向知识问答的大语言模型检索增强生成方法研究[D]. 北京交通大学,2024.[46] IZACARD G, GRAVE E. Leveraging passage retrieval with generative models foropendomainquestionanswering[C]//Proceedingsofthe16thconferenceofthe els by retrieving from trillions of tokens[C]//International conference on machine learning. 2022: 2206-2240.[48] KHANDELWALU,LEVYO,JURAFSKYD,etal. Generalizationthroughmemorization: nearest neighbor language models[C]//8th international conference on learning representations, ICLR 2020, addis ababa, ethiopia, april 26-30, 2020.2020.[49] ZHONG Z X, LEI T, CHEN D Q. Training language models with memory augmentation[C/OL]//GOLDBERG Y, KOZAREVA Z, ZHANG Y. Proceedings of the 2022 conference on empirical methods in natural language processing. Abu Dhabi, United Arab Emirates: Association for Computational Linguistics, 2022:5657-5673. https://doi.org/10.18653/v1/2022.emnlp-main.382.[50] MIN S, SHI W J, LEWIS M, et al. Nonparametric masked language modeling [C]//Findings of the association for computational linguistics: aCL 2023. 2023:2097-2118.[51] HE Z Y, ZHONG Z X, CAI T L, et al. Rest: retrieval-based speculative decoding [C]//Proceedings of the 2024 conference of the north american chapter of the association for computational linguistics: human language technologies (volume 1:longpapers). 2024: 1582-1595.[52] BANG F. Gptcache: an open-source semantic cache for llm applications enabling faster answers and cost savings[C]//Proceedings of the 3rd workshop for natural languageprocessingopensource software (NLP-oSS2023). 2023: 212-218.[53] LANT,CAID,WANGY,etal.Copyisallyouneed[C]//Theeleventhinternational conferenceonlearningrepresentations,ICLR2023,kigali,rwanda,may1-5,2023.2023.[54] CAOBW,CAID,CUILY,etal. Retrievalisaccurategeneration[C]//Thetwelfth international conference on learning representations, ICLR 2024, vienna, austria,may7-11,2024. 2024.[55] JI Z W, LEE N, FRIESKE R, et al. Survey of hallucination in natural language generation[J]. ACMcomputingsurveys,2023,55(12): 1-38.[57] LIF,JAGADISHHV. NaLIR:aninteractivenaturallanguageinterfaceforquerying relational databases[C]//Proceedings of the 2014 aCM sIGMOD international conference onmanagementof data. 2014: 709-712.[58] SHIL,TANGZJ,ZHANGN,etal. Asurveyonemployinglargelanguagemodels fortext-to-sqltasks[J]. ACMComputingSurveys,2024.[59] ZHANGWX,WANGY,FANM.Towardsrobustnessoflargelanguagemodelson text-to-sQL task: an adversarial and cross-domain investigation[C]//International conference onartificialneuralnetworks. 2023: 181-192.[60] XIAO C Y, DYMETMAN M, GARDENT C. Sequence-based structured predictionforsemanticparsing[C]//Annualmeetingoftheassociationforcomputational linguistics(ACL). 2016: 1341-1350.[61] GUO J Q, ZHAN Z C, GAO Y, et al. Towards complex text-to-SQL in cross-domain database with intermediate representation[C/OL]//KORHONEN A,TRAUMD,MÀRQUEZL. Proceedingsofthe57thannualmeetingoftheassociation for computational linguistics. Florence, Italy: Association for Computational Linguistics,2019: 4524-4535. https://doi.org/10.18653/v1/P19-1444.[62] 曹合心,赵亮,李雪峰. 图神经网络在Text-to-SQL解析中的技术研究[J]. 计算机科学,2022,49(04): 110-115.[63] 曹渝昆, 王天浩, 李云峰, 等. 基于关系感知图神经网络的 Text-to-SQL 方法[J/OL]. 计算机工程,2025,51(09): 129-138. https://doi.org/10.19678/j.issn.10003428.0069410.[64] RAFFEL C, SHAZEER N, ROBERTS A, et al. Exploring the limits of transfer learning with a unified text-to-text transformer[J]. Journal of machine learning research,2020,21(140): 1-67.[65] 吴相岚, 肖洋, 刘梦莹, 等. 基于语义增强模式链接的 Text-to-SQL 模型[J]. 计算机应用,2024,44(09): 2689-2695.[66] SCHOLAKT,SCHUCHERN,BAHDANAUD. PICARD:parsingincrementally for constrained auto-regressive decoding from language models[C/OL]//MOENS MF,HUANGXJ,SPECIAL,etal. Proceedingsofthe2021conferenceonempir[67] POURREZA M, RAFIEI D. Din-sql: decomposed in-context learning of text-tosql with self-correction[J]. Advances in Neural Information Processing Systems,2023,36: 36339-36348.[68] DONG X M, ZHANG C, GE Y H, et al. C3: zero-shot text-to-sQL with chatGPT [J/OL]. CoRR, 2023, abs/2307.07306. https://doi.org/10.48550/ARXIV.2307.07306.[69] WANG B, REN C Y, YANG J, et al. MAC-SQL: A multi-agent collaborative frameworkfortext-to-sQL[C]//Proceedingsofthe31stinternationalconferenceon computational linguistics, COLING 2025, abu dhabi, uAE, january 19-24, 2025.
+
+
+AssociationforComputationalLinguistics,2025: 540-557.[70] LEE D, PARK C, KIM J, et al. MCS-SQL: leveraging multiple prompts and multiple-choice selection for text-to-sQL generation[C]//Proceedings of the 31st international conference on computational linguistics, COLING 2025, abu dhabi,uAE,january19-24,2025. AssociationforComputationalLinguistics,2025: 337353.[71] REN T H, FAN Y K, HE Z Y, et al. Purple: making a large language model a better sql writer[C]//2024 iEEE 40th international conference on data engineering (ICDE). 2024: 15-28.[72] SUN R X, ARIK S O, MUZIO A, et al. SQL-paLM: improved large language modeladaptationfortext-to-SQL[J]. TransactionsonMachineLearningResearch,2023.[73] CORMENTH,LEISERSONCE,RIVESTRL,etal. Introductiontoalgorithms [M]. MIT press,2022.[74] MAO W X, WANG R Q, GUO J Y, et al. Enhancing text-to-sQL parsing through question rewriting and execution-guided refinement[C]//Findings of the associationforcomputationallinguisticsaCL2024. 2024: 2009-2024.[75] LIHY,ZHANGJ,LIUHB,etal. Codes: towardsbuildingopen-sourcelanguage modelsfortext-to-sql[J]. ProceedingsoftheACMonManagementofData,2024,2(3): 1-28.[77] SUI G H, LI Z S, LI Z Y, et al. Reboost large language model-based text-to-sQL,text-to-python,andtext-to-function-withrealapplicationsintrafficdomain[J/OL].
+
+
+CoRR,2023,abs/2310.18752. https://doi.org/10.48550/ARXIV.2310.18752.[78] CAFEROGLU H A, ULUSOY Ö. E-SQL: direct schema linking via question enrichment in text-to-sQL[J/OL]. CoRR, 2024, abs/2409.16751. https://doi.org/10.48550/ARXIV.2409.16751.[79] DENG N H, CHEN Y L, ZHANG Y. Recent advances in text-to-SQL: a survey ofwhat we have and what we expect[C]//CALZOLARI N, HUANG C R, KIM H,et al. Proceedings of the 29th international conference on computational linguistics. Gyeongju, Republic of Korea: International Committee on Computational Linguistics,2022: 2166-2187.[80] SAPARINA I, LAPATA M. Improving generalization in semantic parsing by increasing natural language variation[C/OL]//GRAHAM Y, PURVER M. Proceedingsofthe18thconferenceoftheeuropeanchapteroftheassociationforcomputationallinguistics(Volume1: longpapers).St.Julian’s,Malta: AssociationforComputational Linguistics, 2024: 1178-1193. https://doi.org/10.18653/v1/2024.eacllong.71.[81] YANG J F, JIN H Y, TANG R X, et al. Harnessing the power of llms in practice:a survey on chatgpt and beyond[J]. ACM Transactions on Knowledge Discovery
+
+\begin{lstlisting}
+fromData,2024,18(6): 1-32.
+\end{lstlisting}
+
+[82] 胡海峰, 高峰, 张索非, 等. 小型语言模型思维链 Text-to-SQL 联合优化[J/OL].小型微型计算机系统, 2025: 1-20. https://doi.org/10.20009/j.cnki.21-1106/TP.2025-0314.[83] 吴定佳, 崔哲. MG-SQL: 增强模式链接与多生成器协同的 SQL 生成框架[J].计算机应用,2025: 1-11.[84] WANG T, HE Z Q, YU W Y,et al. Largelanguage models are good multi-lingual learners: whenLLMsmeetcross-lingualprompts[C]//RAMBOWO,WANNERL,APIDIANAKIM,etal.Proceedingsofthe31stinternationalconferenceoncomputational linguistics. Abu Dhabi, UAE: Association for Computational Linguistics,associationforcomputationallinguistics: eMNLP2023. 2023: 14935-14956.[86] GAODW,WANGHB,LIYL,etal. Text-to-sQLempoweredbylargelanguage models: a benchmark evaluation[J/OL]. Proceedings of the VLDB Endowment,2024,17: 1132-1145. https://doi.org/10.14778/3641204.3641221.[87] MA X Y, TIAN X, WU L X, et al. Enhancing text-to-sql capabilities of large language models via domain database knowledge injection[M]//ECAI 2024. IOS Press,2024: 3859-3866.[88] 李成华, 张浏鹏, 石鸿凌. 基于 RAG 的文物艺术品拍卖数据 NL2SQL 实现方法[J]. 计算机应用,2025: 1-9.[89] NI A S, IYER S, RADEV D, et al. Lever: learning to verify language-to-code generationwithexecution[C]//Internationalconferenceonmachinelearning. 2023:26106-26128.[90] ZHANG H C, CAO R S, CHEN L, et al. ACT-SQL: in-context learning for text-to-SQL with automatically-generated chain-of-thought[C/OL]//BOUAMOR H, PINO J, BALI K. Findings of the association for computational linguistics:eMNLP2023. Singapore: AssociationforComputationalLinguistics,2023: 35013532. https://doi.org/10.18653/v1/2023.findings-emnlp.227.[91] CHANG S C, FOSLER-LUSSIER E. Selective demonstrations for cross-domain text-to-SQL[C/OL]//BOUAMORH,PINOJ,BALIK. Findingsoftheassociation forcomputationallinguistics: eMNLP2023. Singapore: AssociationforComputationalLinguistics,2023: 14174-14189. https://doi.org/10.18653/v1/2023.findingsemnlp.944.[92] HUANGJ,CHANGKCC. Towardsreasoninginlargelanguagemodels: asurvey [C/OL]//ROGERS A, BOYD-GRABER J, OKAZAKI N. Findings of the association for computational linguistics: aCL 2023. Toronto, Canada: Association for Computational Linguistics, 2023: 1049-1065. https://doi.org/10.18653/v1/2023.findings-acl.67.[93] XIE Y Z, JIN X Z, XIE T, et al. Decomposition for enhancing attention: improving LLM-based text-to-SQL through workflow paradigm[C/OL]//KU L W, MAR[94] XIE W X, WU G C, ZHOU B W. MAG-SQL: multi-agent generative approach with soft schema linking and iterative sub-sQL refinement for text-to-sQL[J/OL].
+
+
+CoRR,2024,abs/2408.07930. https://doi.org/10.48550/ARXIV.2408.07930.[95] KOUSQ,HULX,HEZZ,etal. Cllms: consistencylargelanguagemodels[C]//Forty-firstinternationalconference onmachinelearning. 2024.[96] SANTILLI A, SEVERINO S, POSTOLACHE E, et al. Accelerating transformerinferencefortranslationviaparalleldecoding[C/OL]//ROGERSA,BOYDGRABER J, OKAZAKI N. Proceedings of the 61st annual meeting of the association for computational linguistics (Volume 1: long papers). Toronto, Canada:Association for Computational Linguistics, 2023: 12336-12355. https://doi.org/10.18653/v1/2023.acl-long.689.[97] HUANGSM,PANJF,ZHENGHZ. CCoE:AcompactLLMwithcollaboration ofexperts[J/OL]. CoRR,2024,abs/2407.11686. https://doi.org/10.48550/ARXIV.2407.11686.[98] ZHONG Q H, CHEN K F, DING L, et al. Learning from imperfect data: towards efficientknowledgedistillationofautoregressivelanguagemodelsfortext-to-sQL [C/OL]//Findings of the association for computational linguistics: EMNLP 2024,miami, florida, uSA, november 12-16, 2024. Association for Computational Linguistics, 2024: 6874-6885. https://doi.org/10.18653/V1/2024.FINDINGSEMNLP.403.[99] FUZH,YANGHR,SOAMC,etal. Ontheeffectivenessofparameter-efficient fine-tuning[C]//ProceedingsoftheaAAIconferenceonartificialintelligence: v.37.2023: 12799-12807.[100] ZHANGD,FENGT,XUELL,etal.Parameter-efficientfine-tuningforfoundation models[J/OL]. CoRR, 2025, abs/2501.13787. https://doi.org/10.48550/ARXIV.2501.13787.[101] HUEJ,SHENYL,WALLISP,etal. Lora: low-rankadaptationoflargelanguage models.[J]. ICLR,2022,1(2): 3.[102] DETTMERS T, PAGNONI A, HOLTZMAN A, et al. Qlora: efficient finetuning debug[C]//The twelfthinternational conference onlearningrepresentations,ICLR 2024,vienna,austria,may 7-11,2024. OpenReview.net,2024.[104] HONG Z J, YUAN Z, CHEN H, et al. Knowledge-to-SQL: enhancing SQL generation with data expert LLM[C/OL]//KU L W, MARTINS A, SRIKUMAR V.
+
+
+Findings of the association for computational linguistics: aCL 2024. Bangkok,Thailand: Association for Computational Linguistics, 2024: 10997-11008. https://doi.org/10.18653/v1/2024.findings-acl.653.[105] RAFAILOV R, SHARMA A, MITCHELL E, et al. Direct preference optimization: your language model is secretly a reward model[C]//Proceedings of the 37th internationalconferenceonneuralinformationprocessingsystems. RedHook,NY,USA:CurranAssociatesInc.,2023.[106] GUO C X, TIAN Z L, TANG J T, et al. Prompting gPT-3.5 for text-to-sQL with de-semanticization and skeleton retrieval[C]//Pacific rim international conference onartificialintelligence. 2023: 262-274.[107] FAN Y K, HE Z Y, REN T H, et al. Metasql: a generate-then-rank framework for naturallanguagetosqltranslation[C]//2024iEEE40thinternationalconferenceon dataengineering(ICDE). 2024: 1765-1778.[108] LANCHANTIN J, TOSHNIWAL S, WESTON J, et al. Learning to reason and memorizewithself-notes[J]. AdvancesinNeuralInformationProcessingSystems,2023,36: 11891-11911.[109] DENG Y H, ZHANG W T, CHEN Z X, et al. Rephrase and respond: let large language models ask better questions for themselves[J/OL]. CoRR, 2023,abs/2311.04205. https://doi.org/10.48550/ARXIV.2311.04205.[110] ZHANGS,YAOLA,SUNAX,etal. Deeplearningbasedrecommendersystem:asurveyandnewperspectives[J]. ACMcomputingsurveys(CSUR),2019,52(1):1-38.[111] ASAIA,WUZQ,WANGYZ,etal. Self-rAG:learningtoretrieve,generate,and critique through self-reflection[C]//The twelfth international conference on learningrepresentations,ICLR 2024,vienna,austria,may7-11,2024. 2024.6501.[113] JIANG W Q, SUBRAMANIAN S, GRAVES C, et al. Rago: systematic performanceoptimizationforretrieval-augmentedgenerationserving[C]//Proceedingsof the 52nd annual international symposium on computer architecture. 2025: 974989.[114] 汤皓岚. 融合生成模型的强化学习探索策略优化研究[D]. 电子科技大学,2025.[115] REIMERS N, GUREVYCH I. Sentence-BERT: sentence embeddings using Siamese BERT-networks[C/OL]//INUI K, JIANG J, NG V, et al. Proceedings of the 2019 conference on empirical methods in natural language processing and the 9th international joint conference on natural language processing (EMNLPiJCNLP). Hong Kong, China: Association for Computational Linguistics, 2019:3982-3992. https://doi.org/10.18653/v1/D19-1410.[116] KIROS R, ZHU Y K, SALAKHUTDINOV R R, et al. Skip-thought vectors[J].
+
+
+Advancesinneuralinformationprocessingsystems,2015,28.[117] RADFORD A, WU J, CHILD R, et al. Language models are unsupervised multitasklearners[J]. OpenAIblog,2019,1(8): 9.[118] BROWN T et al. Language models are few-shot learners. advances in neural information[C]//34thconferenceonneuralinformationprocessingsystems(NeurIPS 2020),vancouver,canada. 2020.[119] WANGXZ,WEIJ,SCHUURMANSD,etal.SELF-cONSISTENCYiMPROVES cHAIN oF tHOUGHT rEASONING iN lANGUAGE mODELS[C]//11th international conference on learning representations, iCLR 2023. Kigali, Rwanda, 2023:Baidu;DeepMind;etal.;GoogleResearch;Huawei;MetaAI-.[120] LIU Y X, LI Z K, FANG Z, et al. Rethinking the role of prompting strategies in LLM test-time scaling: a perspective of probability theory[C/OL]//CHE W X,NABENDE J, SHUTOVA E, et al. Proceedings of the 63rd annual meeting of the association for computational linguistics (Volume 1: long papers). Vienna,Austria: Association for Computational Linguistics, 2025: 27962-27994. https:meeting of the association for computational linguistics (Volume 4: student researchworkshop). 2024: 402-413.[122] TALMORA,HERZIGJ,LOURIEN,etal. CommonSenseqa: aquestionanswering challenge targeting commonsense knowledge[C]//NAACL hLT 2019 - 2019 conference of the north american chapter of the association for computational linguistics: human language technologies - proceedings of the conference: v.1. Minneapolis,MN,Unitedstates,2019: 4149-4158.[123] GEVA M, KHASHABI D, SEGAL E, et al. Did aristotle use a laptop? a question answering benchmark with implicit reasoning strategies[J]. Transactions of the AssociationforComputationalLinguistics,2021,9: 346-361.[124] BHAKTHAVATSALAMS,KHASHABID,KHOTT,etal.Thinkyouhavesolved direct-answer question answering? try aRC-dA, the direct-answer AI2 reasoning challenge[J]. CoRR,2021,abs/2102.03315.[125] SPEERR,CHINJ,HAVASIC.ConceptNet5.5: anopenmultilingualgraphofgeneral knowledge[C/OL]//SINGH S, MARKOVITCH S. Proceedings of the thirtyfirst AAAI conference on artificial intelligence, february 4-9, 2017, san francisco,california, USA. AAAI Press, 2017: 4444-4451. https://doi.org/10.1609/AAAI.
+
+
+V31I1.11164.[126] ZHANGTH,LUOHY,CHUANGY,etal. Interpretableunifiedlanguagechecking[J/OL]. CoRR, 2023, abs/2304.03728. https://doi.org/10.48550/ARXIV.2304.03728.[127] TOUVRON H, MARTIN L, STONE K, et al. Llama 2: open foundation and finetunedchatmodels[J/OL]. CoRR,2023,abs/2307.09288. https://doi.org/10.48550/ARXIV.2307.09288.[128] DUBOIS Y, LI C X, TAORI R, et al. Alpacafarm: a simulation framework for methodsthatlearnfromhumanfeedback[J]. AdvancesinNeuralInformationProcessingSystems,2023,36: 30039-30069.[129] ZHANG N L, YE R H, HAN J M. DRL-rAG: a dynamic reinforcement learningdrivenrAGmethodforenhancinglanguagemodelcapabilities[C/OL]//2025iEEE embeddings[C]//Proceedings of the 47th international aCM sIGIR conference on researchanddevelopmentininformationretrieval. 2024: 641-649.[131] POURREZAM,LIHL,SUNRX,etal. CHASE-SQL:multi-pathreasoningand preference optimized candidate selection in text-to-SQL[C]//The thirteenth internationalconferenceonlearningrepresentations. 2025.[132] CAOZB,ZHENGYL,FANZH,etal. RSL-SQL:robustschemalinkingintextto-sQLgeneration[J/OL]. CoRR,2024,abs/2411.00073. https://doi.org/10.48550/ARXIV.2411.00073.[133] SHENG L, SHUAI X S. CSC-sQL: corrective self-consistency in text-to-sQL via reinforcement learning[C]//Proceedings of the 14th international joint conference on natural language processing and the 4th conference of the asia-pacific chapter oftheassociationforcomputationallinguistics. 2025: 1473-1496.[134] QI J X, TANG J Y, HE Z W, et al. RASAT: integrating relational structures into pretrained Seq2Seq model for text-to-SQL[C]//GOLDBERG Y, KOZAREVA Z,ZHANG Y. Proceedings of the 2022 conference on empirical methods in natural language processing. Abu Dhabi, United Arab Emirates: Association for ComputationalLinguistics,2022: 3215-3229.[135] LEE D, PARK C, KIM J, et al. MCS-SQL: leveraging multiple prompts and multiple-choice selection for text-to-SQL generation[C]//RAMBOW O, WANNER L, APIDIANAKI M, et al. Proceedings of the 31st international conference on computational linguistics. Abu Dhabi, UAE: Association for Computational Linguistics,2025: 337-353.
+
+\chapter*{致\quad 谢}
+\addcontentsline{toc}{chapter}{致谢}
+\zihao{-4}
+
+回头看，轻舟已过万重山；向前看，前路漫漫亦灿灿；抬头看，满天星光甚浪漫；低头看，满路荆棘已过半。
+
+
+行文至此，落笔成忆，思绪万千。这一年我二十六岁，我的硕士生涯也即将结束，时光悄然将二十余载求学路凝成珍贵回忆，这一次是真的要对学生时代的自己说一声：“再见了”。我曾无数次在心底起草这篇致谢，思索着该将哪些人和哪些事郑重铭记。而今终将思绪落于纸面，才发现那些需要感谢的人与事，早已如繁星般点亮了我的这段旅程。谨以此篇，献给所有在我生命中留下温暖印记的你们。
+
+
+桃李不言，下自成蹊。我首先要由衷地感谢我的导师叶荣华教授，感谢叶老师对我的指导和帮助。本论文从选题立意、开题答辩，到后期的反复修改与最终定稿，每一个环节都倾注了您大量的心血。我始终记得，每次在办公室与您探讨论文的研究方法与框架时，您总是耐心倾听我的想法，然后在论文结构合理性和方法框架严谨性上给出意见和建议。正是您的平易近人和悉心指导，让我从最初的紧张忐忑，逐渐变得从容自信，并在每一次交流中获益良多。同时，也要感谢韩建民教授，在实验室的每次论文答辩中，您提出的宝贵意见总是如此中肯且富有建设性。老师们严格地把关为我顺利完成论文提供强大的助力。此外，还要感谢叶老师和韩老师为我们提供的多个横向项目机会，得益于这些实践开发锻炼，我的专业能力得到了显著提升，这为我秋招顺利签约第一份工作提供了极大的帮助。
+
+
+在此，衷心祝愿每一位老师万事如意。
+
+
+寸草春晖，难以为报。从鲁西南的小村庄，到威海、烟台，再到金华，回望来路，我似乎走了很远的路。这一路，我最要感谢的是我最爱的家人，我平凡而又伟大的父母。生于农村，长在农村，虽然是一个普通的家庭，父母是面朝黄土背朝天的农民，他们没有富足的精神世界，也没有富裕的物质条件，却在我成长的道路上，从未在精神和物质上有所亏欠。你们始终无条件地尊重并支持我的每一个选择，给予我充分自由的思考与决定的空间，这份信任赋予了我向前走的勇气。感谢你们，让我站在你们的肩膀，望见了更广阔的世界，也让我遇见了更好的自己。
+
+
+唯愿未来的我事业有成，成为你们最大的骄傲和最坚实的依靠。祝愿我的家人身体安康，平安顺遂。
+
+
+山水一程，三生有幸。“这世界有那么多人，多幸运我有个我们”，很开心能在不同阶段邂逅与自己同频共振的朋友。感谢孙宗玮，我最好的朋友，超级超级好见证了我的成长与蜕变，也谢谢你们让我看到了友谊最好的模样，不用刻意维系，却永远默契如初。感谢陈昱锟，暖心的哥哥，带我一起去打卡了武汉和长沙，算是我真正意义上的第一次出去旅游，拍了好多照片，不仅只有旅游，还有很多美好的回忆我都记得。最后，感谢 202 实验室的小伙伴们，有我的同门，钟向荣、傅倩、沈彬、陈汀煜、陈辉等，还有我的师弟，刘宇翔、龚佳庆、傅柯杰、吴彬宇等，非常怀念一起打羽毛球打到爽，让我喜欢上了羽毛球，非常怀念我们一起出去旅游，一起极速看蓝眼泪的平潭、打卡爱心树的福州、吃早茶逛长隆的广州、喝免费美高梅奶茶的澳门、逛星光大道和维多利亚港淋雨的香港，好多好多回忆，其实在后来的日子里我也有经常和其他人炫耀我有一群让我能无比快乐、一起成长的小伙伴、有一个氛围如此好的实验室，这就是202。在茫茫人海中，能遇到与自己同频共振的朋友，这大抵也是一件很幸运的事情吧。青山不改，绿水长流，愿我们在彼此看不到的时光里熠熠生辉。希望我们的友谊万古长青，再会时希望彼此仍持有恰同学少年，风华正茂的翩翩面貌。愿大家前程似锦，万事胜意，你我各赴好光景。
+
+
+听闻凤凰花开两季，一季缘来，一季缘散。当身边的一道道风景，变成了回忆，才忽然发现，风景依然在，只是穿行于风景中的人，早已不复当年那般少年心性。一路上人来人往，聚散别离，不得不承认，幸福是多样的。生活并不总是一帆风顺，但也并非全然暗淡。或许一路坎坷，但跑起来就会有风，所有经历，不论平坦或崎岖，于我皆是礼物、是收获，更是真实的成长，愿此后温柔坚定，知足上进，乐观积极，永远对生活保持热爱。
+
+
+“我从来不曾优秀，但也从来没有放弃”，一直在追求自己想要的生活，希望我能拥有属于自己的那份幸福、那份温暖，用快乐拥抱自己接下来的生活。
+
+
+知不足而奋进，望远山而前行。很喜欢这样一句话：“无论如何都拥有向前奔跑的力量，是一件浪漫的事”，希望我们在未来的日子里可以成为一个外在喧闹而内心平静的人，还有，天气好的时候要记得停下来多看看风景。
+
+
+一、发表的学术论文：
+
+
+1. Nianlong Zhang, Ronghua Ye and Jianmin Han, DRL-RAG: A Dynamic Reinforcement Learning-Driven RAG Method for Enhancing Language Model Capabilities[C]//2025 IEEE International Symposium on Parallel and Distributed Processing with Applications(ISPA). 2025: 1161-1166. CCF-C 类会议，第一作者，浙江师范大学。
+
+
+二、浙江省专业学位研究生优秀创新成果：
+
+
+1.《面向工业级数据库的多智能体协作 NL2SQL 智能问答系统》，证书编号：
+
+
+SYXCXCG2024283，浙江省研究生教育学会，2026年2月，张念龙，叶荣华，韩建民。
+
+
+三、计算机软件著作权登记证书：
+
+
+1. LPKB：基于LLM的本地私有化知识库系统. 登记号：2024SR1722057. 中华人民共和国国家版权局. 2024.11 2. KBQA：基于大语言模型的知识库问答系统. 登记号：2025SR0243479. 中华人民共和国国家版权局. 2025.02 3. TCSR-ChatDBC：面向表内容感知自检索的 NL2SQL 问答系统. 登记号：
+
+
+2025SR0334416. 中华人民共和国国家版权局. 2025.02列出有关文献的名称、作者、年份、刊物名称和出版文献的出版机构、出版地和版次等内容。论文中未注明的内容为本人的研究成果。
+
+
+如有违反，本人接受处罚并承担一切责任。
+
+
+承诺人（研究生）：
+
+
+指 导 教 师：
+
+
+研究成果。论文中除了特别加以标注和致谢的地方外，不包含其他人或其他机构
+已经发表或撰写过的研究成果。其他同志对本研究的启发和所做的贡献均已在论
+文中作了明确的声明并表示了谢意。本人完全意识到本声明的法律结果由本人承
+担。
+作者签名： 日期： 2026年 5月 25日
+学位论文使用授权声明
+本人完全了解浙江师范大学有关保留、使用学位论文的规定，即：学校有权
+保留并向国家有关机关或机构送交论文的复印件和电子文档，允许论文被查阅和
+借阅，可以采用影印、缩印或扫描等手段保存、汇编学位论文。同意浙江师范大学
+可以用不同方式在不同媒体上发表、传播论文的全部或部分内容。
+保密的学位论文在解密后遵守此协议。
+作者签名： 导师签名： 日期： 2026年 5月 25日
+
+\end{document}

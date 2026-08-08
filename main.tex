@@ -1,0 +1,198 @@
+% ============================================================================
+% 浙江师范大学硕士学位论文 LaTeX 模板
+% 基于《面向线索数据感知的多智能体 SQL 生成方法研究》排版格式
+% ============================================================================
+% 使用说明：
+% 1. 将本文件重命名为 main.tex 后，修改下方 \thesis... 系列命令为您的信息。
+% 2. 在 chapters/ 目录下填写各章节内容。
+% 3. 图片放在 figures/ 目录下，使用 \includegraphics{fig_name} 引用。
+% 4. 编译命令：xelatex main.tex（建议连续运行两次以生成完整目录）
+% ============================================================================
+
+\documentclass[12pt,a4paper,openright,UTF8]{ctexbook}
+
+% ---------- 页面设置 ----------
+\usepackage{geometry}
+\geometry{left=2.5cm,right=2.5cm,top=2.5cm,bottom=2.5cm}
+
+% ---------- 中文与字体 ----------
+\usepackage{xeCJK}
+
+% ---------- 数学 ----------
+\usepackage{amsmath,amssymb,amsfonts,amsthm}
+
+% ---------- 图表 ----------
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{multirow}
+\usepackage{array}
+\usepackage{float}
+\usepackage{caption}
+\usepackage{subcaption}
+
+% ---------- 列表与代码 ----------
+\usepackage{enumitem}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{listings}
+\usepackage{xcolor}
+
+% ---------- 超链接与引用 ----------
+\usepackage{hyperref}
+\usepackage{cleveref}
+
+% ---------- 行距与页眉页脚 ----------
+\usepackage{setspace}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{tocloft}
+
+% ---------- 参考文献 ----------
+\usepackage[numbers,sort&compress]{natbib}
+\bibliographystyle{gbt7714-numerical}
+
+% ---------- 论文信息（请修改此处） ----------
+\newcommand{\thesisUniversity}{浙江师范大学}
+\newcommand{\thesisType}{硕士学位论文}
+\newcommand{\thesisTitle}{论文中文题目}
+\newcommand{\thesisTitleLineTwo}{（如需换行请填写第二行）}
+\newcommand{\thesisTitleEN}{English Title of the Thesis}
+\newcommand{\thesisTitleENLineTwo}{(Second Line if Needed)}
+\newcommand{\thesisAuthor}{作者姓名}
+\newcommand{\thesisStudentID}{学号}
+\newcommand{\thesisMajor}{专业名称}
+\newcommand{\thesisAdvisor}{导师姓名 教授}
+\newcommand{\thesisSchool}{计算机科学与技术学院}
+\newcommand{\thesisDate}{2026年5月}
+\newcommand{\thesisCLS}{TP391}  % 中图分类号，可选
+
+% ---------- 页眉页脚 ----------
+\setlength{\headheight}{14pt}
+\addtolength{\topmargin}{-2pt}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[C]{\small \leftmark}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+% ---------- 章节格式 ----------
+\ctexset{
+    chapter = {format = \zihao{-3}\bfseries\centering, beforeskip = 20pt, afterskip = 20pt},
+    section = {format = \zihao{4}\bfseries, beforeskip = 12pt, afterskip = 6pt},
+    subsection = {format = \zihao{-4}\bfseries, beforeskip = 8pt, afterskip = 4pt}
+}
+
+% ---------- 行距 ----------
+\onehalfspacing
+
+% ---------- 代码 listings 样式 ----------
+\lstset{
+    language=SQL,
+    basicstyle=\small\ttfamily,
+    keywordstyle=\color{blue},
+    commentstyle=\color{gray},
+    stringstyle=\color{orange},
+    numbers=left,
+    numberstyle=\tiny\color{gray},
+    stepnumber=1,
+    frame=single,
+    breaklines=true,
+    showstringspaces=false
+}
+
+% ---------- 图片路径 ----------
+\graphicspath{{figures/}}
+
+\begin{document}
+\hypersetup{pageanchor=false}
+
+% ==================== 封面 ====================
+\begin{titlepage}
+    \centering
+    \vspace*{2cm}
+    {\zihao{2}\bfseries \thesisUniversity}\\[0.8cm]
+    {\zihao{-1}\bfseries \thesisType}\\[2.5cm]
+    {\zihao{2}\bfseries \thesisTitle\\\thesisTitleLineTwo}\\[0.8cm]
+    {\zihao{3} \thesisTitleEN\\\thesisTitleENLineTwo}\\[3cm]
+    \begin{tabular}{rl}
+        \zihao{4}\textbf{作\quad 者：} & \zihao{4}\thesisAuthor \\[0.5cm]
+        \zihao{4}\textbf{学\quad 号：} & \zihao{4}\thesisStudentID \\[0.5cm]
+        \zihao{4}\textbf{专\quad 业：} & \zihao{4}\thesisMajor \\[0.5cm]
+        \zihao{4}\textbf{导\quad 师：} & \zihao{4}\thesisAdvisor \\[0.5cm]
+        \zihao{4}\textbf{学\quad 院：} & \zihao{4}\thesisSchool \\
+    \end{tabular}
+    \vfill
+    {\zihao{4} \thesisDate}
+\end{titlepage}
+
+% ==================== 学位论文原创性声明 ====================
+\newpage
+\thispagestyle{empty}
+\begin{center}
+    {\zihao{3}\bfseries 学位论文原创性声明}
+\end{center}
+\vspace{1cm}
+\zihao{-4}
+本人郑重声明：所呈交的学位论文，是本人在导师的指导下，独立进行研究工作所取得的成果。除文中已经注明引用的内容外，本论文不包含任何其他个人或集体已经发表或撰写过的作品成果。对本文的研究做出重要贡献的个人和集体，均已在文中以明确方式标明。本人完全意识到本声明的法律结果由本人承担。
+\vspace{2cm}
+\begin{flushright}
+    学位论文作者签名：\underline{\hspace{4cm}} \quad 日期：\underline{\hspace{3cm}}
+\end{flushright}
+
+% ==================== 学位论文独创性声明 ====================
+\newpage
+\thispagestyle{empty}
+\begin{center}
+    {\zihao{3}\bfseries 学位论文独创性声明}
+\end{center}
+\vspace{1cm}
+\zihao{-4}
+本人声明所呈交的学位论文是本人在导师指导下进行的研究工作及取得的研究成果。除了文中特别加以标注和致谢的地方外，论文中不包含其他人已经发表或撰写过的研究成果，也不包含为获得\thesisUniversity 或其他教育机构的学位或证书而使用过的材料。与我一同工作的同志对本研究所做的任何贡献均已在论文中作了明确的说明并表示谢意。
+\vspace{2cm}
+\begin{flushright}
+    学位论文作者签名：\underline{\hspace{4cm}} \quad 日期：\underline{\hspace{3cm}}
+\end{flushright}
+
+% ==================== 学位论文使用授权声明 ====================
+\newpage
+\thispagestyle{empty}
+\begin{center}
+    {\zihao{3}\bfseries 学位论文使用授权声明}
+\end{center}
+\vspace{1cm}
+\zihao{-4}
+本人完全了解\thesisUniversity 关于保留、使用学位论文的规定，即：学校有权保留送交论文的复印件和电子文档，允许论文被查阅和借阅，可以采用影印、缩印或扫描等手段保存、汇编学位论文。同意学校用不同方式在不同媒体上发表、传播论文的全部或部分内容。保密的学位论文在解密后遵守此协议。
+\vspace{2cm}
+\begin{flushright}
+    学位论文作者签名：\underline{\hspace{4cm}} \quad 日期：\underline{\hspace{3cm}} \\[1cm]
+    导师签名：\underline{\hspace{4.6cm}} \quad 日期：\underline{\hspace{3cm}}
+\end{flushright}
+
+% ==================== 目录 ====================
+\newpage
+\pagenumbering{Roman}
+\setcounter{page}{1}
+\tableofcontents
+\newpage
+\pagenumbering{arabic}
+\setcounter{page}{1}
+
+% ==================== 摘要 ====================
+\include{chapters/abstract_cn}
+\include{chapters/abstract_en}
+
+% ==================== 正文章节 ====================
+\include{chapters/chapter1}
+\include{chapters/chapter2}
+\include{chapters/chapter3}
+\include{chapters/chapter4}
+\include{chapters/chapter5}
+\include{chapters/chapter6}
+
+% ==================== 参考文献、致谢、成果 ====================
+\include{chapters/references}
+\include{chapters/acknowledgement}
+\include{chapters/publications}
+
+\end{document}
